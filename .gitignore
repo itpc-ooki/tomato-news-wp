@@ -1,0 +1,22 @@
+# Docker
+db_data/
+
+# WordPress
+wp-admin/
+wp-includes/
+wp-content/plugins/
+wp-content/uploads/
+wp-content/languages/
+
+# Ignore default themes
+wp-content/themes/twentytwenty*
+wp-content/themes/twenty*
+
+# Allow only our theme
+!wp-content/themes/tomato-theme/
+
+# OS
+.DS_Store
+
+# env
+.env
