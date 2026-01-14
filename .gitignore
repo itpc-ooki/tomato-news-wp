@@ -15,6 +15,9 @@ wp-content/themes/twenty*
 # Allow only our theme
 !wp-content/themes/tomato-theme/
 
+# Static build output (生成物は管理しない)
+static/
+
 # OS
 .DS_Store
 

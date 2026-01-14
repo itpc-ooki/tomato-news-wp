@@ -1,0 +1,1865 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>詳細ページ｜トマト新聞 デジタル版</title>
+<style>
+  *,*::before,*::after{ box-sizing:border-box }
+  :root{
+    --bg:#fff; 
+    --border:#e5e7eb; 
+    --muted:#64748b; 
+    --text:#0f172a;
+    --accent:#e0523d; 
+    --accent-2:#ff9a7d;
+    --pad:clamp(14px,4.5vw,24px);
+    --radius:0;
+    --shadow:none;
+    --adbadge:#334155;
+    --header-height:64px; /* デフォルト値 */
+  }
+  
+  html,body{ 
+    margin:0; 
+    background:var(--bg); 
+    color:var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Yu Gothic", YuGothic, "Hiragino Kaku Gothic ProN", Arial, "Noto Sans JP", sans-serif;
+    line-height: 1.6;
+  }
+  
+  @media (max-width:768px){
+    html, body{
+      overflow-x: hidden;
+      width: 100vw;
+      max-width: 100vw;
+    }
+  }
+  
+  img{ 
+    max-width:100%; 
+    display:block;
+    border-radius:0;
+  }
+  
+  a{ 
+    color:inherit; 
+    text-decoration:none 
+  }
+
+  /* ヘッダー（TOPページと共通） */
+  header{ 
+    position:fixed; 
+    top:0; 
+    z-index:1000; 
+    width:100%;
+    background:#ffffffd8; 
+    backdrop-filter:saturate(180%) blur(8px); 
+    border-bottom:1px solid var(--border);
+  }
+  .container{ width:min(1200px,92vw); margin:0 auto }
+  .hdr{ display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem 0 }
+  @media (min-width:1180px){
+    .hdr{ 
+      flex-direction:column; 
+      padding:1rem 0 0;
+      gap:0;
+      position:relative;
+    }
+  }
+  .brand{ display:flex; align-items:center; justify-content:center; }
+  .brand a{ display:block; }
+  .brand img{ 
+    height:45px; 
+    width:auto; 
+    display:block;
+  }
+  @media (min-width:1180px){
+    .brand{ 
+      margin-bottom:1rem;
+    }
+    .brand img{ 
+      height:55px;
+    }
+  }
+  .tit{ font-weight:700 }
+  nav ul{ list-style:none; display:flex; gap:1rem; padding:0; margin:0; align-items:center }
+  @media (min-width:1180px){
+    nav{ 
+      width:100%;
+      border-top:1px solid var(--border);
+      padding:0.8rem 0;
+    }
+    nav ul{ 
+      justify-content:center;
+      gap:2rem;
+      font-size:0.95rem;
+    }
+  }
+  .btn{ border:1px solid var(--border); background:#fff; color:#0f172a; padding:.55rem 1rem; border-radius:0; cursor:pointer }
+  
+  /* SP版でのボタンとナビゲーションのフォントサイズ調整 */
+  @media (max-width: 768px) {
+    .btn { 
+      font-size: 11px !important; 
+      padding: 0.35rem 0.5rem !important;
+      white-space: nowrap !important;
+      letter-spacing: -0.02em !important;
+    }
+    nav ul li a {
+      font-size: 12px !important;
+      white-space: nowrap !important;
+    }
+    /* 会員登録ボタンの特別調整 */
+    .btn.accent {
+      font-size: 10px !important;
+      padding: 0.35rem 0.4rem !important;
+      letter-spacing: -0.03em !important;
+    }
+  }
+  .btn.accent{ border-color:transparent; background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; box-shadow:var(--shadow) }
+  .hamb{ display:none; width:42px; height:42px; border-radius:0; border:1px solid var(--border); background:#fff }
+  @media (max-width:900px){ nav{ display:none } .hamb{ display:block } }
+  
+  /* ヘッダー内のボタンを丸くしてシャドウ追加（TOPページと同じ） */
+  header .btn, header .hamb{ border-radius:999px !important; box-shadow:0 10px 24px rgba(16,24,40,.10) !important; }
+  header .btn.accent{ border:0 !important; background:linear-gradient(135deg, var(--accent,#e0523d), var(--accent-2,#ff9a7d)) !important; color:#fff !important; }
+  
+  /* PC版：ボタン類を右上に配置 */
+  @media (min-width:1180px){
+    .hdr > div:last-child{
+      position:absolute;
+      top:1rem;
+      right:0;
+    }
+  }
+
+  /* キーワードスライダー（ヘッダーの下） */
+  .kw-bar{
+    position:fixed; 
+    top:var(--header-height); 
+    left:0; 
+    right:0;
+    z-index:900;
+    background:rgba(255,255,255,.9);
+    backdrop-filter:saturate(180%) blur(12px);
+    border-bottom:1px solid var(--border);
+    overflow:hidden;
+    height:48px;
+  }
+  .kw-inner{ width:min(1280px,96vw); margin:0 auto; padding:8px 16px; }
+  .kw-track{
+    display:flex; gap:12px; align-items:center; white-space:nowrap;
+    will-change:transform;
+    animation:kw-marquee 24s linear infinite;
+  }
+  .kw-pill{
+    flex-shrink:0; 
+    padding:6px 14px; 
+    border:1px solid var(--border); 
+    border-radius:999px; 
+    background:#fff; 
+    font-size:.875rem; 
+    color:#334155;
+  }
+  @keyframes kw-marquee{ from{transform:translateX(0)} to{transform:translateX(-50%)} }
+  
+  /* body padding調整 */
+  body{ 
+    padding-top:calc(var(--header-height) + 48px); 
+    margin:0;
+  }
+
+  /* メインコンテナ - 柏佐藤スタイル */
+  .main-wrapper{
+    width:min(1400px,100vw);
+    margin:0 auto;
+    padding:40px 0;
+  }
+  @media (max-width:768px){
+    .main-wrapper{
+      width:100vw !important;
+      max-width:100vw !important;
+      padding:20px 0 !important;
+      margin:0 !important;
+    }
+  }
+
+  /* パンくずリスト */
+  .breadcrumb{
+    padding:0 20px 20px;
+    font-size:0.875rem;
+    color:var(--muted);
+  }
+  @media (max-width:768px){
+    .breadcrumb{
+      padding:0 10px 10px;
+    }
+  }
+
+  /* 記事ヘッダー */
+  .article-header{
+    padding:0 20px 30px;
+    max-width:900px;
+    margin:0 auto;
+  }
+  .article-meta{
+    display:flex;
+    gap:15px;
+    align-items:center;
+    margin-bottom:20px;
+    font-size:0.875rem;
+    color:var(--muted);
+  }
+  .category-badge{
+    background:var(--accent);
+    color:#fff;
+    padding:4px 12px;
+    font-size:0.75rem;
+    font-weight:600;
+  }
+  .article-title{
+    font-size:2rem;
+    font-weight:700;
+    line-height:1.4;
+    margin:15px 0;
+  }
+  @media (max-width:768px){
+    .article-header{
+      padding:0 15px 20px;
+    }
+    .article-title{
+      font-size:1.5rem;
+    }
+  }
+
+  /* グリッドコンテナ - 柏佐藤スタイル */
+  .content-grid{
+    display:grid;
+    grid-template-columns:repeat(12, 1fr);
+    gap:2px;
+    padding:0 20px;
+  }
+  @media (max-width:768px){
+    .content-grid{
+      padding:0;
+      gap:1px;
+      width:100vw;
+      max-width:100vw;
+      margin-left:0;
+      margin-right:0;
+    }
+    
+    /* sidebar-item間の余白を完全に削除 */
+    .sidebar-item{
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+    }
+  }
+
+  /* メイン画像 - フル幅 */
+  .main-image-full{
+    grid-column:span 12;
+    aspect-ratio:16/9;
+    background:#eee;
+    margin-bottom:40px;
+  }
+  .main-image-full img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  @media (max-width:768px){
+    .main-image-full{
+      aspect-ratio:4/3;
+      margin-bottom:20px;
+    }
+  }
+
+  /* 記事本文エリア */
+  .article-content{
+    grid-column:span 8;
+    padding:20px;
+    background:#fff;
+    min-height:500px;
+  }
+  @media (max-width:768px){
+    .article-content{
+      grid-column:span 12;
+      padding:15px;
+    }
+  }
+  .article-content h2{
+    font-size:1.5rem;
+    margin:2rem 0 1rem;
+    padding-left:15px;
+    border-left:4px solid var(--accent);
+  }
+  .article-content h3{
+    font-size:1.25rem;
+    margin:1.5rem 0 0.75rem;
+  }
+  .article-content p{
+    margin:1.25rem 0;
+    line-height:1.8;
+  }
+  .article-content ul,
+  .article-content ol{
+    margin:1.25rem 0;
+    padding-left:2rem;
+  }
+  .article-content li{
+    margin:0.5rem 0;
+  }
+
+  /* サイドバー要素 - 正方形グリッド */
+  .sidebar-item{
+    grid-column:span 4;
+    aspect-ratio:1/1;
+    background:#f8f9fa;
+    overflow:hidden;
+    position:relative;
+  }
+  @media (max-width:768px){
+    .sidebar-item{
+      grid-column:1 / -1 !important; /* グリッドの端から端まで */
+      aspect-ratio: unset !important; /* 親要素のaspect-ratioを完全に解除 */
+      /* 画面幅いっぱいにするテクニック */
+      position: relative;
+      left: 50%;
+      right: 50%;
+      margin-left: -50vw !important;
+      margin-right: -50vw !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
+    }
+  }
+
+  /* 広告スロット - LISTページと同じスタイル */
+  .ad-slot{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#f8fafc;
+    border:1px dashed #cbd5e1;
+    color:#475569;
+    position:relative;
+    border-radius:0;
+    width:100%;
+    height:100%;
+  }
+  .ad-slot:hover{
+    transform:none;
+  }
+  
+  /* SP版：広告を横幅100vwに合わせて元の縦横比を維持 */
+  @media (max-width:768px){
+    /* sidebar-itemを画面幅いっぱいに */
+    .sidebar-item{
+      position: relative;
+      left: 50%;
+      right: 50%;
+      margin-left: -50vw !important;
+      margin-right: -50vw !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
+    }
+    
+    .sidebar-item .ad-slot{
+      width: 100vw !important;
+      max-width: 100vw !important;
+    }
+    
+    /* 正方形の広告（1:1）- インラインスタイルでaspect-ratioが指定されていない場合 */
+    /* ただし、人気記事ボックスを含む場合は除外 */
+    .sidebar-item:not([style*="aspect-ratio"]):not(:has(.popular-box)){
+      height: 100vw !important;
+      aspect-ratio: 1/1 !important;
+    }
+    
+    .sidebar-item:not([style*="aspect-ratio"]):not(:has(.popular-box)) .ad-slot{
+      height: 100vw !important;
+    }
+    
+    /* 人気記事ボックスを含むsidebar-itemは高さ自動調整 */
+    .sidebar-item:has(.popular-box){
+      height: auto !important;
+      aspect-ratio: unset !important;
+      margin-bottom: 0 !important;
+    }
+    
+    /* 横長広告（728×240 = 約3:1の比率） */
+    .sidebar-item[style*="aspect-ratio:3/1"]{
+      height: calc(100vw / 3) !important; /* 幅の1/3の高さ */
+      aspect-ratio: unset !important;
+    }
+    
+    .sidebar-item[style*="aspect-ratio:3/1"] .ad-slot{
+      height: calc(100vw / 3) !important;
+    }
+  }
+  
+  .ad-badge{
+    position:absolute;
+    top:8px;
+    left:8px;
+    background:#334155;
+    color:#fff;
+    font-size:10px;
+    padding:2px 6px;
+    border-radius:999px;
+  }
+
+  /* Sticky mobile banner - SP版のみ（TOPページと同じ） */
+  @media (max-width: 768px) {
+    .sticky-banner{ 
+      position:fixed; 
+      z-index:80; 
+      left:12px; 
+      right:12px; 
+      bottom:12px; 
+      display:none;
+      animation: slideUp 0.3s ease-out;
+    }
+    .sticky-banner.active{ display:block }
+    .sticky-inner{ 
+      background:#fff; 
+      border:1px solid var(--border); 
+      border-radius:0; 
+      box-shadow:0 10px 40px rgba(0,0,0,0.15); 
+      padding:8px; 
+      display:flex; 
+      gap:10px; 
+      align-items:center 
+    }
+    .sticky-close{ 
+      margin-left:auto; 
+      border:none; 
+      background:#f1f5f9; 
+      border-radius:0; 
+      padding:6px 10px; 
+      cursor:pointer;
+      font-size:12px;
+    }
+    .sticky-thumb{ 
+      width:64px; 
+      height:40px; 
+      border-radius:0; 
+      overflow:hidden;
+      flex-shrink:0;
+    }
+    .sticky-thumb img{ 
+      width:100%; 
+      height:100%; 
+      object-fit:cover 
+    }
+    @keyframes slideUp {
+      from {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+  }
+  
+  /* PC版では完全に非表示 */
+  @media (min-width: 769px) {
+    .sticky-banner{ display:none !important }
+  }
+    background:#f8fafc;
+    border:1px dashed #cbd5e1;
+    color:#475569;
+    position:relative;
+    overflow:hidden;
+    width:100%;
+    height:100%;
+  }
+  .ad-badge{
+    position:absolute;
+    top:10px;
+    left:10px;
+    font-size:11px;
+    color:#fff;
+    background:var(--adbadge);
+    padding:3px 8px;
+    border-radius:20px;
+  }
+
+  /* 関連記事グリッド - LISTページと同じスタイル */
+  .related-item{
+    grid-column:span 3;
+    aspect-ratio:1/1;
+    position:relative;
+    background:#fff;
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform 0.3s;
+  }
+  .related-item:hover{
+    transform:translateY(-2px);
+  }
+  @media (max-width:768px){
+    .related-item{
+      grid-column:span 12;
+    }
+  }
+  
+  /* サムネイルを全体表示 */
+  .related-thumb{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:#eee;
+  }
+  .related-thumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  
+  /* テキストをオーバーレイ表示（LISTページと同じ） */
+  .related-info{
+    position:absolute;
+    bottom:0;
+    left:0;
+    right:0;
+    padding:12px;
+    background:rgba(0,0,0,0.6);
+    color:#fff;
+  }
+  .related-info .meta{
+    font-size:0.7rem;
+    margin-bottom:4px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    color:#fff;
+    opacity:0.9;
+  }
+  .related-info .category{
+    background:var(--accent);
+    color:#fff;
+    padding:2px 6px;
+    font-size:0.65rem;
+    font-weight:600;
+  }
+  .related-info h4{
+    margin:0;
+    font-size:0.8rem;
+    font-weight:600;
+    line-height:1.3;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    color:#fff;
+  }
+  @media (max-width:768px){
+    .related-info{
+      padding:8px;
+    }
+    .related-info h4{
+      font-size:0.7rem;
+    }
+  }
+
+  /* 人気記事 */
+  .popular-box{
+    padding:20px;
+    background:#fff;
+  }
+  .popular-box h3{
+    margin:0 0 15px;
+    font-size:1rem;
+    padding-bottom:10px;
+    border-bottom:2px solid var(--accent);
+  }
+  .popular-item{
+    padding:10px 0;
+    border-bottom:1px solid #eee;
+    font-size:0.875rem;
+  }
+  .popular-rank{
+    display:inline-block;
+    width:24px;
+    height:24px;
+    background:var(--accent);
+    color:#fff;
+    text-align:center;
+    line-height:24px;
+    font-weight:700;
+    font-size:0.75rem;
+    margin-right:10px;
+  }
+  
+  /* SP版：人気記事ボックスの親要素の高さ調整 */
+  @media (max-width:768px){
+    .sidebar-item .popular-box{
+      width: 100vw;
+      padding: 20px 15px;
+      margin-bottom: 0;
+    }
+    /* 互換性のため、親要素のスタイルも直接オーバーライド */
+    .sidebar-item:has(.popular-box),
+    .popular-box:parent,
+    .sidebar-item > .popular-box:parent{
+      height: auto !important;
+      aspect-ratio: unset !important;
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+    }
+  }
+
+  /* 筆者情報 */
+  .author-box{
+    grid-column:span 12;
+    padding:30px;
+    background:#f8f9fa;
+    display:flex;
+    gap:20px;
+    align-items:center;
+    margin:40px 0;
+  }
+  @media (max-width:768px){
+    .author-box{
+      padding:20px;
+      margin:20px 0;
+    }
+  }
+  .author-avatar{
+    width:80px;
+    height:80px;
+    background:var(--muted);
+    border-radius:50%;
+    flex-shrink:0;
+  }
+  .author-info h4{
+    margin:0 0 8px;
+    font-size:1.125rem;
+  }
+  .author-info p{
+    margin:0;
+    font-size:0.875rem;
+    color:var(--muted);
+  }
+
+  /* タグ */
+  .tags-section{
+    grid-column:span 12;
+    padding:20px;
+    background:#fff;
+    margin-bottom:40px;
+  }
+  .tags-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:10px;
+  }
+  .tag{
+    padding:6px 14px;
+    background:#f1f3f5;
+    color:var(--text);
+    font-size:0.875rem;
+    transition:all 0.2s;
+  }
+  .tag:hover{
+    background:var(--accent);
+    color:#fff;
+  }
+
+  /* セクションタイトル */
+  .section-title{
+    grid-column:span 12;
+    padding:20px 0;
+    font-size:1.5rem;
+    font-weight:700;
+  }
+  @media (max-width:768px){
+    .section-title{
+      padding:15px 10px;
+      font-size:1.25rem;
+    }
+  }
+
+  /* CTAセクション（TOPページと同じ） */
+  .cta-section{
+    grid-column:span 12;
+    padding:40px 20px;
+    background:linear-gradient(135deg, #fff5f3 0%, #fff 100%);
+    text-align:center;
+    margin:40px 0;
+    border-top:2px solid var(--border);
+    border-bottom:2px solid var(--border);
+  }
+  .cta-title{
+    font-size:1.75rem;
+    font-weight:700;
+    margin-bottom:15px;
+    color:var(--text);
+  }
+  .cta-description{
+    font-size:1rem;
+    color:var(--muted);
+    margin-bottom:25px;
+    line-height:1.6;
+  }
+  .hero-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    justify-content:center;
+    margin-top:10px;
+  }
+  @media (max-width:768px){
+    .cta-section{
+      padding:30px 15px;
+      margin:30px 0;
+    }
+    .cta-title{
+      font-size:1.4rem;
+    }
+    .cta-description{
+      font-size:0.9rem;
+    }
+    .hero-actions{
+      flex-direction:column;
+    }
+    .hero-actions .btn{
+      width:100%;
+      padding:12px 20px !important;
+      font-size:14px !important;
+    }
+  }
+
+  /* フッター */
+  footer{
+    border-top:1px solid var(--border);
+    margin-top:80px;
+    background:#fff;
+  }
+  
+  .footer-wrapper{
+    max-width:1400px;
+    margin:0 auto;
+    padding:60px 20px 40px;
+  }
+  
+  .footer-grid{
+    display:grid;
+    grid-template-columns:2fr 1fr 1fr 1fr 1.5fr;
+    gap:40px;
+    margin-bottom:40px;
+  }
+  
+  @media (max-width:1024px){
+    .footer-grid{
+      grid-template-columns:1fr 1fr;
+      gap:30px;
+    }
+  }
+  
+  @media (max-width:768px){
+    .footer-grid{
+      grid-template-columns:1fr;
+      gap:30px;
+    }
+  }
+  
+  /* ブランドエリア */
+  .footer-brand{
+    display:flex;
+    flex-direction:column;
+    gap:15px;
+  }
+  
+  .footer-logo{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  
+  .footer-logo-icon{
+    width:48px;
+    height:48px;
+    background:var(--accent);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-weight:700;
+    font-size:18px;
+  }
+  
+  .footer-logo-text{
+    display:flex;
+    flex-direction:column;
+  }
+  
+  .footer-logo-text .main{
+    font-weight:700;
+    font-size:1.125rem;
+    color:var(--text);
+  }
+  
+  .footer-logo-text .sub{
+    font-size:0.75rem;
+    color:var(--muted);
+    margin-top:2px;
+  }
+  
+  .footer-desc{
+    font-size:0.875rem;
+    color:var(--muted);
+    line-height:1.6;
+    max-width:300px;
+  }
+  
+  .footer-social{
+    display:flex;
+    gap:10px;
+    margin-top:10px;
+  }
+  
+  .social-link{
+    width:36px;
+    height:36px;
+    border:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--muted);
+    transition:all 0.2s;
+  }
+  
+  .social-link:hover{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+  }
+  
+  /* フッターメニュー */
+  .footer-column h4{
+    font-size:0.75rem;
+    font-weight:700;
+    color:var(--text);
+    margin-bottom:15px;
+    text-transform:uppercase;
+    letter-spacing:0.1em;
+  }
+  
+  .footer-links{
+    list-style:none;
+    padding:0;
+    margin:0;
+  }
+  
+  .footer-links li{
+    margin-bottom:10px;
+  }
+  
+  .footer-links a{
+    color:var(--muted);
+    font-size:0.875rem;
+    transition:color 0.2s;
+  }
+  
+  .footer-links a:hover{
+    color:var(--accent);
+  }
+  
+  /* ニューズレター */
+  .newsletter-box{
+    background:#f8f9fa;
+    padding:25px;
+  }
+  
+  .newsletter-box h4{
+    font-size:0.75rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.1em;
+    margin-bottom:10px;
+  }
+  
+  .newsletter-box p{
+    font-size:0.875rem;
+    color:var(--muted);
+    margin-bottom:15px;
+    line-height:1.5;
+  }
+  
+  .newsletter-form{
+    display:flex;
+    gap:8px;
+  }
+  
+  @media (max-width:768px){
+    .newsletter-form{
+      flex-direction:column;
+    }
+  }
+  
+  .newsletter-input{
+    flex:1;
+    padding:8px 12px;
+    border:1px solid var(--border);
+    background:#fff;
+    font-size:0.875rem;
+  }
+  
+  .newsletter-btn{
+    padding:8px 20px;
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    font-weight:600;
+    cursor:pointer;
+    transition:opacity 0.2s;
+    white-space:nowrap;
+  }
+  
+  .newsletter-btn:hover{
+    opacity:0.9;
+  }
+  
+  /* フッターボトム */
+  .footer-bottom{
+    padding-top:30px;
+    border-top:1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:20px;
+  }
+  
+  @media (max-width:768px){
+    .footer-bottom{
+      flex-direction:column;
+      text-align:center;
+    }
+  }
+  
+  .copyright{
+    font-size:0.813rem;
+    color:var(--muted);
+  }
+  
+  .footer-bottom-links{
+    display:flex;
+    gap:25px;
+    align-items:center;
+  }
+  
+  @media (max-width:768px){
+    .footer-bottom-links{
+      flex-wrap:wrap;
+      justify-content:center;
+      gap:15px;
+    }
+  }
+  
+  .footer-bottom-links a{
+    color:var(--muted);
+    font-size:0.813rem;
+    transition:color 0.2s;
+  }
+  
+  .footer-bottom-links a:hover{
+    color:var(--accent);
+  }
+
+  /* シェアボタン（固定） */
+  .share-buttons{
+    position:fixed;
+    bottom:30px;
+    right:30px;
+    display:flex;
+    gap:10px;
+    z-index:50;
+  }
+  @media (max-width:768px){
+    .share-buttons{
+      bottom:20px;
+      right:20px;
+    }
+  }
+  .share-btn{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    background:var(--accent);
+    cursor:pointer;
+    transition:transform 0.2s;
+  }
+  .share-btn:hover{
+    transform:scale(1.1);
+  }
+</style>
+</head>
+
+<body>
+
+<!-- ヘッダー（TOPページと共通） -->
+<header>
+  <div class="container hdr">
+    <div class="brand">
+      <a href="./トマト_TOP_20251117.html" aria-label="トマト新聞ホーム">
+        <img src="./tomatopaper_logo.png" alt="トマト新聞 - Tomato Press" />
+      </a>
+    </div>
+    <nav aria-label="main">
+      <ul>
+        <li><a href="./トマト_TOP_251107更新版.html#special">特集記事</a></li>
+        <li><a href="./トマト_TOP_251107更新版.html#news">トマトNEWS</a></li>
+        <li><a href="./トマト_TOP_251107更新版.html#variety">品種情報</a></li>
+        <li><a href="./トマト_TOP_251107更新版.html#cultivation">栽培技術</a></li>
+        <li><a href="./トマト_TOP_251107更新版.html#market">市場動向</a></li>
+        <li><a href="./トマト_TOP_251107更新版.html#disease">病害虫対策</a></li>
+        <li><a href="./トマト_TOP_251107更新版.html#seminar">WEBセミナー</a></li>
+        <li><a href="./トマト_TOP_251107更新版.html#column">コラム</a></li>
+      </ul>
+    </nav>
+    <div style="display:flex; gap:.5rem">
+      <button class="btn" onclick="openModal('signin')">ログイン</button>
+      <button class="btn accent" onclick="openModal('signup')">会員登録（必須）</button>
+      <button class="btn" onclick="openModal('mypage')">マイページ</button>
+      <button class="hamb" aria-label="メニュー" onclick="toggleMobileMenu()">☰</button>
+    </div>
+  </div>
+</header>
+
+<!-- キーワードスライダー（TOPページと共通） -->
+<div class="kw-bar" role="navigation" aria-label="キーワード">
+  <div class="kw-inner">
+    <div class="kw-track" id="kwTrack">
+      <a class="kw-pill" href="#">トマト特集</a>
+      <a class="kw-pill" href="#">夏秋トマト</a>
+      <a class="kw-pill" href="#">冬春トマト</a>
+      <a class="kw-pill" href="#">品種リスト</a>
+      <a class="kw-pill" href="#">栽培面積</a>
+      <a class="kw-pill" href="#">収量データ</a>
+      <a class="kw-pill" href="#">病害虫対策</a>
+      <a class="kw-pill" href="#">黄化葉巻病</a>
+      <a class="kw-pill" href="#">産地紹介</a>
+      <a class="kw-pill" href="#">営農面</a>
+      <a class="kw-pill" href="#">流通経済面</a>
+      <a class="kw-pill" href="#">農業早見表</a>
+      <!-- 繰り返し -->
+      <a class="kw-pill" href="#">トマト特集</a>
+      <a class="kw-pill" href="#">夏秋トマト</a>
+      <a class="kw-pill" href="#">冬春トマト</a>
+      <a class="kw-pill" href="#">品種リスト</a>
+      <a class="kw-pill" href="#">栽培面積</a>
+      <a class="kw-pill" href="#">収量データ</a>
+      <a class="kw-pill" href="#">病害虫対策</a>
+      <a class="kw-pill" href="#">黄化葉巻病</a>
+      <a class="kw-pill" href="#">産地紹介</a>
+      <a class="kw-pill" href="#">営農面</a>
+      <a class="kw-pill" href="#">流通経済面</a>
+      <a class="kw-pill" href="#">農業早見表</a>
+    </div>
+  </div>
+</div>
+
+<!-- メインラッパー -->
+<div class="main-wrapper">
+
+  <!-- パンくずリスト -->
+  <nav class="breadcrumb">
+    <a href="トマト_TOP_251107更新版.html">ホーム</a> › 
+    <a href="トマト_TOP_251107更新版.html#column">コラム</a> › 
+    <span>記事詳細</span>
+  </nav>
+
+  <!-- 記事ヘッダー -->
+  <div class="article-header">
+    <div class="article-meta">
+      <span class="category-badge">コラム</span>
+      <time>2024年1月15日</time>
+      <span>筆者：山口健太</span>
+    </div>
+    <h1 class="article-title">
+      トマト栽培の持続的発展に向けた次世代農業技術の導入と、異業種からの新たな視点による革新
+    </h1>
+  </div>
+
+  <!-- メイン画像 -->
+  <div class="content-grid">
+    <div class="main-image-full">
+      <img src="./news_7.jpg" alt="トマト栽培施設">
+    </div>
+  </div>
+
+  <!-- コンテンツグリッド -->
+  <div class="content-grid">
+    
+    <!-- 記事本文 -->
+    <article class="article-content">
+      <p>
+        日本のトマト産業は、消費者ニーズの多様化や生産者の高齢化など、様々な課題に直面しています。
+        しかし、これらの課題は同時に、新たなイノベーションの機会でもあります。
+      </p>
+
+      <h2>1. スマート農業技術の最前線</h2>
+      <p>
+        最新のIoT技術やAIを活用したスマート農業の導入により、
+        これまで経験と勘に頼っていた栽培管理が、データに基づく科学的なアプローチへと変化しています。
+        特に環境制御システムの進化は目覚ましく、ハウス内の温度、湿度、CO2濃度を
+        リアルタイムで監視・制御することで、最適な生育環境を24時間維持できるようになりました。
+      </p>
+      
+      <h3>1.1 環境制御の具体的効果</h3>
+      <p>
+        熊本県の先進的な生産者の事例では、統合環境制御システムの導入により、
+        収量が平均30%向上し、品質の安定化も実現しています。
+        さらに、労働時間は40%削減され、生産効率の大幅な改善が報告されています。
+      </p>
+
+      <ul>
+        <li>温度・湿度の24時間自動制御</li>
+        <li>CO2施肥の最適化</li>
+        <li>潅水・施肥の自動化</li>
+        <li>病害虫発生リスクの予測</li>
+      </ul>
+
+      <h2>2. 異業種参入による新たな視点</h2>
+      <p>
+        IT企業や製造業など、異業種からの農業参入が増加しています。
+        彼らが持ち込む新しい技術やビジネスモデルは、
+        伝統的な農業に革新をもたらしています。
+      </p>
+      
+      <p>
+        特に注目されているのは、画像認識AIを活用した病害虫診断システムです。
+        スマートフォンで撮影した葉の画像から、瞬時に病害虫を特定し、
+        適切な対処法を提案するアプリが開発され、全国の生産者に普及し始めています。
+      </p>
+
+      <h2>3. 次世代育成の取り組み</h2>
+      <p>
+        持続可能な農業の実現には、若手農業者の育成が不可欠です。
+        JAや自治体では、新規就農者向けの研修プログラムを充実させ、
+        技術面だけでなく、経営面でのサポートも強化しています。
+      </p>
+    </article>
+
+    <!-- サイドバー：広告1 -->
+    <div class="sidebar-item">
+      <div class="ad-slot">
+        <span class="ad-badge">広告</span>
+        <span>300×300</span>
+      </div>
+    </div>
+
+    <!-- サイドバー：人気記事 -->
+    <div class="sidebar-item">
+      <div class="popular-box">
+        <h3>人気記事</h3>
+        <div class="popular-item">
+          <span class="popular-rank">1</span>
+          黄化葉巻病の最新対策
+        </div>
+        <div class="popular-item">
+          <span class="popular-rank">2</span>
+          高糖度トマト栽培法
+        </div>
+        <div class="popular-item">
+          <span class="popular-rank">3</span>
+          夏場の高温対策
+        </div>
+        <div class="popular-item">
+          <span class="popular-rank">4</span>
+          品種選定ガイド
+        </div>
+      </div>
+    </div>
+
+    <!-- サイドバー：広告2 -->
+    <div class="sidebar-item">
+      <div class="ad-slot">
+        <span class="ad-badge">PR</span>
+        <span>スポンサー</span>
+      </div>
+    </div>
+
+    <!-- 筆者情報 -->
+    <div class="author-box">
+      <div class="author-avatar"></div>
+      <div class="author-info">
+        <h4>山口 健太</h4>
+        <p>農業イノベーション研究所 主任研究員<br>スマート農業の普及啓発と技術支援に従事。トマト栽培の専門家として20年以上の経験を持つ。</p>
+      </div>
+    </div>
+
+    <!-- タグ -->
+    <div class="tags-section">
+      <strong>タグ：</strong>
+      <div class="tags-list">
+        <a href="#" class="tag">スマート農業</a>
+        <a href="#" class="tag">IoT</a>
+        <a href="#" class="tag">環境制御</a>
+        <a href="#" class="tag">異業種参入</a>
+        <a href="#" class="tag">後継者育成</a>
+        <a href="#" class="tag">病害虫対策</a>
+        <a href="#" class="tag">高糖度栽培</a>
+      </div>
+    </div>
+
+    <!-- CTA（会員登録促進セクション） -->
+    <div class="cta-section">
+      <h3 class="cta-title">もっと詳しい情報を今すぐチェック</h3>
+      <p class="cta-description">会員登録すると、限定記事・データベース・WEBセミナーなど<br>トマト栽培に役立つ情報を全てご利用いただけます</p>
+      <div class="hero-actions">
+        <button class="btn accent" onclick="openModal('signup')">会員登録して使い始める</button>
+        <button class="btn" onclick="location.href='./トマト_LIST_20251107.html'">まずは記事を探す</button>
+      </div>
+    </div>
+
+    <!-- セクションタイトル -->
+    <h2 class="section-title">関連記事</h2>
+
+    <!-- 関連記事1 -->
+    <div class="related-item" onclick="location.href='トマト_DETAIL_20251107.html'" style="cursor:pointer;">
+      <div class="related-thumb">
+        <img src="./news_1.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>AIを活用した病害虫診断</h4>
+      </div>
+    </div>
+
+    <!-- 関連記事2 -->
+    <div class="related-item" onclick="location.href='トマト_DETAIL_20251107.html'" style="cursor:pointer;">
+      <div class="related-thumb">
+        <img src="./news_2.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>若手農業者インタビュー</h4>
+      </div>
+    </div>
+
+    <!-- 関連記事3 -->
+    <div class="related-item">
+      <div class="related-thumb">
+        <img src="./news_3.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>環境制御技術の効果</h4>
+      </div>
+    </div>
+
+    <!-- 関連記事4 -->
+    <div class="related-item">
+      <div class="related-thumb">
+        <img src="./news_4.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>省力化技術導入事例</h4>
+      </div>
+    </div>
+
+    <!-- 広告（横長） -->
+    <div class="sidebar-item" style="grid-column:span 8; aspect-ratio:3/1">
+      <div class="ad-slot">
+        <span class="ad-badge">広告</span>
+        <span>728×240</span>
+      </div>
+    </div>
+
+    <!-- 関連記事5-8 -->
+    <div class="related-item">
+      <div class="related-thumb">
+        <img src="./news_5.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>トマト市場動向分析</h4>
+      </div>
+    </div>
+
+    <div class="related-item">
+      <div class="related-thumb">
+        <img src="./news_6.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>品種別栽培ポイント</h4>
+      </div>
+    </div>
+
+    <div class="related-item">
+      <div class="related-thumb">
+        <img src="./news_7.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>産地レポート：熊本</h4>
+      </div>
+    </div>
+
+    <div class="related-item">
+      <div class="related-thumb">
+        <img src="./news_8.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>施設園芸の最新動向</h4>
+      </div>
+    </div>
+
+    <!-- セクションタイトル -->
+    <h2 class="section-title">おすすめ特集</h2>
+
+    <!-- 特集記事グリッド -->
+    <div class="related-item">
+      <div class="related-thumb">
+        <img src="./news_9.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>2024年トマト品種</h4>
+      </div>
+    </div>
+
+    <div class="related-item">
+      <div class="related-thumb">
+        <img src="./news_10.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>黄化葉巻病対策</h4>
+      </div>
+    </div>
+
+    <div class="related-item">
+      <div class="related-thumb">
+        <img src="./news_11.jpg" alt="">
+      </div>
+      <div class="related-info">
+        <h4>スマート農業入門</h4>
+      </div>
+    </div>
+
+    <!-- 広告（正方形） -->
+    <div class="sidebar-item">
+      <div class="ad-slot">
+        <span class="ad-badge">広告</span>
+        <img src="./paperad_1.jpg" alt="">
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- シェアボタン -->
+<div class="share-buttons">
+  <a href="#" class="share-btn" title="X(Twitter)">𝕏</a>
+  <a href="#" class="share-btn" title="Facebook">f</a>
+  <a href="#" class="share-btn" title="LINE">L</a>
+</div>
+
+<!-- モバイルメニュー機能 -->
+<style>
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 280px;
+  height: 100vh;
+  background: #fff;
+  z-index: 10000;
+  transition: right 0.3s ease;
+  box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+}
+.mobile-menu.active {
+  right: 0;
+}
+.mobile-menu-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.mobile-menu-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+.mobile-menu-content {
+  padding: 20px;
+  overflow-y: auto;
+  height: calc(100vh - 80px);
+}
+.mobile-menu-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.mobile-menu-content li {
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.mobile-menu-content a {
+  display: block;
+  color: #0f172a;
+  text-decoration: none;
+}
+.mobile-menu-buttons {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 2px solid #e5e7eb;
+}
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 9999;
+  display: none;
+}
+.mobile-menu-overlay.active {
+  display: block;
+}
+</style>
+
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-menu-header">
+    <div style="font-weight:bold">メニュー</div>
+    <button class="mobile-menu-close" onclick="toggleMobileMenu()">×</button>
+  </div>
+  <div class="mobile-menu-content">
+    <ul>
+      <li><a href="./トマト_DETAIL_20251107.html">特集記事</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">トマトNEWS</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">品種情報</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">栽培技術</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">市場動向</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">病害虫対策</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">WEBセミナー</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">コラム</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">動画</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">紙面</a></li>
+    </ul>
+    <div class="mobile-menu-buttons">
+      <button class="btn" onclick="openModal('signin')">ログイン</button>
+      <button class="btn accent" onclick="openModal('signup')">会員登録（必須）</button>
+      <button class="btn" onclick="openModal('mypage')">マイページ</button>
+    </div>
+  </div>
+</div>
+<div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="toggleMobileMenu()"></div>
+
+<script>
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobileMenu');
+  const overlay = document.getElementById('mobileMenuOverlay');
+  menu.classList.toggle('active');
+  overlay.classList.toggle('active');
+}
+
+function openModal(type) {
+  alert(type + ' モーダル（仮）');
+  // 実際の実装では適切なモーダル表示処理
+}
+</script>
+
+<!-- SP 固定バナー（320x50/100）- TOPページと同じ -->
+<div id="stickyAd" class="sticky-banner" aria-live="polite">
+  <div class="sticky-inner">
+    <div class="sticky-thumb"><img src="https://via.placeholder.com/64x40/e0523d/fff?text=AD" alt="広告"></div>
+    <div style="flex:1; min-width:0;">
+      <div style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">PR：トマト栽培の最新情報</div>
+      <div style="font-size:11px; color:var(--muted);">タップして詳しく見る</div>
+    </div>
+    <a class="btn accent" href="https://pr.agrinews.co.jp/ad/tomato" target="_blank" rel="noopener" style="font-size:12px !important; padding:6px 12px !important; white-space:nowrap;">詳しく</a>
+    <button class="sticky-close" aria-label="広告を閉じる" onclick="document.getElementById('stickyAd').classList.remove('active')">×</button>
+  </div>
+</div>
+
+<!-- フッター -->
+<footer>
+  <div class="footer-wrapper" style="max-width:1400px; margin:0 auto; padding:60px 20px 40px">
+    <div class="footer-grid" id="footerGrid">
+      
+      <!-- ブランドエリア -->
+      <div class="footer-brand">
+        <div class="footer-logo" style="display:flex; align-items:center; margin-bottom:15px">
+          <img src="./tomatopaper_logo.png" alt="トマト新聞 - Tomato Press" style="height:60px; width:auto;" />
+        </div>
+        <p style="font-size:0.875rem; color:var(--muted); line-height:1.6; margin:15px 0 0">
+          トマト産業の最新情報を専門的視点でお届けする、日本農業新聞の品目特化型デジタルメディアです。
+        </p>
+        <div class="footer-social" style="display:flex; gap:10px; margin-top:15px">
+          <a href="トマト_DETAIL_20251107.html" class="social-icon" aria-label="X(Twitter)">𝕏</a>
+          <a href="トマト_DETAIL_20251107.html" class="social-icon" aria-label="Facebook">f</a>
+          <a href="トマト_DETAIL_20251107.html" class="social-icon" aria-label="LinkedIn">in</a>
+          <a href="トマト_DETAIL_20251107.html" class="social-icon" aria-label="YouTube">▶</a>
+        </div>
+      </div>
+      
+      <!-- コンテンツ -->
+      <div class="footer-column" onclick="toggleFooterMenu(this)">
+        <h4 class="footer-heading">コンテンツ</h4>
+        <ul class="footer-links">
+          <li><a href="./トマト_DETAIL_20251107.html">特集記事</a></li>
+          <li><a href="./トマト_DETAIL_20251107.html">トマトNEWS</a></li>
+          <li><a href="./トマト_DETAIL_20251107.html">品種情報</a></li>
+          <li><a href="./トマト_DETAIL_20251107.html">栽培技術</a></li>
+          <li><a href="./トマト_DETAIL_20251107.html">市場動向</a></li>
+        </ul>
+      </div>
+      
+      <!-- リソース -->
+      <div class="footer-column" onclick="toggleFooterMenu(this)">
+        <h4 class="footer-heading">リソース</h4>
+        <ul class="footer-links">
+          <li><a href="トマト_DETAIL_20251107.html">WEBセミナー</a></li>
+          <li><a href="トマト_DETAIL_20251107.html">アーカイブ</a></li>
+          <li><a href="トマト_DETAIL_20251107.html">データベース</a></li>
+          <li><a href="トマト_DETAIL_20251107.html">病害虫事典</a></li>
+          <li><a href="トマト_DETAIL_20251107.html">栽培暦</a></li>
+        </ul>
+      </div>
+      
+      <!-- サポート -->
+      <div class="footer-column" onclick="toggleFooterMenu(this)">
+        <h4 class="footer-heading">サポート</h4>
+        <ul class="footer-links">
+          <li><a href="トマト_DETAIL_20251107.html">ご利用ガイド</a></li>
+          <li><a href="トマト_DETAIL_20251107.html">よくある質問</a></li>
+          <li><a href="トマト_DETAIL_20251107.html">お問い合わせ</a></li>
+          <li><a href="トマト_DETAIL_20251107.html">料金プラン</a></li>
+          <li><a href="トマト_DETAIL_20251107.html">法人契約</a></li>
+        </ul>
+      </div>
+      
+      <!-- ニューズレター -->
+      <div class="newsletter-box">
+        <h4 style="font-size:0.875rem; font-weight:700; margin:0 0 10px">メールマガジン</h4>
+        <p style="font-size:0.875rem; color:var(--muted); margin:0 0 15px; line-height:1.5">最新のトマト産業情報を毎週お届けします</p>
+        <form class="newsletter-form" onsubmit="event.preventDefault(); alert('購読登録（ダミー）')">
+          <input type="email" class="newsletter-input" placeholder="メールアドレス" required>
+          <button type="submit" class="newsletter-btn">登録する</button>
+        </form>
+      </div>
+      
+    </div>
+    
+    <!-- フッターボトム -->
+    <div class="footer-bottom">
+      <div class="copyright" style="font-size:0.813rem; color:var(--muted)">
+        © 2024 日本農業新聞. All rights reserved.
+      </div>
+      <div class="footer-bottom-links">
+        <a href="トマト_DETAIL_20251107.html">プライバシーポリシー</a>
+        <span style="color:var(--muted)">|</span>
+        <a href="トマト_DETAIL_20251107.html">利用規約</a>
+        <span style="color:var(--muted)">|</span>
+        <a href="トマト_DETAIL_20251107.html">特定商取引法</a>
+        <span style="color:var(--muted)">|</span>
+        <a href="トマト_DETAIL_20251107.html">運営会社</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<style>
+/* フッター基本スタイル */
+.footer-grid {
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr 1fr 1.5fr;
+  gap:40px;
+  margin-bottom:40px;
+}
+
+.footer-brand {
+  display:flex;
+  flex-direction:column;
+}
+
+.social-icon {
+  width:36px;
+  height:36px;
+  border:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--muted);
+  transition:all 0.2s;
+}
+
+.social-icon:hover {
+  background:var(--accent);
+  color:#fff;
+  border-color:var(--accent);
+}
+
+.footer-heading {
+  font-size:0.75rem;
+  font-weight:700;
+  color:var(--text);
+  margin:0 0 15px;
+  text-transform:uppercase;
+  letter-spacing:0.1em;
+}
+
+.footer-links {
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+
+.footer-links li {
+  margin-bottom:10px;
+}
+
+.footer-links a {
+  color:var(--muted);
+  font-size:0.875rem;
+  transition:color 0.2s;
+}
+
+.footer-links a:hover {
+  color:var(--accent);
+}
+
+.newsletter-box {
+  background:#f8f9fa;
+  padding:25px;
+}
+
+.newsletter-form {
+  display:flex;
+  gap:8px;
+}
+
+.newsletter-input {
+  flex:1;
+  padding:8px 12px;
+  border:1px solid var(--border);
+  background:#fff;
+  font-size:0.875rem;
+}
+
+.newsletter-btn {
+  padding:8px 20px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  font-weight:600;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.footer-bottom {
+  padding-top:30px;
+  border-top:1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+}
+
+.footer-bottom-links {
+  display:flex;
+  gap:25px;
+}
+
+.footer-bottom-links a {
+  color:var(--muted);
+  font-size:0.813rem;
+}
+
+/* モバイル最適化 */
+@media (max-width:768px) {
+  .footer-wrapper {
+    padding:40px 15px 30px !important;
+  }
+  
+  .footer-grid {
+    display:flex !important;
+    flex-direction:column;
+    gap:0;
+    margin-bottom:0;
+  }
+  
+  .footer-brand {
+    padding-bottom:30px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:20px;
+  }
+  
+  /* アコーディオンメニュー */
+  .footer-column {
+    border-bottom:1px solid var(--border);
+    padding-bottom:0;
+    margin-bottom:0;
+  }
+  
+  .footer-heading {
+    margin:0;
+    padding:15px 0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    font-size:0.875rem;
+    text-transform:none;
+    letter-spacing:normal;
+    position:relative;
+  }
+  
+  .footer-heading::after {
+    content:'+';
+    font-size:1.25rem;
+    color:var(--muted);
+    transition:transform 0.3s;
+  }
+  
+  .footer-column.active .footer-heading::after {
+    transform:rotate(45deg);
+  }
+  
+  .footer-links {
+    max-height:0;
+    overflow:hidden;
+    transition:max-height 0.3s ease-out;
+  }
+  
+  .footer-column.active .footer-links {
+    max-height:300px;
+    padding-bottom:15px;
+  }
+  
+  .newsletter-box {
+    background:transparent;
+    padding:30px 0;
+    margin-bottom:20px;
+  }
+  
+  .newsletter-form {
+    flex-direction:column;
+    gap:12px;
+  }
+  
+  .newsletter-input {
+    padding:12px;
+    font-size:1rem;
+  }
+  
+  .newsletter-btn {
+    padding:12px;
+    font-size:1rem;
+    width:100%;
+  }
+  
+  .footer-bottom {
+    padding-top:20px;
+    border-top:none;
+    flex-direction:column;
+    text-align:center;
+  }
+  
+  .footer-bottom-links {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px 4px;
+    width:100%;
+    text-align:center;
+  }
+  
+  /* 区切り文字を非表示 */
+  .footer-bottom-links span {
+    display:none;
+  }
+  
+  .footer-bottom-links a {
+    padding:6px 4px;
+    font-size:0.65rem;
+    white-space:nowrap;
+    line-height:1.2;
+  }
+  
+  /* さらに小さい画面用 */
+  @media (max-width:360px) {
+    .footer-bottom-links a {
+      font-size:0.6rem;
+      padding:5px 2px;
+    }
+  }
+  
+  .copyright {
+    font-size:0.75rem !important;
+  }
+}
+</style>
+
+<script>
+// フッターアコーディオン機能
+function toggleFooterMenu(element) {
+  if (window.innerWidth <= 768) {
+    element.classList.toggle('active');
+  }
+}
+</script>
+
+<script>
+// ヘッダー高さを動的に取得して設定
+document.addEventListener('DOMContentLoaded', function() {
+  const header = document.querySelector('header');
+  if(header){
+    function setHeaderHeight() {
+      const h = header.getBoundingClientRect().height;
+      document.documentElement.style.setProperty('--header-height', h + 'px');
+    }
+    
+    // 初期設定
+    setHeaderHeight();
+    
+    // リサイズ時にも更新
+    window.addEventListener('resize', setHeaderHeight);
+  }
+  
+  // シェアボタン
+  const shareButtons = document.querySelectorAll('.share-btn');
+  const pageUrl = window.location.href;
+  const pageTitle = document.querySelector('.article-title')?.textContent || '';
+  
+  shareButtons.forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const platform = this.getAttribute('title');
+      
+      if(platform === 'X(Twitter)'){
+        window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(pageUrl)}&text=${encodeURIComponent(pageTitle)}`);
+      } else if(platform === 'Facebook'){
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`);
+      } else if(platform === 'LINE'){
+        window.open(`https://line.me/R/msg/text/?${encodeURIComponent(pageTitle + ' ' + pageUrl)}`);
+      }
+    });
+  });
+  
+  // Sticky広告の表示制御（SP版のみ、1.5秒後に表示）
+  const sticky = document.getElementById('stickyAd');
+  if(sticky && window.matchMedia('(max-width:768px)').matches){
+    setTimeout(()=>sticky.classList.add('active'), 1500);
+  }
+});
+</script>
+
+</body>
+</html>
