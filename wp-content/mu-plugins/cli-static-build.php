@@ -1,245 +1,376 @@
 <?php
 /**
- * Plugin Name: CLI Static Build (Multi Newspaper)
- * Description: WP-CLI commands to build static HTML per newspaper slug.
- * Author: (local)
+ * Static JSON Builder (Mode B)
+ *
+ * Purpose
+ * - For each "paper" (category slug), generate JSON files for list & detail.
+ * - Copy per-paper templates into /static/{paper}/ as index.html + detail.html.
+ *
+ * Output
+ * - /static/{paper}/posts.json        (list)
+ * - /static/{paper}/posts/{id}.json   (detail)
+ * - /static/{paper}/index.html        (copied from /static-src/{paper}/list.html)
+ * - /static/{paper}/detail.html       (copied from /static-src/{paper}/detail.html)
+ *
+ * Notes
+ * - This file is loaded as an MU plugin, so it is loaded on every request.
+ * - Do NOT run wp-cli "eval-file" against this file (it will load twice and redeclare classes).
+ *   Use the registered WP-CLI command: `wp static-build ...`
  */
 
-if (!defined('WP_CLI') || !WP_CLI) {
-  return;
+if (!defined('ABSPATH')) {
+  exit;
 }
 
-class ITPC_Static_Builder {
-  /** @var string */
-  private $wp_root;
+if (!class_exists('Tomato_Static_Builder_ModeB')) {
 
-  public function __construct(string $wp_root) {
-    $this->wp_root = rtrim($wp_root, '/');
+class Tomato_Static_Builder_ModeB {
+
+  /** @return string absolute path */
+  private static function static_src_root(): string {
+    return rtrim(ABSPATH, '/') . '/static-src';
   }
 
-  /**
-   * Template directory: {WP_ROOT}/static-src/{slug}
-   */
-  public function tpl_dir(string $slug): string {
-    return $this->wp_root . '/static-src/' . $slug;
+  /** @return string absolute path */
+  private static function static_root(): string {
+    return rtrim(ABSPATH, '/') . '/static';
   }
 
-  /**
-   * Output directory: {WP_ROOT}/static/{slug}
-   */
-  public function out_dir(string $slug): string {
-    return $this->wp_root . '/static/' . $slug;
+  /** @return bool */
+  public static function paper_exists(string $paper): bool {
+    $paper = sanitize_title($paper);
+    if ($paper === '') return false;
+
+    $src = self::static_src_root() . '/' . $paper;
+    return is_dir($src) && is_file($src . '/list.html') && is_file($src . '/detail.html');
   }
 
-  public function ensure_dir(string $dir): void {
-    if (is_dir($dir)) return;
-    if (!mkdir($dir, 0775, true) && !is_dir($dir)) {
-      WP_CLI::error("Failed to create directory: {$dir}");
+  /** Ensure directory exists */
+  private static function ensure_dir(string $path): void {
+    if (!is_dir($path)) {
+      wp_mkdir_p($path);
     }
   }
 
-  public function file_exists_or_error(string $path, string $hint): void {
-    if (file_exists($path)) return;
-    WP_CLI::error("Template not found.\nExpected:\n  {$hint}\nCreate them first (try: wp <slug> init).");
+  /** Copy templates list/detail into /static/{paper}/ */
+  private static function sync_templates(string $paper): void {
+    $paper = sanitize_title($paper);
+    if (!self::paper_exists($paper)) {
+      return;
+    }
+
+    $src = self::static_src_root() . '/' . $paper;
+    $dst = self::static_root() . '/' . $paper;
+
+    self::ensure_dir($dst);
+
+    @copy($src . '/list.html',   $dst . '/index.html');
+    @copy($src . '/detail.html', $dst . '/detail.html');
   }
 
-  /**
-   * init: create template folder + list/detail templates if missing.
-   * - Creates static-src/{slug} automatically.
-   * - If static-src/tomato exists, it uses it as a seed (copy) when slug != tomato.
-   */
-  public function init(string $slug): void {
-    $tpl_dir = $this->tpl_dir($slug);
-    $this->ensure_dir($tpl_dir);
+  /** Build list + detail json for a paper */
+  public static function build_paper(string $paper): void {
+    $paper = sanitize_title($paper);
+    if ($paper === '') {
+      return;
+    }
+    if (!self::paper_exists($paper)) {
+      // If templates don't exist, do nothing (paper not configured)
+      return;
+    }
 
-    $list = $tpl_dir . '/list.html';
-    $detail = $tpl_dir . '/detail.html';
+    self::sync_templates($paper);
 
-    // If already exists, keep it.
-    $created = [];
+    $static_paper_root = self::static_root() . '/' . $paper;
+    $posts_dir = $static_paper_root . '/posts';
+    self::ensure_dir($posts_dir);
 
-    // Seed from tomato templates if available and target doesn't exist yet.
-    $seed_dir = $this->tpl_dir('tomato');
-    $seed_list = $seed_dir . '/list.html';
-    $seed_detail = $seed_dir . '/detail.html';
+    // Query published posts that have this category slug
+    $q = new WP_Query([
+      'post_type'      => 'post',
+      'post_status'    => 'publish',
+      'posts_per_page' => -1,
+      'orderby'        => 'date',
+      'order'          => 'DESC',
+      'tax_query'      => [[
+        'taxonomy' => 'category',
+        'field'    => 'slug',
+        'terms'    => [$paper],
+      ]],
+    ]);
 
-    if (!file_exists($list)) {
-      if ($slug !== 'tomato' && file_exists($seed_list)) {
-        copy($seed_list, $list);
-        $created[] = $list . ' (copied from tomato)';
-      } else {
-        file_put_contents($list, $this->default_list_template($slug));
-        $created[] = $list . ' (default)';
+    $list = [];
+
+    if ($q->have_posts()) {
+      foreach ($q->posts as $p) {
+        if (!($p instanceof WP_Post)) continue;
+
+        $post_id = (int) $p->ID;
+
+        $title   = get_the_title($p);
+        $date    = get_post_time('c', false, $p);
+        $date_ymd = get_post_time('Y-m-d', false, $p);
+
+        // excerpt (plain) - keep it short
+        $excerpt = has_excerpt($p) ? $p->post_excerpt : wp_trim_words(wp_strip_all_tags($p->post_content), 60, '…');
+
+        // slug: use post_name (keep as-is), but URL encode on the consumer side if needed
+        $slug = $p->post_name;
+
+        $list[] = [
+          'id'       => $post_id,
+          'title'    => $title,
+          'date'     => $date,
+          'date_ymd' => $date_ymd,
+          'excerpt'  => $excerpt,
+          'slug'     => $slug,
+          // Use query param id for simplicity (detail.html?id=XX)
+          'url'      => 'detail.html?id=' . $post_id,
+        ];
+
+        // detail json
+        $detail = [
+          'id'         => $post_id,
+          'title'      => $title,
+          'date'       => $date,
+          'date_ymd'   => $date_ymd,
+          // Keep raw HTML content (Gutenberg) as string
+          'content'    => apply_filters('the_content', $p->post_content),
+          'slug'       => $slug,
+          'categories' => [$paper],
+        ];
+
+        $detail_path = $posts_dir . '/' . $post_id . '.json';
+        file_put_contents($detail_path, wp_json_encode($detail, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
       }
     }
+    wp_reset_postdata();
 
-    if (!file_exists($detail)) {
-      if ($slug !== 'tomato' && file_exists($seed_detail)) {
-        copy($seed_detail, $detail);
-        $created[] = $detail . ' (copied from tomato)';
-      } else {
-        file_put_contents($detail, $this->default_detail_template($slug));
-        $created[] = $detail . ' (default)';
+    // posts.json
+    $posts_json_path = $static_paper_root . '/posts.json';
+    file_put_contents($posts_json_path, wp_json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+  }
+
+  /** Build all papers that exist under /static-src */
+  public static function build_all_papers(): void {
+    $root = self::static_src_root();
+    if (!is_dir($root)) return;
+
+    $dirs = glob($root . '/*', GLOB_ONLYDIR);
+    if (!$dirs) return;
+
+    foreach ($dirs as $dir) {
+      $paper = basename($dir);
+      if (self::paper_exists($paper)) {
+        self::build_paper($paper);
       }
     }
+  }
 
-    if (empty($created)) {
-      WP_CLI::success("Templates already exist: {$tpl_dir}");
-    } else {
-      WP_CLI::success("Initialized templates:\n- " . implode("\n- ", $created));
+  /** Return papers (category slugs) for a post that have templates in /static-src */
+  public static function get_papers_for_post(int $post_id): array {
+    $post = get_post($post_id);
+    if (!($post instanceof WP_Post)) return [];
+    if ($post->post_type !== 'post') return [];
+
+    $terms = get_the_terms($post_id, 'category');
+    if (!$terms || is_wp_error($terms)) return [];
+
+    $papers = [];
+    foreach ($terms as $t) {
+      $slug = sanitize_title($t->slug);
+      if ($slug && self::paper_exists($slug)) {
+        $papers[] = $slug;
+      }
+    }
+    return array_values(array_unique($papers));
+  }
+
+  /** Delete a single detail json */
+  public static function delete_detail_json(string $paper, int $post_id): void {
+    $paper = sanitize_title($paper);
+    if ($paper === '' || $post_id <= 0) return;
+
+    $path = self::static_root() . '/' . $paper . '/posts/' . $post_id . '.json';
+    if (is_file($path)) {
+      @unlink($path);
     }
   }
 
-  /**
-   * build: generate static/{slug}/index.html and detail.html from templates.
-   * - Creates static-src/{slug} and static/{slug} automatically (no manual mkdir needed).
-   * - Overwrites output files (static/{slug}/*) every build.
-   * - DOES NOT overwrite templates (static-src/{slug}/*).
-   */
-  public function build(string $slug): void {
-    // Ensure template folder exists (so "newspaper added -> no mkdir" is achieved)
-    $this->ensure_dir($this->tpl_dir($slug));
+  /** Schedule build via WP-Cron (best-effort) */
+  public static function schedule_build(string $paper): void {
+    $paper = sanitize_title($paper);
+    if ($paper === '' || !self::paper_exists($paper)) return;
 
-    $tpl_list = $this->tpl_dir($slug) . '/list.html';
-    $tpl_detail = $this->tpl_dir($slug) . '/detail.html';
-
-    // If templates missing, tell user to init.
-    if (!file_exists($tpl_list) || !file_exists($tpl_detail)) {
-      $hint = $this->tpl_dir($slug) . "/list.html\n  " . $this->tpl_dir($slug) . "/detail.html";
-      WP_CLI::error("Template not found.\nExpected:\n  {$hint}\nTry:\n  wp {$slug} init\nThen re-run:\n  wp {$slug} build");
+    $hook = 'tomato_static_build_paper';
+    // Avoid flooding: if already scheduled, skip
+    if (!wp_next_scheduled($hook, [$paper])) {
+      wp_schedule_single_event(time() + 5, $hook, [$paper]);
     }
-
-    $out_dir = $this->out_dir($slug);
-    $this->ensure_dir($out_dir);
-
-    $out_index  = $out_dir . '/index.html';
-    $out_detail = $out_dir . '/detail.html';
-
-    $generated_at = gmdate('c');
-
-    $list_html = file_get_contents($tpl_list);
-    $detail_html = file_get_contents($tpl_detail);
-
-    // Simple tokens (optional). You can add more later.
-    // {{NEWSPAPER_SLUG}} / {{GENERATED_AT}}
-    $list_html = str_replace(
-      ['{{NEWSPAPER_SLUG}}', '{{GENERATED_AT}}'],
-      [$slug, $generated_at],
-      $list_html
-    );
-    $detail_html = str_replace(
-      ['{{NEWSPAPER_SLUG}}', '{{GENERATED_AT}}'],
-      [$slug, $generated_at],
-      $detail_html
-    );
-
-    file_put_contents($out_index, $list_html);
-    file_put_contents($out_detail, $detail_html);
-
-    WP_CLI::success("Built:\n- {$out_index}\n- {$out_detail}\nGenerated: {$generated_at}\nOpen:\n  http://localhost:8080/static/{$slug}/index.html\n  http://localhost:8080/static/{$slug}/detail.html");
-  }
-
-  private function default_list_template(string $slug): string {
-    $now = gmdate('c');
-    return <<<HTML
-<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{$slug} - list</title>
-</head>
-<body>
-  <h1>{$slug} - 記事一覧（仮）</h1>
-  <p>Generated: {{GENERATED_AT}}</p>
-  <p>Slug: {{NEWSPAPER_SLUG}}</p>
-  <ul>
-    <li><a href="/static/{$slug}/detail.html">記事詳細（仮）へ</a></li>
-  </ul>
-</body>
-</html>
-HTML;
-  }
-
-  private function default_detail_template(string $slug): string {
-    return <<<HTML
-<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{$slug} - detail</title>
-</head>
-<body>
-  <p><a href="/static/{$slug}/index.html">← 一覧へ戻る</a></p>
-  <h1>{$slug} - 記事詳細（仮）</h1>
-  <p>Generated: {{GENERATED_AT}}</p>
-  <p>Slug: {{NEWSPAPER_SLUG}}</p>
-  <article>
-    <h2>タイトル（仮）</h2>
-    <p>本文（仮）</p>
-  </article>
-</body>
-</html>
-HTML;
   }
 }
 
-/**
- * Register commands:
- * - wp newspaper init <slug>
- * - wp newspaper build <slug>
- * - wp {slug} init
- * - wp {slug} build
- */
-WP_CLI::add_command('newspaper', function($args, $assoc_args) {
-  $sub = $args[0] ?? '';
-  $slug = $args[1] ?? '';
+} // end class_exists guard
 
-  $path = $assoc_args['path'] ?? ABSPATH;
-  $builder = new ITPC_Static_Builder($path);
+// -----------------------------------------------------------------------------
+// WP-Cron hook to build a paper
+// -----------------------------------------------------------------------------
+add_action('tomato_static_build_paper', function ($paper) {
+  $paper = sanitize_title((string) $paper);
+  if ($paper === '') return;
+  Tomato_Static_Builder_ModeB::build_paper($paper);
+}, 10, 1);
 
-  if ($sub === 'init') {
-    if (!$slug) WP_CLI::error("Usage: wp newspaper init <slug> --path=/var/www/html");
-    $builder->init($slug);
+// -----------------------------------------------------------------------------
+// Auto trigger on post changes
+// -----------------------------------------------------------------------------
+
+// When post is saved, if published rebuild related papers
+add_action('save_post', function ($post_id, $post, $update) {
+  if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) return;
+  if (!($post instanceof WP_Post)) return;
+  if ($post->post_type !== 'post') return;
+
+  if ($post->post_status !== 'publish') return;
+
+  $papers = Tomato_Static_Builder_ModeB::get_papers_for_post((int) $post_id);
+  foreach ($papers as $paper) {
+    Tomato_Static_Builder_ModeB::schedule_build($paper);
+  }
+}, 10, 3);
+
+// On status transition: if becoming non-publish from publish, cleanup detail json & rebuild list
+add_action('transition_post_status', function ($new_status, $old_status, $post) {
+  if (!($post instanceof WP_Post)) return;
+  if ($post->post_type !== 'post') return;
+
+  $post_id = (int) $post->ID;
+
+  if ($old_status === 'publish' && $new_status !== 'publish') {
+    $papers = Tomato_Static_Builder_ModeB::get_papers_for_post($post_id);
+    foreach ($papers as $paper) {
+      Tomato_Static_Builder_ModeB::delete_detail_json($paper, $post_id);
+      Tomato_Static_Builder_ModeB::schedule_build($paper);
+    }
     return;
   }
-  if ($sub === 'build') {
-    if (!$slug) WP_CLI::error("Usage: wp newspaper build <slug> --path=/var/www/html");
-    $builder->build($slug);
+
+  // If it becomes publish, or it stays publish (update), rebuild
+  if ($new_status === 'publish') {
+    $papers = Tomato_Static_Builder_ModeB::get_papers_for_post($post_id);
+    foreach ($papers as $paper) {
+      Tomato_Static_Builder_ModeB::schedule_build($paper);
+    }
+  }
+}, 10, 3);
+
+// When categories are changed (including on draft), if post is published rebuild
+add_action('set_object_terms', function ($object_id, $terms, $tt_ids, $taxonomy, $append, $old_tt_ids) {
+  if ($taxonomy !== 'category') {
+    return;
+  }
+  $post_id = (int) $object_id;
+  if ($post_id <= 0) {
     return;
   }
 
-  WP_CLI::error("Usage:\n  wp newspaper init <slug> --path=/var/www/html\n  wp newspaper build <slug> --path=/var/www/html");
+  $post = get_post($post_id);
+  if (!($post instanceof WP_Post) || $post->post_type !== 'post') {
+    return;
+  }
+
+  // Remove stale detail json from old categories (best-effort)
+  $static_src = rtrim(ABSPATH, '/') . '/static-src';
+  $old_slugs = [];
+  if (is_array($old_tt_ids)) {
+    foreach ($old_tt_ids as $tt_id) {
+      $term = get_term_by('term_taxonomy_id', (int) $tt_id, 'category');
+      if ($term && !is_wp_error($term)) {
+        $slug = sanitize_title($term->slug);
+        if ($slug && is_dir($static_src . '/' . $slug)) {
+          $old_slugs[] = $slug;
+        }
+      }
+    }
+  }
+  $old_slugs = array_values(array_unique($old_slugs));
+
+  foreach ($old_slugs as $paper) {
+    Tomato_Static_Builder_ModeB::delete_detail_json($paper, $post_id);
+    Tomato_Static_Builder_ModeB::schedule_build($paper);
+  }
+
+  // Rebuild new categories only if published
+  if ($post->post_status === 'publish') {
+    $papers = Tomato_Static_Builder_ModeB::get_papers_for_post($post_id);
+    foreach ($papers as $paper) {
+      Tomato_Static_Builder_ModeB::schedule_build($paper);
+    }
+  }
+}, 10, 6);
+
+// Trash/delete -> cleanup detail and rebuild list
+add_action('trashed_post', function ($post_id) {
+  $post = get_post((int) $post_id);
+  if (!($post instanceof WP_Post) || $post->post_type !== 'post') {
+    return;
+  }
+  $papers = Tomato_Static_Builder_ModeB::get_papers_for_post((int) $post_id);
+  foreach ($papers as $paper) {
+    Tomato_Static_Builder_ModeB::delete_detail_json($paper, (int) $post_id);
+    Tomato_Static_Builder_ModeB::schedule_build($paper);
+  }
 });
 
-/**
- * Convenience alias commands:
- * - wp tomato build / init
- * - wp leek build / init
- * - wp strawberry build / init
- *
- * You can add more slugs here later, OR just use:
- *   wp newspaper build <newslug>
- */
-$known_slugs = ['tomato', 'leek', 'strawberry'];
+add_action('before_delete_post', function ($post_id) {
+  $post = get_post((int) $post_id);
+  if (!($post instanceof WP_Post) || $post->post_type !== 'post') {
+    return;
+  }
+  $papers = Tomato_Static_Builder_ModeB::get_papers_for_post((int) $post_id);
+  foreach ($papers as $paper) {
+    Tomato_Static_Builder_ModeB::delete_detail_json($paper, (int) $post_id);
+    Tomato_Static_Builder_ModeB::schedule_build($paper);
+  }
+});
 
-foreach ($known_slugs as $paper) {
-  WP_CLI::add_command($paper, function($args, $assoc_args) use ($paper) {
-    $sub = $args[0] ?? '';
-    $path = $assoc_args['path'] ?? ABSPATH;
+// -----------------------------------------------------------------------------
+// WP-CLI command (IMPORTANT: do NOT use eval-file; this plugin is already loaded)
+// -----------------------------------------------------------------------------
+if (defined('WP_CLI') && WP_CLI) {
+  WP_CLI::add_command('static-build', function ($args, $assoc_args) {
+    // Usage:
+    //   wp static-build tomato
+    //   wp static-build --all
+    //   wp static-build --post=20
 
-    $builder = new ITPC_Static_Builder($path);
-
-    if ($sub === 'init') {
-      $builder->init($paper);
+    if (!empty($assoc_args['all'])) {
+      Tomato_Static_Builder_ModeB::build_all_papers();
+      WP_CLI::success('Built all papers.');
       return;
     }
-    if ($sub === 'build') {
-      $builder->build($paper);
+
+    if (!empty($assoc_args['post'])) {
+      $post_id = (int) $assoc_args['post'];
+      $papers = Tomato_Static_Builder_ModeB::get_papers_for_post($post_id);
+      if (!$papers) {
+        WP_CLI::warning("No papers found for post {$post_id} (or templates missing under /static-src).");
+        return;
+      }
+      foreach ($papers as $paper) {
+        Tomato_Static_Builder_ModeB::build_paper($paper);
+      }
+      WP_CLI::success('Built papers for post ' . $post_id . ': ' . implode(', ', $papers));
       return;
     }
 
-    WP_CLI::error("Usage:\n  wp {$paper} init --path=/var/www/html\n  wp {$paper} build --path=/var/www/html\n(Or generic) wp newspaper build {$paper} --path=/var/www/html");
+    $paper = $args[0] ?? '';
+    $paper = sanitize_title((string) $paper);
+    if ($paper === '') {
+      WP_CLI::error("Usage:\n  wp static-build <paper>\n  wp static-build --all\n  wp static-build --post=<ID>");
+    }
+
+    Tomato_Static_Builder_ModeB::build_paper($paper);
+    WP_CLI::success('Built paper: ' . $paper);
   });
 }

@@ -1,275 +1,261 @@
 # tomato-news-wp
-トマト新聞
+🍅 トマト新聞（Tomato News）
 
-1つのWordPressで複数の「新聞（slug）」を管理し、各新聞ごとに静的HTMLを `/static/{slug}/` に出力します。
+1つの WordPress を CMS として使いながら、  
+フロント側は **完全に静的 HTML + JSON + JavaScript** で配信するプロジェクトです。
 
-### URL
-
-```bash
-- WP管理画面: http://localhost:8080/wp-admin
-- 静的出力（例）
-  - tomato 一覧: http://localhost:8080/static/tomato/index.html
-  - tomato 詳細: http://localhost:8080/static/tomato/detail.html
-  - leek 一覧: http://localhost:8080/static/leek/index.html
-  - leek 詳細: http://localhost:8080/static/leek/detail.html
-  - strawberry 一覧: http://localhost:8080/static/strawberry/index.html
-  - strawberry 詳細: http://localhost:8080/static/strawberry/detail.html
-````
-
+記事管理は WordPress、表示は PHP を一切使わない構成になっています。
 
 ---
 
-## ディレクトリ構成
+## 🌍 URL（ローカル）
 
 ```bash
-.
+WP管理画面:
+http://localhost:8080/wp-admin
+
+トップページ:
+http://localhost:8080/
+
+静的ページ:
+http://localhost:8080/static/index.html
+
+新聞ごとの一覧・詳細:
+- tomato 一覧: http://localhost:8080/static/tomato/index.html
+- tomato 詳細: http://localhost:8080/static/tomato/detail.html?id=9
+
+- leek 一覧: http://localhost:8080/static/leek/index.html
+- leek 詳細: http://localhost:8080/static/leek/detail.html?id=11
+
+- strawberry 一覧: http://localhost:8080/static/strawberry/index.html
+- strawberry 詳細: http://localhost:8080/static/strawberry/detail.html?id=5
+````
+
+---
+
+## 🧱 ディレクトリ構成（完成形）
+
+```bash
+tomato-news-wp/
 ├─ docker-compose.yml
-├─ static/                 # ビルド結果（生成物 / 基本Git管理しない）
-│  └─ {slug}/
-│     ├─ index.html        # 一覧
-│     └─ detail.html       # 詳細
-├─ static-src/             # テンプレ置き場（新聞ごと）
-│  └─ {slug}/
-│     ├─ list.html         # 一覧テンプレ
-│     └─ detail.html       # 詳細テンプレ
-└─ wp-content/
-└─ mu-plugins/
-└─ cli-static-build.php
-````
-
-
----
-
-## 0. 前提（ローカルに必要なもの）
-
-- Git
-- Docker Desktop（起動しておく）
-- 使用ポート: `8080`（他で使ってたら空ける or docker-compose を調整）
-
----
-
-## 1. リポジトリをクローン（HTTPS / SSH）
-
-### HTTPS
-
-```bash
-git clone https://github.com/itpc-ooki/tomato-news-wp.git
-cd tomato-news-wp
-````
-
-### SSH
-
-```bash
-git clone git@github.com:itpc-ooki/tomato-news-wp.git
-cd tomato-news-wp
+├─ static/                     # 公開用の静的ファイル（生成物 / Git管理しない）
+│  ├─ index.html               # トップページ
+│  ├─ style.css                # 共通CSS
+│  ├─ app.js                   # 全paper共通JS
+│  ├─ tomato/
+│  │   ├─ index.html
+│  │   ├─ detail.html
+│  │   ├─ posts.json
+│  │   └─ posts/
+│  │       ├─ 9.json
+│  │       └─ 16.json
+│  ├─ leek/
+│  └─ strawberry/
+│
+├─ static-src/                 # HTMLテンプレ置き場（編集するのはここ）
+│  ├─ tomato/
+│  │   ├─ list.html
+│  │   └─ detail.html
+│  ├─ leek/
+│  └─ strawberry/
+│
+├─ wp-content/
+│  └─ mu-plugins/
+│      └─ cli-static-build.php  # 静的生成エンジン（心臓部）
+│
+└─ README.md
 ```
 
 ---
 
-## 2. Docker 起動
+## 🧠 コンセプト
 
-```bash
-docker compose up -d
-```
+* WordPress → 管理画面専用
+* フロントは
 
-ブラウザで開いて確認（WPが表示されればOK）
-[http://localhost:8080/](http://localhost:8080/)
-
----
-
-## 3. 初回だけ：WPの `wp-config.php` が無い場合
-
-`wp-config.php` が無いとWPが動きません。無い場合だけ作成します。
-
-### 3-1. `wp-config.php` の存在確認
-
-```bash
-docker compose run --rm wpcli ls -la /var/www/html/wp-config.php
-```
-
-無いと言われたら、次を実行：
-
-### 3-2. `wp-config.php` 作成（権限エラー回避のため user 33:33）
-
-```bash
-docker compose run --rm --user 33:33 wpcli wp config create \
-  --allow-root \
-  --path=/var/www/html \
-  --dbname=wordpress \
-  --dbuser=wp \
-  --dbpass=wp \
-  --dbhost=db \
-  --skip-check
-```
+  * HTML
+  * JSON
+  * JavaScript
+    だけで構成
+* PHPは一切使わない
+* S3 + CloudFront 配信を前提にできる構成
 
 ---
 
-## 4. WPが未インストールの場合（初回だけ）
+## 📰 新聞（paper / slug）の考え方
 
-### 4-1. インストール済みか確認
-
-```bash
-docker compose run --rm wpcli wp core is-installed --allow-root --path=/var/www/html
-```
-
-未インストールなら下記（例）：
-
-```bash
-docker compose run --rm wpcli wp core install \
-  --allow-root \
-  --path=/var/www/html \
-  --url=http://localhost:8080 \
-  --title="Tomato News" \
-  --admin_user=admin \
-  --admin_password=admin \
-  --admin_email=admin@example.com
-```
-
----
-
-## 5. 新聞（slug）の概念
-
-* 「新聞マスタ」というCPT（カスタム投稿タイプ）で新聞を追加します
-* slug（例: `tomato`, `leek`, `strawberry`）ごとにテンプレと静的出力先が分かれます
-
-管理画面：
-
-* `wp-admin` → 「新聞マスタ」 → `tomato / leek / strawberry` を作成
-
-重要：
-
-* 複数新聞を出すなら **新聞マスタは slug 分だけ必要**（tomato/leek/strawberry それぞれ作る）
-
----
-
-## 6. 新聞（slug）を追加したときの対応（テンプレ作成 → ビルド）
-
-例：`leek` を追加したい場合
-
-### 6-1. 管理画面で新聞マスタを追加
-
-* 新聞スラッグ: `leek`
-* 出力サブディレクトリ名: `leek`（基本はスラッグと同じでOK）
-
-### 6-2. テンプレを初期化（ディレクトリ作成も自動）
-
-`static-src/{slug}/` と `list.html / detail.html` を用意します。
-
-```bash
-docker compose run --rm wpcli wp leek init --allow-root --path=/var/www/html
-```
-
-> すでに存在する場合は「Templates already exist」になり、そのままでOKです。
-
----
-
-## 7. 静的ビルド（一覧/詳細を出力）
-
-新聞ごとにビルドコマンドがあります。
-
-### 7-1. tomato をビルド
-
-```bash
-docker compose run --rm wpcli wp tomato build --allow-root --path=/var/www/html
-```
-
-確認：
-
-* [http://localhost:8080/static/tomato/index.html](http://localhost:8080/static/tomato/index.html)
-* [http://localhost:8080/static/tomato/detail.html](http://localhost:8080/static/tomato/detail.html)
-
-### 7-2. leek をビルド
-
-```bash
-docker compose run --rm wpcli wp leek build --allow-root --path=/var/www/html
-```
-
-確認：
-
-* [http://localhost:8080/static/leek/index.html](http://localhost:8080/static/leek/index.html)
-* [http://localhost:8080/static/leek/detail.html](http://localhost:8080/static/leek/detail.html)
-
-### 7-3. strawberry をビルド
-
-```bash
-docker compose run --rm wpcli wp strawberry build --allow-root --path=/var/www/html
-```
-
-確認：
-
-* [http://localhost:8080/static/strawberry/index.html](http://localhost:8080/static/strawberry/index.html)
-* [http://localhost:8080/static/strawberry/detail.html](http://localhost:8080/static/strawberry/detail.html)
-
----
-
-## 8. デザイン（テンプレ）を修正したいとき
-
-見た目は `static-src/{slug}/` のテンプレで決まります。
-
-* 一覧テンプレ: `static-src/{slug}/list.html`
-* 詳細テンプレ: `static-src/{slug}/detail.html`
-
-例：tomatoの一覧を修正する流れ
-
-1. `static-src/tomato/list.html` を編集
-2. ビルドし直す
-
-```bash
-docker compose run --rm wpcli wp tomato build --allow-root --path=/var/www/html
-```
-
-3. ブラウザで確認
-   [http://localhost:8080/static/tomato/index.html](http://localhost:8080/static/tomato/index.html)
-
----
-
-## 9. 生成物（static/）は手で編集しない
-
-`wp {slug} build` は `static/{slug}/` を **上書き生成**します。
-
-* ✅ 正しい運用: `static-src/{slug}/` を編集 → `build`
-* ❌ NG: `static/{slug}/index.html` を直接編集（次のbuildで消えます）
-
----
-
-## 10. よくあるエラー
-
-### A) `Template not found` が出る
+* tomato / leek / strawberry などは「新聞」
+* slug = paper
+* 各新聞はそれぞれ独立してビルドされる
 
 例：
 
 ```
-Error: Template not found.
-Expected:
- /var/www/html/static-src/tomato/list.html
- /var/www/html/static-src/tomato/detail.html
-```
-
-対処：テンプレ初期化を実行
-
-```bash
-docker compose run --rm wpcli wp tomato init --allow-root --path=/var/www/html
+/static/tomato/
+/static/leek/
+/static/strawberry/
 ```
 
 ---
 
-## 11. Git に push（共同開発）
+## 📦 JSON構成（方式B：一覧JSON + 詳細JSON分割）
 
-```bash
-git status
-git add -A
-git commit -m "チケット番号　チケット名"
-git push origin branchname
+```text
+/static/{paper}/posts.json
+ → 一覧用（軽量）
+
+/static/{paper}/posts/{id}.json
+ → 詳細用（本文HTML入り・重い）
+```
+
+例（tomato）:
+
+```text
+/static/tomato/posts.json
+/static/tomato/posts/9.json
+/static/tomato/posts/16.json
 ```
 
 ---
 
-## 12. 共同開発の運用メモ（おすすめ）
+## 🛠 静的生成の流れ
 
-* `static/{slug}/` は生成物なので **基本コミットしない**（`.gitignore` で除外済み）
-* 変更するのは主に以下
+① WordPress記事
+→
+② cli-static-build.php が JSON 生成
+→
+③ static-src の HTML テンプレをコピー
+→
+④ static/{paper}/ に静的HTMLとJSONが生成
 
-  * `static-src/{slug}/list.html`
-  * `static-src/{slug}/detail.html`
-  * `wp-content/` 配下（mu-plugin / テーマなど）
+---
 
+## 🖥 表示側（static/app.js）
+
+* URLから paper を自動判定
+  例:
+
+  ```
+  /static/tomato/index.html → paper = tomato
+  ```
+
+* DOMでページ種別を判定:
+
+  * `#post-list` → 一覧
+  * `#post-detail` → 詳細
+
+取得JSON:
+
+| ページ              | 取得するJSON                       |
+| ---------------- | ------------------------------ |
+| index.html       | `/static/{paper}/posts.json`   |
+| detail.html?id=9 | `/static/{paper}/posts/9.json` |
+
+---
+
+## 🎨 CSS管理
+
+```text
+/static/style.css
+```
+
+ここが **全ページ共通CSS**。
+
+HTMLでは必ずこれを読む：
+
+```html
+<link rel="stylesheet" href="/static/style.css">
+```
+
+WordPressテーマ側の style.css は
+「テーマ定義用」であり、フロントの見た目用ではありません。
+
+---
+
+## 🚫 static/ は直接編集しない
+
+```text
+static/ はビルドで毎回上書きされる
+```
+
+正しい運用：
+
+```
+static-src を編集
+↓
+build
+↓
+static に反映
+```
+
+---
+
+## 🧪 手動ビルド（開発用）
+
+1紙だけ：
+
+```bash
+docker compose run --rm wpcli wp tomato build --allow-root --path=/var/www/html
+```
+
+全紙まとめて：
+
+```bash
+docker compose run --rm wpcli wp tomato build --allow-root --path=/var/www/html --paper=all
+```
+
+---
+
+## ⚙️ 自動ビルド（完成済み）
+
+WordPressで
+
+* 公開
+* 更新
+* 削除
+* カテゴリ変更
+
+が起きると：
+
+* JSON + HTML を自動再生成
+* WP-Cron で 8秒後に実行
+* 管理者がコマンドを打つ必要なし
+
+---
+
+## 🌱 将来の本番構成
+
+```text
+static/ をそのまま S3 に配置
+→ CloudFront 配信
+```
+
+表示系は PHP なしなので安全・高速。
+
+---
+
+## 🔁 開発 → ステージング反映フロー（想定）
+
+```bash
+# 開発完了
+git checkout -b staging
+git push origin staging
+
+# ステージング環境で
+git pull origin staging
+docker compose up -d
+wp build 実行
+S3へ同期
+```
+
+---
+
+## 🏆 この構成の強み
+
+| 観点      | 強み                              |
+| ------- | ------------------------------- |
+| パフォーマンス | 静的HTML + JSONなので最速              |
+| 拡張性     | tomato / leek / strawberry 追加可能 |
+| 運用      | お客さんはWPだけ触ればOK                  |
+| 安全性     | 表示系はPHPなしで攻撃面が小さい               |
+| 将来      | そのままS3 + CloudFrontへ            |

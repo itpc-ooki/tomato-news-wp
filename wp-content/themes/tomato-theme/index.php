@@ -1,2 +1,3 @@
 <?php
-echo "<h1>Tomato News Local WordPress OK</h1>";
+header("Location: /static/index.html");
+exit;
