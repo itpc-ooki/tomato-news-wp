@@ -68,6 +68,26 @@ class Tomato_Static_Builder_ModeB {
     @copy($src . '/detail.html', $dst . '/detail.html');
   }
 
+  /**
+   * Get featured image URL (or null)
+   * - returns string|null
+   */
+  private static function get_featured_image_url(int $post_id): ?string {
+    $thumb_id = get_post_thumbnail_id($post_id);
+    if (!$thumb_id) {
+      return null;
+    }
+
+    // Prefer a reasonable size for list/detail
+    $url = wp_get_attachment_image_url($thumb_id, 'large');
+    if (!$url) {
+      // fallback
+      $url = wp_get_attachment_url($thumb_id);
+    }
+
+    return $url ? (string) $url : null;
+  }
+
   /** Build list + detail json for a paper */
   public static function build_paper(string $paper): void {
     $paper = sanitize_title($paper);
@@ -117,6 +137,9 @@ class Tomato_Static_Builder_ModeB {
         // slug: use post_name (keep as-is), but URL encode on the consumer side if needed
         $slug = $p->post_name;
 
+        // featured image
+        $featured_image = self::get_featured_image_url($post_id);
+
         $list[] = [
           'id'       => $post_id,
           'title'    => $title,
@@ -126,6 +149,8 @@ class Tomato_Static_Builder_ModeB {
           'slug'     => $slug,
           // Use query param id for simplicity (detail.html?id=XX)
           'url'      => 'detail.html?id=' . $post_id,
+          // NEW: featured image url (or null)
+          'featured_image' => $featured_image,
         ];
 
         // detail json
@@ -138,6 +163,8 @@ class Tomato_Static_Builder_ModeB {
           'content'    => apply_filters('the_content', $p->post_content),
           'slug'       => $slug,
           'categories' => [$paper],
+          // NEW: featured image url (or null)
+          'featured_image' => $featured_image,
         ];
 
         $detail_path = $posts_dir . '/' . $post_id . '.json';
@@ -302,7 +329,7 @@ add_action('set_object_terms', function ($object_id, $terms, $tt_ids, $taxonomy,
 
   // Rebuild new categories only if published
   if ($post->post_status === 'publish') {
-    $papers = Tomato_Static_Builder_ModeB::get_papers_for_post($post_id);
+    $papers = Tomato_Static_Builder_ModeB::get_papers_for_post((int) $post_id);
     foreach ($papers as $paper) {
       Tomato_Static_Builder_ModeB::schedule_build($paper);
     }
