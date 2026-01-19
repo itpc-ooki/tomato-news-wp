@@ -4,13 +4,20 @@
  *
  * Purpose
  * - For each "paper" (category slug), generate JSON files for list & detail.
- * - Copy per-paper templates into /static/{paper}/ as index.html + detail.html.
+ * - Copy per-paper templates into /static/{paper}/
  *
- * Output
+ * Output (per paper)
  * - /static/{paper}/posts.json        (list)
  * - /static/{paper}/posts/{id}.json   (detail)
- * - /static/{paper}/index.html        (copied from /static-src/{paper}/list.html)
- * - /static/{paper}/detail.html       (copied from /static-src/{paper}/detail.html)
+ * - /static/{paper}/index.html        (category top)
+ * - /static/{paper}/list.html         (list page)
+ * - /static/{paper}/detail.html       (detail page)
+ *
+ * Template rules
+ * - /static-src/{paper}/detail.html is required
+ * - /static-src/{paper}/list.html   is required
+ * - /static-src/{paper}/index.html  is optional
+ *   - if missing, list.html will be copied as index.html (backward compatible)
  *
  * Notes
  * - This file is loaded as an MU plugin, so it is loaded on every request.
@@ -36,13 +43,20 @@ class Tomato_Static_Builder_ModeB {
     return rtrim(ABSPATH, '/') . '/static';
   }
 
-  /** @return bool */
+  /**
+   * Paper exists if required templates exist.
+   * - required: list.html, detail.html
+   * - optional: index.html
+   */
   public static function paper_exists(string $paper): bool {
     $paper = sanitize_title($paper);
     if ($paper === '') return false;
 
     $src = self::static_src_root() . '/' . $paper;
-    return is_dir($src) && is_file($src . '/list.html') && is_file($src . '/detail.html');
+
+    return is_dir($src)
+      && is_file($src . '/list.html')
+      && is_file($src . '/detail.html');
   }
 
   /** Ensure directory exists */
@@ -52,24 +66,41 @@ class Tomato_Static_Builder_ModeB {
     }
   }
 
-  /** Copy templates list/detail into /static/{paper}/ */
-  private static function sync_templates(string $paper): void {
-    $paper = sanitize_title($paper);
-    if (!self::paper_exists($paper)) {
-      return;
+  /**
+   * Convert an URL to a "safe" relative path for the browser.
+   * Why:
+   * - In Docker/CLI context, wp_get_attachment_image_url() may return http://wordpress/... (service name)
+   * - Browser on host accesses via http://localhost:8080/...
+   * - Using relative path like /wp-content/uploads/... works everywhere (local/stg/prod on same origin)
+   *
+   * @return string|null relative path like "/wp-content/uploads/....jpg"
+   */
+  private static function to_relative_path(?string $url): ?string {
+    if (!$url) return null;
+
+    $url = (string) $url;
+
+    // Already relative
+    if (strpos($url, '/') === 0) {
+      return $url;
     }
 
-    $src = self::static_src_root() . '/' . $paper;
-    $dst = self::static_root() . '/' . $paper;
+    $path = wp_parse_url($url, PHP_URL_PATH);
+    if (!$path) {
+      // fallback: return original (better than null)
+      return $url;
+    }
 
-    self::ensure_dir($dst);
+    $query = wp_parse_url($url, PHP_URL_QUERY);
+    if ($query) {
+      return $path . '?' . $query;
+    }
 
-    @copy($src . '/list.html',   $dst . '/index.html');
-    @copy($src . '/detail.html', $dst . '/detail.html');
+    return $path;
   }
 
   /**
-   * Get featured image URL (or null)
+   * Get featured image URL (relative) or null
    * - returns string|null
    */
   private static function get_featured_image_url(int $post_id): ?string {
@@ -85,7 +116,39 @@ class Tomato_Static_Builder_ModeB {
       $url = wp_get_attachment_url($thumb_id);
     }
 
-    return $url ? (string) $url : null;
+    return self::to_relative_path($url ? (string) $url : null);
+  }
+
+  /**
+   * Copy templates into /static/{paper}/
+   * - index.html (category top): copy /static-src/{paper}/index.html if exists, else copy list.html
+   * - list.html  (list page):     copy /static-src/{paper}/list.html
+   * - detail.html (detail page):  copy /static-src/{paper}/detail.html
+   */
+  private static function sync_templates(string $paper): void {
+    $paper = sanitize_title($paper);
+    if (!self::paper_exists($paper)) {
+      return;
+    }
+
+    $src = self::static_src_root() . '/' . $paper;
+    $dst = self::static_root() . '/' . $paper;
+
+    self::ensure_dir($dst);
+
+    // list page
+    @copy($src . '/list.html',   $dst . '/list.html');
+
+    // detail page
+    @copy($src . '/detail.html', $dst . '/detail.html');
+
+    // category top (index)
+    if (is_file($src . '/index.html')) {
+      @copy($src . '/index.html', $dst . '/index.html');
+    } else {
+      // backward compatible: use list.html as index.html
+      @copy($src . '/list.html', $dst . '/index.html');
+    }
   }
 
   /** Build list + detail json for a paper */
@@ -127,8 +190,8 @@ class Tomato_Static_Builder_ModeB {
 
         $post_id = (int) $p->ID;
 
-        $title   = get_the_title($p);
-        $date    = get_post_time('c', false, $p);
+        $title    = get_the_title($p);
+        $date     = get_post_time('c', false, $p);
         $date_ymd = get_post_time('Y-m-d', false, $p);
 
         // excerpt (plain) - keep it short
@@ -137,7 +200,7 @@ class Tomato_Static_Builder_ModeB {
         // slug: use post_name (keep as-is), but URL encode on the consumer side if needed
         $slug = $p->post_name;
 
-        // featured image
+        // featured image (relative path)
         $featured_image = self::get_featured_image_url($post_id);
 
         $list[] = [
@@ -149,7 +212,6 @@ class Tomato_Static_Builder_ModeB {
           'slug'     => $slug,
           // Use query param id for simplicity (detail.html?id=XX)
           'url'      => 'detail.html?id=' . $post_id,
-          // NEW: featured image url (or null)
           'featured_image' => $featured_image,
         ];
 
@@ -163,7 +225,6 @@ class Tomato_Static_Builder_ModeB {
           'content'    => apply_filters('the_content', $p->post_content),
           'slug'       => $slug,
           'categories' => [$paper],
-          // NEW: featured image url (or null)
           'featured_image' => $featured_image,
         ];
 
