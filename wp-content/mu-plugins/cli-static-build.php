@@ -67,6 +67,35 @@ class Tomato_Static_Builder_ModeB {
   }
 
   /**
+   * Copy common front assets from /static-src to /static.
+   *
+   * Background:
+   * - /static is treated as build output and is usually git-ignored.
+   * - Shared assets (app.js / style.css / optional root index.html) should be authored
+   *   under /static-src and copied into /static at build time.
+   */
+  private static function sync_common_assets(): void {
+    $src = self::static_src_root();
+    $dst = self::static_root();
+
+    // Ensure /static exists
+    self::ensure_dir($dst);
+
+    // Optional root index.html (e.g. landing / redirect)
+    if (is_file($src . '/index.html')) {
+      @copy($src . '/index.html', $dst . '/index.html');
+    }
+
+    // Shared JS/CSS
+    if (is_file($src . '/app.js')) {
+      @copy($src . '/app.js', $dst . '/app.js');
+    }
+    if (is_file($src . '/style.css')) {
+      @copy($src . '/style.css', $dst . '/style.css');
+    }
+  }
+
+  /**
    * Convert an URL to a "safe" relative path for the browser.
    * Why:
    * - In Docker/CLI context, wp_get_attachment_image_url() may return http://wordpress/... (service name)
@@ -162,6 +191,9 @@ class Tomato_Static_Builder_ModeB {
       return;
     }
 
+    // Ensure shared assets in /static are up to date
+    self::sync_common_assets();
+
     self::sync_templates($paper);
 
     $static_paper_root = self::static_root() . '/' . $paper;
@@ -241,6 +273,9 @@ class Tomato_Static_Builder_ModeB {
 
   /** Build all papers that exist under /static-src */
   public static function build_all_papers(): void {
+    // Ensure shared assets in /static are up to date
+    self::sync_common_assets();
+
     $root = self::static_src_root();
     if (!is_dir($root)) return;
 
