@@ -519,4 +519,16 @@ footer {
   }
 }
 
+@media (min-width:1180px){
 
+.footer-logo img {
+      height: 70px;
+    }
+}
+
+@media (min-width:768px){
+
+.footer-logo img {
+      height: 60px;
+    }
+}

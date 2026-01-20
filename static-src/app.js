@@ -121,6 +121,107 @@
     return `${y}年${m}月${d}日`;
   }
 
+  // ========= LIST TILE RENDERING (for list.html grid) =========
+  function resolveUrlMaybeRelative(path) {
+    if (!path) return "";
+    // If already absolute (http/https), keep it
+    if (/^https?:\/\//i.test(path)) return path;
+
+    // Otherwise resolve relative to current origin
+    // e.g. "/wp-content/uploads/..." -> "http://localhost:8080/wp-content/uploads/..."
+    try {
+      return new URL(path, window.location.origin).href;
+    } catch (e) {
+      return path;
+    }
+  }
+
+  function formatJapaneseDateFromPost(post) {
+    // Prefer date_ymd (YYYY-MM-DD)
+    if (post && post.date_ymd) return formatJapaneseDate(post.date_ymd);
+
+    // Fallback: ISO date like "2026-01-19T17:56:00+09:00"
+    if (post && post.date) {
+      const ymd = String(post.date).slice(0, 10);
+      return formatJapaneseDate(ymd);
+    }
+    return "";
+  }
+
+  function renderListTiles(posts) {
+    const grid = document.querySelector(".grid");
+    if (!grid) return;
+
+    // Only article tiles (exclude ads)
+    const tiles = Array.from(grid.querySelectorAll(".tile:not(.ad)"));
+
+    if (!Array.isArray(posts) || posts.length === 0) {
+      tiles.forEach((t) => (t.style.display = "none"));
+      return;
+    }
+
+    tiles.forEach((tile, idx) => {
+      const post = posts[idx];
+
+      // If there are more tiles than posts, hide extra tiles
+      if (!post) {
+        tile.style.display = "none";
+        return;
+      }
+
+      tile.style.display = "";
+
+      // Category (your JSON currently has no category -> fallback)
+      const catEl = tile.querySelector(".tile-category");
+      if (catEl) catEl.textContent = post.category || "記事";
+
+      // Date
+      const timeEl = tile.querySelector("time");
+      if (timeEl) timeEl.textContent = formatJapaneseDateFromPost(post);
+
+      // Title
+      const titleEl = tile.querySelector(".tile-title");
+      if (titleEl) titleEl.textContent = post.title || "";
+
+      // Image
+      const imgEl = tile.querySelector(".tile-img img");
+      const imgUrl = resolveUrlMaybeRelative(post.featured_image || "");
+
+      if (imgEl) {
+        if (imgUrl) {
+          imgEl.src = imgUrl;
+          imgEl.alt = post.title || "";
+          imgEl.loading = "lazy";
+          imgEl.style.display = "";
+        } else {
+          // No featured image -> hide image
+          imgEl.removeAttribute("src");
+          imgEl.alt = "";
+          imgEl.style.display = "none";
+        }
+      }
+
+      // Link
+      const href = post.url || `detail.html?id=${post.id}`;
+
+      // Override old inline onclick from mockup
+      tile.onclick = () => {
+        window.location.href = href;
+      };
+
+      // Optional: accessibility
+      tile.setAttribute("role", "link");
+      tile.setAttribute("tabindex", "0");
+      tile.onkeydown = (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          window.location.href = href;
+        }
+      };
+    });
+  }
+  // ========= END LIST TILE RENDERING =========
+
   function renderDetail(post) {
     const target = getDetailContentTarget();
     if (!target) return;
@@ -156,9 +257,7 @@
 
         // Author
         if (spans.length >= 2) {
-          spans[1].textContent = post.author
-            ? `筆者：${post.author}`
-            : "";
+          spans[1].textContent = post.author ? `筆者：${post.author}` : "";
         }
       }
 
@@ -198,16 +297,30 @@
     const paper = getPaperFromPath();
     if (!paper) return;
 
-    const isList = !!$("#post-list");
+    // index.html uses #post-list
+    const hasPostList = !!$("#post-list");
+    // list.html uses .grid .tile
+    const hasTileGrid = !!document.querySelector(".grid .tile");
+    // detail.html uses article.article-content OR #post-detail
     const isDetail = !!getDetailContentTarget();
 
-    if (isList) {
+    // Index (simple list)
+    if (hasPostList) {
       const url = `/static/${paper}/posts.json`;
       const posts = await fetchJson(url);
       renderList(posts, paper);
       return;
     }
 
+    // List page (tile grid)
+    if (hasTileGrid) {
+      const url = `/static/${paper}/posts.json`;
+      const posts = await fetchJson(url);
+      renderListTiles(posts);
+      return;
+    }
+
+    // Detail page
     if (isDetail) {
       const id = getQueryParam("id");
       if (!id) {

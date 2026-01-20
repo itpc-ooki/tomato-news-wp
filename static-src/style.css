@@ -989,3 +989,172 @@
     font-size:0.75rem !important;
   }
 }
+
+.main{ max-width:1400px; margin:0 auto; padding:20px; }
+
+.page-header{ margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid var(--border); }
+
+.page-title{ font-size:1.75rem; font-weight:700; margin-bottom:8px; }
+
+.page-desc{ font-size:0.875rem; color:var(--muted); margin:0; }
+
+.controls{
+    display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center;
+    margin-bottom:20px; padding:15px 20px; background:#f8f9fa;
+  }
+
+.filter-tabs{ display:flex; gap:8px; flex-wrap:wrap; }
+
+.filter-tab{
+    padding:8px 16px; border:1px solid var(--border); background:#fff; color:var(--muted);
+    cursor:pointer; transition:all 0.2s; font-size:0.875rem; white-space:nowrap;
+  }
+
+.filter-tab.active, .filter-tab:hover{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+
+.sort-control{ display:flex; align-items:center; gap:10px; font-size:0.875rem; }
+
+.sort-select{ padding:8px 12px; border:1px solid var(--border); background:#fff; font-size:0.875rem; min-width:150px; }
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(12, 1fr);
+    gap:2px;
+    margin-bottom:30px;
+  }
+
+.tile{
+    aspect-ratio:1/1;
+    position:relative;
+    background:#fff;
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform 0.3s;
+  }
+
+.tile:hover{ transform:translateY(-2px); }
+
+.large{ grid-column:span 8; grid-row:span 2; }
+
+.medium{ grid-column:span 4; }
+
+.small{ grid-column:span 3; }
+
+.tile-img{
+    width:100%; height:100%;
+    position:absolute; top:0; left:0;
+    background:#eee;
+  }
+
+.tile-img img{
+    width:100%; height:100%;
+    object-fit:cover;
+  }
+
+.tile-content{
+    position:absolute; bottom:0; left:0; right:0;
+    padding:12px; background:rgba(0,0,0,0.6); color:#fff;
+  }
+
+.medium .tile-content,
+  .small .tile-content{
+    background:rgba(0,0,0,0.5);
+    color:#fff;
+    padding:8px;
+  }
+
+.tile-meta{
+    font-size:0.7rem; margin-bottom:4px;
+    display:flex; align-items:center; gap:6px;
+  }
+
+.tile-category{
+    background:var(--accent); color:#fff;
+    padding:2px 6px; font-size:0.65rem; font-weight:600;
+  }
+
+.tile-title{
+    font-size:0.8rem; font-weight:600; line-height:1.3;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+    margin:0;
+  }
+
+.large .tile-title{
+    font-size:1.1rem; -webkit-line-clamp:3; line-height:1.4;
+  }
+
+.ad{
+    display:flex; align-items:center; justify-content:center;
+    background:#f8fafc; border:1px dashed #cbd5e1; color:#475569;
+    position:relative; cursor:default;
+  }
+
+.ad:hover{ transform:none; }
+
+.pagination{
+    display:flex; justify-content:center; align-items:center; gap:8px; margin:30px 0 20px;
+  }
+
+.pagination-btn{
+    padding:8px 12px; border:1px solid var(--border); background:#fff; color:var(--text);
+    cursor:pointer; transition:all 0.2s; font-size:0.8rem;
+  }
+
+.pagination-btn:hover, .pagination-btn.active{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+
+.pagination-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+.pagination-info{ margin:0 10px; font-size:0.8rem; color:var(--muted); }
+
+@media (max-width:768px){
+
+html, body{
+      overflow-x: hidden;
+      width: 100vw;
+      max-width: 100vw;
+    }
+
+.main{ 
+      padding:15px 0; 
+      width: 100vw;
+      max-width: 100vw;
+    }
+
+.page-header,
+    .controls,
+    .pagination{
+      padding-left: 15px;
+      padding-right: 15px;
+    }
+
+.page-title{ font-size:1.5rem; margin-bottom:6px; }
+
+.controls{ grid-template-columns:1fr; gap:12px; padding:12px 15px; margin-bottom:15px; }
+
+.grid{ 
+      gap:1px; 
+      margin-bottom:20px;
+      width: 100vw;
+      max-width: 100vw;
+      padding: 0;
+    }
+
+.large{ grid-column:span 12; grid-row:span 1; }
+
+.medium{ grid-column:span 6; }
+
+.small{ grid-column:span 4; }
+
+.medium:nth-of-type(5) { display: none; }
+
+.tile-content{ padding:8px; }
+
+.tile-title{ font-size:0.7rem; }
+
+.large .tile-title{ font-size:0.9rem; }
+}
+
