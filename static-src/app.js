@@ -36,6 +36,16 @@
     return new URLSearchParams(window.location.search).get(name);
   }
 
+  function setQueryParam(name, value) {
+    const url = new URL(window.location.href);
+    if (value === null || value === undefined || value === "") {
+      url.searchParams.delete(name);
+    } else {
+      url.searchParams.set(name, String(value));
+    }
+    return url;
+  }
+
   async function fetchJson(url) {
     const res = await fetch(url, { cache: "no-store" });
     const contentType = res.headers.get("content-type") || "";
@@ -148,20 +158,24 @@
     return "";
   }
 
-  function renderListTiles(posts) {
+  function getListArticleTiles() {
     const grid = document.querySelector(".grid");
-    if (!grid) return;
-
+    if (!grid) return [];
     // Only article tiles (exclude ads)
-    const tiles = Array.from(grid.querySelectorAll(".tile:not(.ad)"));
+    return Array.from(grid.querySelectorAll(".tile:not(.ad)"));
+  }
 
-    if (!Array.isArray(posts) || posts.length === 0) {
+  function renderListTiles(postsForThisPage) {
+    const tiles = getListArticleTiles();
+    if (tiles.length === 0) return;
+
+    if (!Array.isArray(postsForThisPage) || postsForThisPage.length === 0) {
       tiles.forEach((t) => (t.style.display = "none"));
       return;
     }
 
     tiles.forEach((tile, idx) => {
-      const post = posts[idx];
+      const post = postsForThisPage[idx];
 
       // If there are more tiles than posts, hide extra tiles
       if (!post) {
@@ -204,7 +218,6 @@
       // Link
       const href = post.url || `detail.html?id=${post.id}`;
 
-      // Override old inline onclick from mockup
       tile.onclick = () => {
         window.location.href = href;
       };
@@ -220,6 +233,154 @@
       };
     });
   }
+
+  // ========= Pagination (list.html) =========
+  function clampInt(n, min, max) {
+    const x = Number.isFinite(n) ? n : parseInt(String(n), 10);
+    if (!Number.isFinite(x)) return min;
+    return Math.max(min, Math.min(max, x));
+  }
+
+  function getCurrentPageFromUrl() {
+    const raw = getQueryParam("page");
+    const n = parseInt(raw || "1", 10);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }
+
+  function buildPaginationNav(totalItems, perPage, currentPage) {
+    const nav = document.querySelector("nav.pagination");
+    if (!nav) return;
+
+    const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
+    const page = clampInt(currentPage, 1, totalPages);
+
+    // Clear existing hardcoded pagination (we rebuild it)
+    nav.innerHTML = "";
+
+    function mkBtn(label, pageNum, opts) {
+      const b = document.createElement("button");
+      b.className = "pagination-btn";
+      b.type = "button";
+      b.textContent = label;
+
+      if (opts && opts.active) b.classList.add("active");
+      if (opts && opts.disabled) b.disabled = true;
+
+      if (!b.disabled && pageNum != null) {
+        b.addEventListener("click", () => {
+          goToPage(pageNum);
+        });
+      }
+      return b;
+    }
+
+    function mkEllipsis() {
+      const s = document.createElement("span");
+      s.className = "pagination-info";
+      s.textContent = "...";
+      return s;
+    }
+
+    function goToPage(targetPage) {
+      const next = clampInt(targetPage, 1, totalPages);
+
+      // Update URL (?page=)
+      const url = setQueryParam("page", next);
+      window.history.pushState({ page: next }, "", url);
+
+      // Re-render tiles + pagination
+      renderListPageState(next);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    // Expose goToPage to inner funcs
+    function addPageNumberButtons() {
+      // Strategy:
+      // - If <= 7 pages: show all.
+      // - Else: show 1, [..window..], last with ellipsis like the mock.
+      const maxSimple = 7;
+      if (totalPages <= maxSimple) {
+        for (let p = 1; p <= totalPages; p++) {
+          nav.appendChild(mkBtn(String(p), p, { active: p === page }));
+        }
+        return;
+      }
+
+      const windowSize = 3; // pages around current
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+
+      // 1
+      nav.appendChild(mkBtn("1", 1, { active: page === 1 }));
+
+      // left ellipsis
+      if (start > 2) nav.appendChild(mkEllipsis());
+
+      // middle window
+      for (let p = start; p <= end; p++) {
+        nav.appendChild(mkBtn(String(p), p, { active: p === page }));
+      }
+
+      // right ellipsis
+      if (end < totalPages - 1) nav.appendChild(mkEllipsis());
+
+      // last
+      nav.appendChild(
+        mkBtn(String(totalPages), totalPages, { active: page === totalPages })
+      );
+    }
+
+    // Prev
+    nav.appendChild(mkBtn("前へ", page - 1, { disabled: page <= 1 }));
+
+    // Pages
+    addPageNumberButtons();
+
+    // Next
+    nav.appendChild(mkBtn("次へ", page + 1, { disabled: page >= totalPages }));
+
+    // Range info (1-20件 / 全196件)
+    const info = document.createElement("div");
+    info.className = "pagination-info";
+    const startItem = totalItems === 0 ? 0 : (page - 1) * perPage + 1;
+    const endItem = Math.min(totalItems, page * perPage);
+    info.textContent = `${startItem}-${endItem}件 / 全${totalItems}件`;
+    nav.appendChild(info);
+
+    // Handle browser back/forward
+    window.onpopstate = (ev) => {
+      const p =
+        (ev && ev.state && ev.state.page) != null
+          ? ev.state.page
+          : getCurrentPageFromUrl();
+      renderListPageState(p);
+    };
+
+    // Store for inner usage
+    nav.dataset.totalPages = String(totalPages);
+    nav.dataset.perPage = String(perPage);
+  }
+
+  // Shared state for list pagination
+  let __listAllPosts = null;
+  let __listPerPage = null;
+
+  function renderListPageState(pageNum) {
+    if (!Array.isArray(__listAllPosts)) return;
+
+    const totalItems = __listAllPosts.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / __listPerPage));
+    const page = clampInt(pageNum, 1, totalPages);
+
+    const start = (page - 1) * __listPerPage;
+    const end = start + __listPerPage;
+    const slice = __listAllPosts.slice(start, end);
+
+    renderListTiles(slice);
+    buildPaginationNav(totalItems, __listPerPage, page);
+  }
+  // ========= END Pagination =========
+
   // ========= END LIST TILE RENDERING =========
 
   function renderDetail(post) {
@@ -312,11 +473,20 @@
       return;
     }
 
-    // List page (tile grid)
+    // List page (tile grid + pagination)
     if (hasTileGrid) {
       const url = `/static/${paper}/posts.json`;
       const posts = await fetchJson(url);
-      renderListTiles(posts);
+
+      // per page = number of non-ad tiles in your layout (matches mockup)
+      const tiles = getListArticleTiles();
+      const perPage = tiles.length > 0 ? tiles.length : 20;
+
+      __listAllPosts = Array.isArray(posts) ? posts : [];
+      __listPerPage = perPage;
+
+      const page = getCurrentPageFromUrl();
+      renderListPageState(page);
       return;
     }
 
