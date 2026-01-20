@@ -67,6 +67,38 @@ class Tomato_Static_Builder_ModeB {
   }
 
   /**
+   * Recursively copy a directory.
+   * Used to sync shared assets (e.g. /static-src/common, /static-src/components) into /static.
+   */
+  private static function rcopy(string $src, string $dst): void {
+    if (!is_dir($src)) {
+      return;
+    }
+
+    self::ensure_dir($dst);
+
+    $items = scandir($src);
+    if ($items === false) {
+      return;
+    }
+
+    foreach ($items as $item) {
+      if ($item === '.' || $item === '..') {
+        continue;
+      }
+
+      $from = $src . '/' . $item;
+      $to   = $dst . '/' . $item;
+
+      if (is_dir($from)) {
+        self::rcopy($from, $to);
+      } else {
+        @copy($from, $to);
+      }
+    }
+  }
+
+  /**
    * Copy common front assets from /static-src to /static.
    *
    * Background:
@@ -93,6 +125,11 @@ class Tomato_Static_Builder_ModeB {
     if (is_file($src . '/style.css')) {
       @copy($src . '/style.css', $dst . '/style.css');
     }
+
+    // Shared directories (header/footer components, shared css/js/img)
+    // NOTE: /static-src is not deployed in S3/CloudFront, so these must be copied into /static.
+    self::rcopy($src . '/common',     $dst . '/common');
+    self::rcopy($src . '/components', $dst . '/components');
   }
 
   /**

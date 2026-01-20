@@ -5,14 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Leek Detail</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- Common header/footer styles -->
+  <link rel="stylesheet" href="/static/common/css/styles.css">
 </head>
 <body>
+  <div id="header-container"></div>
   <main>
     <h2>ねぎ詳細</h2>
     <div id="post-detail"></div>
   </main>
 
+  <!-- Footer will be loaded here by JavaScript -->
+  <div id="footer-container"></div>
+
   <!-- 全paper共通 -->
   <script src="/static/app.js"></script>
+  <!-- Common component loader (header/footer) -->
+  <script src="/static/common/js/components.js"></script>
 </body>
 </html>
