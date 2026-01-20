@@ -3,16 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tomato List</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>トマト新聞</title>
+  <!-- Common header/footer styles -->
+  <link rel="stylesheet" href="/static-src/common/css/styles.css">
 </head>
 <body>
+
+<div id="header-container"></div>
+
   <main>
     <h2>トマト一覧</h2>
     <div id="post-list"></div>
   </main>
 
+<!-- Footer will be loaded here by JavaScript -->
+<div id="footer-container"></div>
+
   <!-- 全paper共通 -->
   <script src="/static/app.js"></script>
+  <!-- Common component loader (header/footer) -->
+  <script src="/static-src/common/js/components.js"></script>
 </body>
 </html>

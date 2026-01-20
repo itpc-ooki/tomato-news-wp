@@ -1,0 +1,66 @@
+<header>
+  <div class="container hdr">
+    <div class="brand">
+      <div>
+        <img src="/static-src/common/img/tomatopaper_logo.png" alt="トマト新聞　ロゴ">
+      </div>
+    </div>
+    <nav aria-label="main">
+      <ul>
+        <li><a href="./トマト_DETAIL_20251107.html">特集記事</a></li>
+        <li><a href="./トマト_DETAIL_20251107.html">トマトNEWS</a></li>
+        <li><a href="./トマト_DETAIL_20251107.html">品種情報</a></li>
+        <li><a href="./トマト_DETAIL_20251107.html">栽培技術</a></li>
+        <li><a href="./トマト_DETAIL_20251107.html">市場動向</a></li>
+        <li><a href="./トマト_DETAIL_20251107.html">病害虫対策</a></li>
+        <li><a href="./トマト_DETAIL_20251107.html">WEBセミナー</a></li>
+        <li><a href="./トマト_DETAIL_20251107.html">コラム</a></li>
+        <li><a href="./トマト_DETAIL_20251107.html">動画</a></li>
+        <li><a href="./トマト_DETAIL_20251107.html">紙面</a></li>
+      </ul>
+    </nav>
+    <div style="display:flex; gap:.5rem">
+      <button class="btn" onclick="openModal('signin')">ログイン</button>
+      <button class="btn accent" onclick="openModal('signup')">会員登録（必須）</button>
+      <button class="btn" onclick="openModal('mypage')">マイページ</button>
+      <button class="hamb" aria-label="メニュー" onclick="toggleMobileMenu()">☰</button>
+    </div>
+  </div>
+  <!-- ヘッダー下 リーダーボード（表示/非表示は data-hidden で制御） -->
+  <div class="container" style="padding:10px var(--pad) 0">
+<a href="https://pr.agrinews.co.jp/ad/tomato202506" target="_blank" rel="noopener">
+        
+
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-menu-header">
+    <div class="mobile-menu-title">メニュー</div>
+    <button class="mobile-menu-close" onclick="toggleMobileMenu()">×</button>
+  </div>
+  <div class="mobile-menu-content">
+    <ul>
+      <li><a href="./トマト_DETAIL_20251107.html">特集記事</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">トマトNEWS</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">品種情報</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">栽培技術</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">市場動向</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">病害虫対策</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">WEBセミナー</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">コラム</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">動画</a></li>
+      <li><a href="./トマト_DETAIL_20251107.html">紙面</a></li>
+    </ul>
+    <div class="mobile-menu-buttons">
+      <button class="btn" onclick="openModal('signin')">ログイン</button>
+      <button class="btn accent" onclick="openModal('signup')">会員登録（必須）</button>
+      <button class="btn" onclick="openModal('mypage')">マイページ</button>
+    </div>
+  </div>
+</div>
+<div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="toggleMobileMenu()"></div>
+
