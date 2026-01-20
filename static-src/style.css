@@ -93,12 +93,6 @@
 
 @keyframes kw-marquee{ from{transform:translateX(0)} to{transform:translateX(-50%)} }
 
-/* body padding調整 */
-  body{ 
-    padding-top:calc(var(--header-height) + 48px); 
-    margin:0;
-  }
-
 /* メインコンテナ - 柏佐藤スタイル */
   .main-wrapper{
     width:min(1400px,100vw);
