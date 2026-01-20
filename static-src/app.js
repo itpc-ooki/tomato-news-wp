@@ -7,7 +7,7 @@
  *
  * Page detection:
  *  - /static/{paper}/index.html  -> renders #post-list
- *  - /static/{paper}/detail.html -> renders #post-detail by ?id=
+ *  - /static/{paper}/detail.html -> renders article.article-content (preferred) OR #post-detail by ?id=
  */
 (function () {
   "use strict";
@@ -21,12 +21,11 @@
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
+      .replace(/\"/g, "&quot;")
       .replace(/'/g, "&#039;");
   }
 
   function getPaperFromPath() {
-    // Example: /static/tomato/index.html -> ["static","tomato","index.html"]
     const parts = window.location.pathname.split("/").filter(Boolean);
     const idx = parts.indexOf("static");
     if (idx !== -1 && parts.length >= idx + 2) return parts[idx + 1];
@@ -46,7 +45,6 @@
       throw new Error(`HTTP ${res.status} for ${url}\n${text.slice(0, 200)}`);
     }
 
-    // JSONのはずがHTMLが返ってきた（=WPにリダイレクト等）を分かりやすく
     if (contentType.includes("text/html") || text.trim().startsWith("<")) {
       throw new Error(
         `Not JSON response from ${url}\nReceived HTML (maybe redirected to WP).`
@@ -64,10 +62,16 @@
     }
   }
 
+  function getDetailContentTarget() {
+    const article = document.querySelector("article.article-content");
+    if (article) return article;
+    return $("#post-detail");
+  }
+
   function showError(msg) {
     const listEl = $("#post-list");
-    const detailEl = $("#post-detail");
-    const target = listEl || detailEl;
+    const detailTarget = getDetailContentTarget();
+    const target = listEl || detailTarget;
     if (!target) return;
 
     target.innerHTML = `<div style="color:#c00; white-space:pre-wrap;">${escapeHtml(
@@ -107,18 +111,74 @@
     el.innerHTML = html;
   }
 
+  function formatJapaneseDate(dateStr) {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const y = parts[0];
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    return `${y}年${m}月${d}日`;
+  }
+
   function renderDetail(post) {
-    const el = $("#post-detail");
-    if (!el) return;
+    const target = getDetailContentTarget();
+    if (!target) return;
 
     if (!post || !post.id) {
-      el.innerHTML = "<p>記事が見つかりません</p>";
+      target.innerHTML = "<p>記事が見つかりません</p>";
       return;
     }
 
+    const hasMockArticle = !!document.querySelector("article.article-content");
+    const content = post.content || "";
+
+    if (hasMockArticle) {
+      /* ===== NEW PART START ===== */
+
+      // Title
+      const titleEl = document.querySelector("h1.article-title");
+      if (titleEl) {
+        titleEl.textContent = post.title || "";
+      }
+
+      // Meta (date & author)
+      const meta = document.querySelector(".article-meta");
+      if (meta) {
+        const timeEl = meta.querySelector("time");
+        const spans = meta.querySelectorAll("span");
+
+        // Date → 2026年1月15日
+        if (timeEl) {
+          const rawDate = post.date_ymd || "";
+          timeEl.textContent = formatJapaneseDate(rawDate);
+        }
+
+        // Author
+        if (spans.length >= 2) {
+          spans[1].textContent = post.author
+            ? `筆者：${post.author}`
+            : "";
+        }
+      }
+
+      // Main Image
+      const mainImageBox = document.querySelector(".main-image-full img");
+      if (mainImageBox && post.featured_image) {
+        mainImageBox.src = post.featured_image;
+        mainImageBox.alt = post.title || "";
+      }
+
+      // Article body
+      target.innerHTML = content;
+
+      /* ===== NEW PART END ===== */
+      return;
+    }
+
+    // Fallback rendering (unchanged)
     const title = escapeHtml(post.title || "(no title)");
     const date = escapeHtml(post.date_ymd || "");
-    const content = post.content || ""; // WP由来HTMLをそのまま表示したいので escapeしない
     const img = post.featured_image || "";
     const imgHtml = img
       ? `<div style="margin: 10px 0 14px;">
@@ -126,7 +186,7 @@
         </div>`
       : "";
 
-    el.innerHTML = `
+    target.innerHTML = `
       <h3>${title}</h3>
       <div style="color:#666; margin: 6px 0;">${date}</div>
       ${imgHtml}
@@ -139,7 +199,7 @@
     if (!paper) return;
 
     const isList = !!$("#post-list");
-    const isDetail = !!$("#post-detail");
+    const isDetail = !!getDetailContentTarget();
 
     if (isList) {
       const url = `/static/${paper}/posts.json`;
