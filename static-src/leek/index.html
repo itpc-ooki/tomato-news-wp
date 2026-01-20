@@ -1,18 +1,27 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Leek List</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ねぎ新聞</title>
+  <!-- Common header/footer styles -->
+  <link rel="stylesheet" href="/static-src/common/css/styles.css">
 </head>
 <body>
+
+<div id="header-container"></div>
+
   <main>
     <h2>ねぎ一覧</h2>
     <div id="post-list"></div>
   </main>
 
+<!-- Footer will be loaded here by JavaScript -->
+<div id="footer-container"></div>
+
   <!-- 全paper共通 -->
   <script src="/static/app.js"></script>
+  <!-- Common component loader (header/footer) -->
+  <script src="/static-src/common/js/components.js"></script>
 </body>
 </html>
