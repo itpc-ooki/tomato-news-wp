@@ -503,6 +503,11 @@
   }
   // ========= END TOP PAGE CARD GRID =========
 
+  // Helper function to get top page vtile elements
+  function getTopVtiles() {
+    return Array.from(document.querySelectorAll('a.vtile'));
+  }
+
   async function main() {
     const paper = getPaperFromPath();
     if (!paper) return;
@@ -511,6 +516,8 @@
     const hasPostList = !!$("#post-list");
     // Top page (card grid with #post-grid)
     const hasPostGrid = !!document.getElementById("post-grid");
+    // TOP page uses a.vtile
+    const hasVtiles = getTopVtiles().length > 0;
     // list.html uses .grid .tile
     const hasTileGrid = !!document.querySelector(".grid .tile");
     // detail.html uses article.article-content OR #post-detail
