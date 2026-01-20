@@ -1158,3 +1158,3166 @@ html, body{
 .large .tile-title{ font-size:0.9rem; }
 }
 
+
+
+/* ========================================
+   TOP PAGE STYLES (from tomato/css/styles.css)
+   ======================================== */
+
+
+  *,*::before,*::after{ box-sizing:border-box }
+  :root{
+    --bg:#fff; --border:#e5e7eb; --muted:#64748b; --text:#0f172a;
+    --accent:#e0523d; --accent-2:#ff9a7d;
+    --pad:clamp(14px,4.5vw,24px);
+    --leftW: 520px; --thumbH: 400px; --cardH: 400px;
+    --radius:16px; --shadow:0 20px 50px rgba(16,24,40,.10);
+    --adbadge:#334155;
+  }
+  html,body{ margin:0; background:var(--bg); color:var(--text);
+    font-family: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic UI",sans-serif; }
+  img{ max-width:100%; display:block }
+  a{ color:inherit; text-decoration:none }
+
+  header{ position:sticky; top:0; z-index:60; background:#ffffffd8; backdrop-filter:saturate(180%) blur(8px); border-bottom:1px solid var(--border) }
+  .container{ width:min(1200px,92vw); margin:0 auto }
+  .hdr{ display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem 0 }
+  @media (min-width:1180px){
+    .hdr{ 
+      flex-direction:column; 
+      padding:1rem 0 0;
+      gap:0;
+      position:relative;
+    }
+  }
+  .brand{ display:flex; align-items:center; gap:.8rem }
+  @media (min-width:1180px){
+    .brand{ 
+      margin-bottom:1rem;
+    }
+  }
+  
+  /* ヘッダーロゴのサイズ調整 */
+  .brand img {
+    height: 50px;
+    width: auto;
+    display: block;
+    margin: 8px 0 8px 12px;
+  }
+  
+  @media (min-width:768px) and (max-width:1179px) {
+    .brand img {
+      height: 60px;
+      margin: 8px 0;
+    }
+  }
+  
+  @media (min-width:1180px){
+    .brand img {
+      height: 70px;
+      margin: 8px 0;
+    }
+  }
+  
+  .logo{ width:40px; height:40px; border-radius:0; background:radial-gradient(120% 120% at 20% 20%, var(--accent-2), var(--accent)); box-shadow:var(--shadow) }
+  .tit{ font-weight:700 }
+  nav ul{ list-style:none; display:flex; gap:1rem; padding:0; margin:0; align-items:center }
+  @media (min-width:1180px){
+    nav{ 
+      width:100%;
+      border-top:1px solid var(--border);
+      padding:0.8rem 0;
+    }
+    nav ul{ 
+      justify-content:center;
+      gap:2rem;
+      font-size:0.95rem;
+    }
+  }
+  .btn{ border:1px solid var(--border); background:#fff; color:#0f172a; padding:.55rem 1rem; border-radius:0; cursor:pointer }
+  
+  /* SP版でのボタンとナビゲーションのフォントサイズ調整 */
+  @media (max-width: 768px) {
+    .btn { 
+      font-size: 11px !important; 
+      padding: 0.35rem 0.5rem !important;
+      white-space: nowrap !important;
+      letter-spacing: -0.02em !important;
+    }
+    nav ul li a {
+      font-size: 12px !important;
+      white-space: nowrap !important;
+    }
+    /* 会員登録ボタンの特別調整 */
+    .btn.accent {
+      font-size: 10px !important;
+      padding: 0.35rem 0.4rem !important;
+      letter-spacing: -0.03em !important;
+    }
+  }
+  .btn.accent{ border-color:transparent; background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; box-shadow:var(--shadow) }
+  .hamb{ display:none; width:42px; height:42px; border-radius:0; border:1px solid var(--border); background:#fff }
+  @media (max-width:900px){ nav{ display:none } .hamb{ display:block } }
+  
+  /* PC版：ボタン類を右上に配置 */
+  @media (min-width:1180px){
+    .hdr > div:last-child{
+      position:absolute;
+      top:1rem;
+      right:0;
+    }
+  }
+
+  /* ======= Top band layout ======= */
+  .band{ width:min(1400px,96vw); margin:0 auto; display:grid; grid-template-columns:1fr; gap:24px;
+         padding: clamp(12px,4vw,28px) var(--pad) }
+  @media (min-width:1180px){
+    .band{ 
+      display:grid; 
+      grid-template-columns: 450px 1fr; 
+      grid-template-rows: 1fr;
+      align-items:stretch; 
+      gap:24px;
+    }
+  }
+  .left-hero{ padding:28px 24px; display:flex; flex-direction:column; justify-content:center; min-height:500px;
+              border-radius:0; box-shadow: var(--shadow); background:linear-gradient(180deg,#fafafa,#fff); position:relative }
+  .left-hero .mark{ font-size:2rem; letter-spacing:.2em; margin-bottom:12px; text-align:center }
+  .left-hero h1{ font-size: clamp(1.8rem,2.8vw,2.4rem); margin:.2rem 0 .6rem; line-height:1.15 }
+  .left-hero p{ color:#6b7280; margin:0 0 12px }
+  .hero-actions{ display:flex; flex-wrap:wrap; gap:12px; margin-top:10px }
+  .pill{ background:#fff; border:1px solid var(--border); padding:.38rem .8rem; border-radius:999px; color:#334155; margin-right:8px; box-shadow: var(--shadow); text-align:center }
+
+  /* PC gallery 2 vertical columns - 左側コンテナの高さに合わせる */
+  .right-gallery{ display:none }
+  
+  /* SP版でright-galleryを表示（1カラムのみ） */
+  @media (max-width: 768px) {
+    .right-gallery {
+      display: block !important;
+      width: 100vw !important;
+      overflow: visible !important;
+      height: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    /* vcolを100vw幅で表示 */
+    .vcol {
+      width: 100vw !important;
+      height: auto !important;
+      overflow: visible !important;
+      position: relative !important;
+    }
+    
+    /* v-trackを通常のフローに */
+    .v-track {
+      position: relative !important;
+      inset: auto !important;
+      height: auto !important;
+      gap: 0 !important;
+    }
+    
+    /* 2つ目のカラムを非表示 */
+    #vcolB {
+      display: none !important;
+    }
+    
+    /* SP版: vtileをLISTと同じスタイルに（テキストオーバーレイ） */
+    .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) {
+      position: relative !important;
+      width: 100vw !important;
+      height: 100vw !important;
+      aspect-ratio: 1/1 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      display: block !important;
+    }
+    
+    /* サムネイルを絶対配置で全体を覆う（LISTと同じ） */
+    .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .thumb {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #eee !important;
+      border-radius: 0 !important;
+    }
+    
+    .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .thumb img {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+      object-position: center !important;
+      display: block !important;
+      border-radius: 0 !important;
+    }
+    
+    /* キャプションをオーバーレイ表示（LISTと同じ） */
+    .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .cap {
+      position: absolute !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      background: rgba(0,0,0,0.6) !important;
+      color: #fff !important;
+      padding: 12px !important;
+      margin: 0 !important;
+      z-index: 2 !important;
+      border-radius: 0 !important;
+    }
+    
+    .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .cap .meta {
+      font-size: 0.7rem !important;
+      margin-bottom: 4px !important;
+      color: #fff !important;
+      opacity: 0.9 !important;
+    }
+    
+    .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .cap > div:last-child {
+      font-size: 0.8rem !important;
+      font-weight: 600 !important;
+      line-height: 1.3 !important;
+      color: #fff !important;
+      display: -webkit-box !important;
+      -webkit-line-clamp: 2 !important;
+      -webkit-box-orient: vertical !important;
+      overflow: hidden !important;
+    }
+  }
+  
+  @media (min-width:1180px){
+    .right-gallery{ 
+      display:grid; 
+      grid-template-columns: 400px 400px; /* 各カラムを400pxに固定 */
+      gap:24px; 
+      align-items:start; 
+      height:100%;
+      overflow:visible;
+    }
+  }
+  .vcol{ position:relative; width:400px; height:100%; overflow:hidden }
+  .v-track{ position:absolute; inset:0; display:flex; flex-direction:column; gap:2px; padding:0; will-change:transform }
+  
+  .vtile{ border:none; border-radius:0; overflow:hidden; background:#fff; box-shadow: none; width:400px; }
+  
+  /* 記事サムネを400×400pxに設定 */
+  .vtile .thumb{ width:400px; height:400px; aspect-ratio:1/1; background:#f3f4f6; overflow:hidden; border-radius:0 }
+  .vtile .thumb img{ width:100%; height:100%; object-fit:cover; object-position:center }
+  .vtile .cap{ padding:12px 14px }
+  .meta{ color:#64748b; font-size:.9rem }
+
+  /* SP lanes - PC版もSP版も横スライダー維持 */
+  .sp-lanes{ display:grid; gap:14px; margin-top:22px }
+  @media (min-width:769px){
+    /* PC版：横スライダー（2行表示を確保） */
+    .sp-lanes{ display:block; overflow:visible; min-height:auto }
+  }
+  @media (max-width:768px){
+    /* SP版：横スライダー維持（パディングなし） */
+    .sp-lanes{ 
+      display:block !important; 
+      overflow-x:auto !important;
+      overflow-y:hidden !important;
+      width:100vw !important; 
+      margin:0 !important;
+      padding:0 !important;
+      -webkit-overflow-scrolling:touch !important;
+    }
+  }
+  .lane{ overflow:hidden; user-select:none; -webkit-user-select:none; touch-action:pan-y; background:transparent }
+  .lane-track{ display:flex; gap:14px; padding:2px }
+  @media (max-width:768px){
+    .lane-track{ gap:1px; padding:0 }
+  }
+  .tile{ flex:0 0 auto; width: clamp(180px,48vw,260px); border:none; border-radius:0; background:#fff; overflow:hidden; box-shadow: var(--shadow) }
+  @media (max-width:768px){
+    .tile{ width:calc(100vw / 3) !important; box-shadow:none !important }
+  }
+  .tile .thumb{ aspect-ratio:1/1 !important; background:#eee }
+  .tile .thumb img{ width:100% !important; height:100% !important; object-fit:cover !important }
+  .tile .cap{ padding:10px 12px }
+  @media (max-width:768px){
+    .tile .cap{ padding:6px; font-size:0.75rem }
+  }
+  /* アニメーション */
+  .animate-x{ animation: slideX 28s linear infinite }
+  .animate-x.reverse{ animation-direction: reverse; animation-duration: 34s }
+  @keyframes slideX{ from{ transform:translateX(0) } to{ transform:translateX(-50%) } }
+
+  /* Common sections */
+  section{ border-top:1px solid var(--border) }
+  .cat{ width:min(1320px,96vw); margin:0 auto; padding:32px var(--pad) }
+  @media (max-width:768px){
+    .cat{ width:100vw; padding:20px 0 }
+  }
+  .cat h2{ margin:0 0 18px; font-size:1.3rem }
+  @media (max-width:768px){
+    .cat h2{ padding:0 10px }
+  }
+  .grid{ display:grid; grid-template-columns:repeat(12,1fr); gap:18px }
+  @media (max-width:768px){
+    .grid{ 
+      grid-template-columns:1fr !important; 
+      gap:1px !important;
+      padding:0 !important;
+    }
+  }
+  .card{ grid-column:span 3; border:none; border-radius:0; overflow:hidden; background:#fff; box-shadow: var(--shadow) }
+  @media (max-width:768px){
+    .card{ grid-column:span 1 !important; box-shadow:none !important }
+  }
+  .card .image{ aspect-ratio:1/1; background:#eee; border-radius:0 !important; }
+  .card .image img{ width:100%; height:100%; object-fit:cover; border-radius:0 !important; }
+  .card .body{ padding:12px 14px }
+  @media (max-width:768px){
+    .card .body{ padding:10px 12px }
+  }
+  @media (min-width:769px) and (max-width:1024px){ 
+    .card{ grid-column:span 6 } 
+  }
+
+  /* ====== AD styles ====== */
+  .ad-slot{ display:flex; align-items:center; justify-content:center;
+            background:transparent; border:none; color:#475569;
+            border-radius:0; box-shadow:none; position:relative; overflow:hidden }
+  .ad-slot[data-hidden="true"]{ display:none !important }
+  .ad-badge{ position:absolute; top:10px; left:10px; font-size:12px; color:#fff;
+             background:#334155; padding:4px 8px; border-radius:999px; letter-spacing:.01em;
+             width:auto; height:auto; max-width:60px; max-height:30px; 
+             white-space:nowrap; overflow:hidden; z-index:10; }
+  /* MPU広告: 200x400に変更 - 縦スライダー用 */
+  @media (min-width: 1180px) {
+    .ad-rect-vertical{ width:400px !important; height:200px !important; }
+    .ad-slot.ad-rect-vertical.pc-only-ad{ 
+      width:400px !important; 
+      height:200px !important;
+      display:block !important;
+      visibility: visible !important;
+    }
+  }
+  @media (max-width: 1179px) {
+    /* タブレット以下ではPC版広告を非表示 */
+    .ad-slot.ad-rect-vertical.pc-only-ad { 
+      display: none !important; 
+      visibility: hidden !important; 
+    }
+  }
+  @media (max-width: 768px) {
+    .ad-rect-vertical:not(.mpu-ad-wrapper) { display: none !important; }
+    /* PC版広告を確実に非表示 */
+    .ad-slot.ad-rect-vertical.pc-only-ad { display: none !important; visibility: hidden !important; }
+  }
+  /* Half Page広告: 600x400に変更 - 縦スライダー用 */
+  @media (min-width: 1180px) {
+    .ad-half-vertical{ width:400px !important; height:600px !important; }
+    .ad-slot.ad-half-vertical.pc-only-ad{ 
+      width:400px !important; 
+      height:600px !important;
+      display:block !important;
+      visibility: visible !important;
+    }
+  }
+  @media (max-width: 1179px) {
+    /* タブレット以下ではPC版広告を非表示 */
+    .ad-slot.ad-half-vertical.pc-only-ad { 
+      display: none !important; 
+      visibility: hidden !important; 
+    }
+  }
+  @media (max-width: 768px) {
+    .ad-half-vertical:not(.halfpage-ad-wrapper) { display: none !important; }
+    /* PC版広告を確実に非表示 */
+    .ad-slot.ad-half-vertical.pc-only-ad { display: none !important; visibility: hidden !important; }
+  }
+  /* PC版縦スライダー内の広告サイズを確実に適用 */
+  @media (min-width:1180px){
+    .right-gallery .ad-slot.ad-rect-vertical,
+    .vcol .ad-slot.ad-rect-vertical{ 
+      width:400px !important; 
+      height:200px !important; 
+      min-width:400px !important;
+      max-width:400px !important;
+      min-height:200px !important;
+      max-height:200px !important;
+    }
+    .right-gallery .ad-slot.ad-half-vertical,
+    .vcol .ad-slot.ad-half-vertical{ 
+      width:400px !important; 
+      height:600px !important; 
+      min-width:400px !important;
+      max-width:400px !important;
+      min-height:600px !important;
+      max-height:600px !important;
+    }
+    /* 広告内の画像サイズも固定 */
+    .right-gallery .ad-slot.ad-rect-vertical img,
+    .vcol .ad-slot.ad-rect-vertical img{
+      max-width:100% !important;
+      max-height:200px !important;
+      object-fit: contain !important;
+    }
+    .right-gallery .ad-slot.ad-half-vertical img,
+    .vcol .ad-slot.ad-half-vertical img{
+      max-width:100% !important;
+      max-height:600px !important;
+      object-fit: contain !important;
+    }
+  }
+  /* 通常の広告サイズ */
+  .ad-rect{ width:300px; max-width:100%; height:250px }
+  .ad-half{ width:300px; max-width:100%; height:600px }
+  .ad-leader{ width:100%; height: 120px }
+  @media (max-width:768px){
+    .ad-leader{ height: 100px }
+  }
+  /* In-feed native */
+  .native-card{ grid-column:span 3; border-radius:0; background:#fff; box-shadow:var(--shadow); overflow:hidden; position:relative }
+  
+  /* SP版で基本広告サイズを上書き */
+  @media (max-width:768px){
+    /* 基本の広告設定を初期化 */
+    .ad-slot{
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+    }
+    
+    /* Half Page広告を強制的に縦長に */
+    .ad-half-vertical{ 
+      width:100vw !important; 
+      height:calc(100vw * 1.5) !important;
+      min-height:calc(100vw * 1.5) !important;
+      max-height:calc(100vw * 1.5) !important;
+      border: none !important;
+      background: transparent !important;
+    }
+    /* MPU広告を横長に */
+    .ad-rect-vertical{ 
+      width:100vw !important; 
+      height:calc(100vw * 0.5) !important;
+      border: none !important;
+      background: transparent !important;
+    }
+  }
+  @media (max-width:768px){
+    .native-card{ grid-column:span 1 !important; box-shadow:none !important }
+  }
+  .native-card .badge{ position:absolute; top:10px; left:10px; padding:4px 8px; border-radius:999px; font-size:12px; color:#fff; background:#ef4444 }
+  .native-card .image{ aspect-ratio:1/1; background:#eee; border-radius:0 !important; }
+  @media (min-width:769px) and (max-width:1024px){ 
+    .native-card{ grid-column:span 6 } 
+  }
+  /* Sticky mobile banner - SP版のみ */
+  @media (max-width: 768px) {
+    .sticky-banner{ position:fixed; z-index:80; left:12px; right:12px; bottom:12px; display:none }
+    .sticky-banner.active{ display:block }
+    .sticky-inner{ background:#fff; border:1px solid var(--border); border-radius:0; box-shadow:var(--shadow); padding:8px; display:flex; gap:10px; align-items:center }
+    .sticky-close{ margin-left:auto; border:none; background:#f1f5f9; border-radius:0; padding:6px 10px; cursor:pointer }
+    .sticky-thumb{ width:64px; height:40px; border-radius:0; overflow:hidden }
+    .sticky-thumb img{ width:100%; height:100%; object-fit:cover }
+  }
+  
+  /* PC版では完全に非表示 */
+  @media (min-width: 769px) {
+    .sticky-banner{ display:none !important }
+  }
+
+  footer{ border-top:1px solid var(--border); margin-top:80px; background:#fff; }
+  .foot{ 
+    width:min(1320px,96vw); 
+    margin:0 auto; 
+    padding:60px var(--pad) 40px;
+  }
+  
+  /* フッターグリッド */
+  .footer-grid{
+    display:grid;
+    grid-template-columns:2fr 1fr 1fr 1fr 1fr;
+    gap:40px;
+    margin-bottom:40px;
+  }
+  
+  @media (max-width:768px){
+    .footer-grid{
+      grid-template-columns:1fr;
+      gap:30px;
+    }
+  }
+  
+  /* ブランドエリア */
+  .footer-brand{
+    display:flex;
+    flex-direction:column;
+    gap:15px;
+  }
+  
+  .footer-logo{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  
+  /* フッターロゴ画像のサイズ調整 */
+  .footer-logo img {
+    height: 50px;
+    width: auto;
+    display: block;
+  }
+  
+  @media (min-width:768px) {
+    .footer-logo img {
+      height: 60px;
+    }
+  }
+  
+  @media (min-width:1180px){
+    .footer-logo img {
+      height: 70px;
+    }
+  }
+  
+  .footer-logo-icon{
+    width:48px;
+    height:48px;
+    background:var(--accent);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-weight:700;
+    font-size:20px;
+  }
+  
+  .footer-logo-text{
+    display:flex;
+    flex-direction:column;
+  }
+  
+  .footer-logo-text .main{
+    font-weight:700;
+    font-size:1.125rem;
+    color:var(--text);
+  }
+  
+  .footer-logo-text .sub{
+    font-size:0.75rem;
+    color:var(--muted);
+    margin-top:2px;
+  }
+  
+  .footer-desc{
+    font-size:0.875rem;
+    color:var(--muted);
+    line-height:1.6;
+    max-width:300px;
+  }
+  
+  /* ソーシャルリンク */
+  .footer-social{
+    display:flex;
+    gap:10px;
+    margin-top:15px;
+  }
+  
+  .social-link{
+    width:36px;
+    height:36px;
+    border:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--muted);
+    transition:all 0.2s;
+  }
+  
+  .social-link:hover{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+  }
+  
+  /* フッターメニュー */
+  .footer-column h4{
+    font-size:0.875rem;
+    font-weight:700;
+    color:var(--text);
+    margin-bottom:15px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+  }
+  
+  .footer-links{
+    list-style:none;
+    padding:0;
+    margin:0;
+  }
+  
+  .footer-links li{
+    margin-bottom:10px;
+  }
+  
+  .footer-links a{
+    color:var(--muted);
+    font-size:0.875rem;
+    transition:color 0.2s;
+    display:inline-block;
+    position:relative;
+  }
+  
+  .footer-links a:hover{
+    color:var(--accent);
+  }
+  
+  /* ニューズレター */
+  .newsletter-box{
+    grid-column:span 2;
+    background:#f8f9fa;
+    padding:30px;
+    border-radius:0;
+  }
+  
+  @media (max-width:768px){
+    .newsletter-box{
+      grid-column:span 1;
+    }
+  }
+  
+  .newsletter-box h4{
+    font-size:1.125rem;
+    margin-bottom:10px;
+  }
+  
+  .newsletter-box p{
+    font-size:0.875rem;
+    color:var(--muted);
+    margin-bottom:20px;
+  }
+  
+  .newsletter-form{
+    display:flex;
+    gap:10px;
+  }
+  
+  .newsletter-input{
+    flex:1;
+    padding:10px 15px;
+    border:1px solid var(--border);
+    background:#fff;
+    font-size:0.875rem;
+  }
+  
+  .newsletter-btn{
+    padding:10px 20px;
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    font-weight:600;
+    cursor:pointer;
+    transition:opacity 0.2s;
+  }
+  
+  .newsletter-btn:hover{
+    opacity:0.9;
+  }
+  
+  /* フッターボトム */
+  .footer-bottom{
+    padding-top:30px;
+    border-top:1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:20px;
+  }
+  
+  @media (max-width:768px){
+    .footer-bottom{
+      flex-direction:row;
+      justify-content:space-between;
+      align-items:center;
+      text-align:left;
+      gap:10px;
+    }
+    
+    .copyright{
+      font-size:0.7rem !important;
+    }
+    
+    .footer-bottom-links{
+      font-size:0.7rem !important;
+    }
+    
+    .footer-bottom-links a{
+      font-size:0.7rem !important;
+    }
+  }
+  
+  .copyright{
+    font-size:0.875rem;
+    color:var(--muted);
+  }
+  
+  .footer-bottom-links{
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  
+  @media (max-width:768px){
+    .footer-bottom-links{
+      flex-direction:row;
+      gap:6px;
+      flex-wrap:wrap;
+    }
+  }
+  
+  .footer-bottom-links a{
+    color:var(--muted);
+    font-size:0.875rem;
+    transition:color 0.2s;
+  }
+  
+  .footer-bottom-links a:hover{
+    color:var(--accent);
+  }
+  
+  /* 言語セレクター */
+  .lang-selector{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 12px;
+    border:1px solid var(--border);
+    font-size:0.875rem;
+    cursor:pointer;
+    transition:border-color 0.2s;
+  }
+  
+  .lang-selector:hover{
+    border-color:var(--accent);
+  }
+
+/* force-remove header leaderboard on PC/SP */
+#ad_header_leader, .ad-leader, .leaderboard, .header-ad, .ad_header_leader { display:none !important; height:0 !important; padding:0 !important; margin:0 !important; }
+
+
+/* square corners everywhere */
+img, .ad-slot, .ad-slot img, .tile img, .news-card img, .brand img, .lane-track .tile img, .vcol .card, .vcol .card img { border-radius:0 !important; }
+
+/* SP版横スライダーのサムネイルを確実に正方形に */
+@media (max-width: 768px){
+  .sp-lanes .tile .thumb,
+  .lane .tile .thumb,
+  .lane-track .tile .thumb {
+    aspect-ratio: 1/1 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+  .sp-lanes .tile .thumb img,
+  .lane .tile .thumb img,
+  .lane-track .tile .thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+}
+
+/* 最強の優先度で正方形強制 */
+@media (max-width: 768px){
+  div.sp-lanes div.tile div.thumb,
+  div.lane div.tile div.thumb,
+  div.lane-track div.tile div.thumb,
+  section div.sp-lanes div.tile div.thumb {
+    aspect-ratio: 1/1 !important;
+    width: calc(100vw / 3) !important;
+    height: calc(100vw / 3) !important;
+    max-height: calc(100vw / 3) !important;
+    min-height: calc(100vw / 3) !important;
+  }
+  div.sp-lanes div.tile div.thumb img,
+  div.lane div.tile div.thumb img,
+  div.lane-track div.tile div.thumb img,
+  section div.sp-lanes div.tile div.thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    aspect-ratio: 1/1 !important;
+  }
+}
+
+
+/* hard kill header ads if any */
+#ad_header_leader, .ad_header_leader, .header-ad, .header_ad, .leaderboard, .ad-leader, .ad-leaderboard { 
+  display:none !important; height:0 !important; padding:0 !important; margin:0 !important; border:0 !important; 
+}
+
+
+/* full-bleed mobile: 1列レイアウト最適化（パディングなし） */
+@media (max-width: 768px){
+  /* ヒーローセクションは縮小表示 */
+  .left-hero{ 
+    min-height:auto !important;
+    padding:20px !important;
+  }
+  .left-hero h1{ font-size:1.5rem !important }
+  .band{ padding:0 !important; gap:10px !important }
+  
+  /* 全セクション共通：パディングなし */
+  .container { 
+    width: 100vw !important; 
+    padding:0 !important;
+  }
+  
+  /* グリッド共通設定：1列 */
+  .grid, .masonry {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 1px !important;
+    padding:0 !important;
+  }
+  
+  /* カード共通設定 */
+  .card, .native-card, .news-card {
+    grid-column: span 1 !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  
+  /* 画像共通設定：正方形維持、角を直角に */
+  .card .image, .native-card .image {
+    aspect-ratio: 1/1 !important;
+    height: auto !important;
+    border-radius: 0 !important;
+  }
+  
+  .card .image img, .native-card .image img {
+    border-radius: 0 !important;
+  }
+  
+  /* 横スライダーは維持（正方形） */
+  .sp-lanes .tile {
+    flex: 0 0 auto !important;
+    width: calc(100vw / 3) !important;
+  }
+  .sp-lanes .tile .thumb {
+    aspect-ratio: 1/1 !important;
+  }
+  
+  /* 広告 */
+  .ad-slot { 
+    width: 100% !important;
+    margin: 10px 0 !important;
+  }
+  
+  body { background: #fff; }
+}
+
+
+/* square corners everywhere */
+img, .ad-slot, .ad-slot img, .tile img, .news-card img, .brand img, .lane-track .tile img, .vcol .card, .vcol .card img {
+  border-radius:0 !important;
+}
+
+/* --- strict PC card sizing (正方形) --- */
+@media (min-width:1180px){
+  .right-gallery{ grid-template-columns: 1fr 1fr; gap:2px; }
+  .vtile .thumb{ aspect-ratio:1/1 !important; height:auto !important; }
+  .card .image{ aspect-ratio:1/1 !important; height:auto !important; }
+  .vtile .thumb img, .card .image img{ width:100% !important; height:100% !important; object-fit:cover !important; object-position:center !important; }
+}
+
+
+/* --- mobile first-view 1列レイアウト（パディングなし） --- */
+@media (max-width: 768px){
+  .band{ padding:0 !important; width:100vw !important; }
+  .left-hero{ 
+    padding:20px !important; 
+    box-shadow:none !important; 
+    border-radius:0 !important; 
+    min-height:auto !important;
+  }
+  /* 横スライダーは維持（パディングなし） */
+  .sp-lanes{ 
+    margin:20px 0 !important; 
+    padding:0 !important; 
+    width:100vw !important;
+  }
+  .lane-track{ padding:0 !important; gap:1px !important; }
+  .tile{ margin:0 !important; }
+}
+
+/* ===== PATCH: PC縦スライダー 正方形固定 ===== */
+@media (min-width: 1180px){
+  /* 右2カラムの列幅を自動調整（幅を広げて2列分確実に表示） */
+  .right-gallery{
+    grid-template-columns: 1fr 1fr !important;
+    gap: 2px !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+  /* 各カラム&カード */
+  .vcol{ 
+    width: 100% !important; 
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+  .vtile{ 
+    width: 100% !important;
+    display: block !important;
+  }
+
+  /* サムネを正方形に固定し、object-fitで非歪み */
+  .vtile .thumb{
+    width: 100% !important;
+    aspect-ratio: 1/1 !important;
+    height: auto !important;
+    min-height: unset !important;
+    overflow: hidden !important;
+    background: #eee !important;
+  }
+  .vtile .thumb img{
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    aspect-ratio: 1 / 1 !important;
+    display: block !important;
+  }
+}
+
+/* ===== PATCH: SP 1stビュー フルブリード＆見切れ無し ===== */
+html, body { overflow-x: hidden; }
+
+@media (max-width: 768px){
+  /* 1stビュー周辺（ヒーロー＋横スクロール）の左右余白を完全にゼロに */
+  #highlight,
+  #highlight .band,
+  .left-hero,
+  .sp-lanes,
+  .sp-lanes .lane,
+  .sp-lanes .lane-track{
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* 横レーンの隙間をゼロにして端までピッタリ */
+  .sp-lanes .lane-track{ gap: 0 !important; padding: 0 !important; }
+
+  /* 各タイルも端まで（角丸なし・見切れなし） */
+  .sp-lanes .tile{
+    width: 100vw !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  .sp-lanes .tile .thumb{
+    width: 100vw !important;
+    height: auto !important;
+    overflow: hidden !important;
+  }
+  .sp-lanes .tile /* removed global .thumb img 100vw rule */
+}
+
+/* 角丸禁止（広告/画像すべて） */
+img, .ad-slot, .ad-slot img, .tile img, .card img, .vtile img, .thumb, .vtile .thumb, .tile .thumb { border-radius: 0 !important; }
+
+/* 念のため：ヘッダー広告は常時オフ */
+#ad_header_leader, .ad-leader, .leaderboard, .header-ad, .ad_header_leader {
+  display: none !important; height: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important;
+}
+
+/* =========================
+   HOTFIX 1: PCの縦スライダー 400×400 に完全固定
+   （記事/広告ともに画像タイルサイズを統一・つぶれ防止）
+   ========================= */
+@media (min-width:1180px){
+  /* 右側2カラムを固定幅に */
+  .right-gallery{
+    grid-template-columns: 400px 400px !important;
+    column-gap: 24px !important;
+  }
+  .vcol{ width: 400px !important; }
+
+  /* 各タイルの箱とサムネを固定 */
+  .vcol .vtile,
+  .vcol .card,
+  .vcol .ad-slot{
+    width: 400px !important;
+  }
+  .vcol .vtile .thumb,
+  .vcol .card .thumb,
+  .vcol .ad-slot{
+    width: 400px !important;
+    height: 400px !important;
+    aspect-ratio: 1 / 1 !important;
+    min-height: 400px !important;
+  }
+  .vcol .vtile .thumb img,
+  .vcol .card .thumb img,
+  .vcol .ad-slot img{
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+  }
+
+  /* 重なり/圧縮を防ぐための余白とトラック調整 */
+  .vcol{ overflow: hidden !important; }
+  .vcol .v-track{ gap: 22px !important; }
+}
+
+/* =========================
+   HOTFIX 2: モバイル 1stビューを左右フルブリードに固定
+   （左だけ余白が出るケースを強制打ち消し）
+   ========================= */
+@media (max-width:768px){
+  .band{ padding-left:0 !important; padding-right:0 !important; }
+  .left-hero{
+    margin-left:0 !important; margin-right:0 !important;
+    padding-left:0 !important; padding-right:0 !important;
+    border-radius:0 !important;
+  }
+  /* 横スクロールの列・タイルも余白ゼロ */
+  .sp-lanes, .lane, .lane-track, .tile{
+    margin-left:0 !important; margin-right:0 !important;
+  }
+}
+
+/* 角丸禁止（広告/画像）再強制：つぶれ対策と併用 */
+img, .ad-slot, .ad-slot img,
+.vcol .vtile, .vcol .vtile img,
+.vcol .card,  .vcol .card img{
+  border-radius:0 !important;
+}
+
+/* ===== PC vertical sliders: hard fix to 400 x 400 ===== */
+@media (min-width:1180px){
+  /* 固定幅2カラムにして“縮み”を防止 */
+  .right-gallery{
+    grid-template-columns: 400px 400px !important;
+    column-gap: 24px !important;
+  }
+  .vcol{ width:400px !important; overflow:hidden !important; }
+
+  /* 記事のみの箱とサムネの寸法を統一（広告は除外） */
+  .vcol .vtile, .vcol .card{ width:400px !important; }
+  .vcol .vtile .thumb,
+  .vcol .card .thumb{
+    width:400px !important;
+    height:400px !important;
+    min-height:400px !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+  .vcol .card .image{
+    width:400px !important;
+    height:400px !important;
+    min-height:400px !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+  /* トマトNEWSとスポンサー広告の.card .imageは幅自動調整 */
+  #news .card .image,
+  #newspaper-ads .card .image{
+    width:100% !important;
+    height:auto !important;
+    min-height:auto !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+  .vcol .vtile .thumb img,
+  .vcol .card .thumb img,
+  .vcol .card .image img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    object-position:center !important;
+  }
+  /* トマトNEWSとスポンサー広告のimgも正しく設定 */
+  #news .card .image img,
+  #newspaper-ads .card .image img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    object-position:center !important;
+  }
+
+  /* 変な重なり対策（縦トラックの隙間を固定） */
+  .vcol .v-track{ gap:22px !important; }
+}
+
+/* もし CSS 変数で高さを上書きされる場合の保険（PCだけ 400 に） */
+@media (min-width:1180px){
+  :root{ --thumbH:400px; --cardH:400px; }
+}
+/* 既存で min-height:300px が生きていると潰れるので上書き */
+.vtile .thumb{ min-height:400px !important; }
+
+/* ===== Mobile hero full-bleed & unclipped ===== */
+@media (max-width:768px){
+  .band{ padding-left:0 !important; padding-right:0 !important; }
+  .left-hero{
+    margin-left:0 !important; margin-right:0 !important;
+    padding-left:0 !important; padding-right:0 !important;
+    border-radius:0 !important;
+  }
+  .sp-lanes, .lane, .lane-track{ padding-left:0 !important; padding-right:0 !important; }
+}
+
+/* ====== SP 1stビュー 横オートスライダー：縦に大きすぎ問題の是正 ====== */
+@media (max-width: 768px){
+  /* タイルは端までフルブリードのまま */
+  .sp-lanes .tile{
+    width: 100vw !important;
+  }
+
+  /* サムネは “横長16:9” に統一（他のSP記事サムネと同様の見え方に） */
+  .sp-lanes .tile .thumb{
+    width: 100vw !important;
+    height: auto !important;
+    aspect-ratio: 16 / 9 !important;     /* ← ここで縦の伸びを抑える */
+    overflow: hidden !important;
+    background: #eee !important;
+  }
+  .sp-lanes .tile .thumb img{
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: block !important;
+  }
+}
+
+
+
+/* ===== FINAL OVERRIDE: PC 縦オートスライダーのサムネつぶれ防止（400×400 完全固定） ===== */
+@media (min-width:1180px){
+  .right-gallery{ 
+    grid-template-columns:400px 400px !important; 
+    column-gap:24px !important; 
+    width:824px !important;
+    max-width:100% !important;
+  }
+  .vcol{ width:400px !important; overflow:hidden !important; }
+  .vtile, .vcol .card{ width:400px !important; }
+  .vtile .thumb, .vcol .card .thumb{
+    width:400px !important; height:400px !important; min-height:400px !important; aspect-ratio: 1 / 1 !important;
+  }
+  .vcol .card .image{
+    width:400px !important; height:400px !important; min-height:400px !important; aspect-ratio: 1 / 1 !important;
+  }
+  /* トマトNEWSとスポンサー広告の.card .imageは幅自動調整 */
+  #news .card .image,
+  #newspaper-ads .card .image{
+    width:100% !important;
+    height:auto !important;
+    min-height:auto !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+  .vtile .thumb img, .vcol .card .thumb img, .vcol .card .image img{
+    width:100% !important; height:100% !important; object-fit:cover !important; object-position:center !important; display:block !important;
+  }
+  /* トマトNEWSとスポンサー広告のimgも正しく設定 */
+  #news .card .image img,
+  #newspaper-ads .card .image img{
+    width:100% !important; height:100% !important; object-fit:cover !important; object-position:center !important; display:block !important;
+  }
+  /* 縦スライダー内の広告は除外（専用クラスで個別管理） */
+}
+
+/* ===== FINAL OVERRIDE: SP 1stビュー 横スライダーの縦長化防止（16:9・フルブリード） ===== */
+@media (max-width:768px){
+  #highlight, #highlight .band, .left-hero, .sp-lanes, .lane, .lane-track{ width:100vw !important; max-width:100vw !important; margin:0 !important; padding:0 !important; }
+  .sp-lanes .lane-track{ gap:0 !important; padding:0 !important; }
+  .sp-lanes .tile{ width:100vw !important; border-radius:0 !important; box-shadow:none !important; }
+  .sp-lanes .tile .thumb{ width:100vw !important; height:auto !important; aspect-ratio:16/9 !important; overflow:hidden !important; }
+  .sp-lanes .tile .thumb img{ width:100% !important; height:100% !important; object-fit:cover !important; object-position:center !important; display:block !important; }
+}
+
+  /* ==== PC縦オートスライダー：400 × 400 を完全固定（記事のみ） ==== */
+@media (min-width:1180px){
+  /* 列幅を固定 */
+  .right-gallery{
+    grid-template-columns: 400px 400px !important;
+    column-gap: 24px !important;
+  }
+  .vcol{ width: 400px !important; overflow: hidden !important; }
+  .vcol .v-track{ gap: 22px !important; }
+
+  /* 記事タイルの箱とサムネの高さを固定（広告には触らない） */
+  .vcol .vtile{ width: 400px !important; }
+  .vcol .vtile .thumb{
+    width: 400px !important;
+    height: 400px !important;
+    min-height: 400px !important;
+    /* 競合して潰す要因になる aspect-ratio/auto 高さを無効化 */
+    aspect-ratio: unset !important;
+  }
+  .vcol .vtile .thumb img{
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: block !important;
+  }
+
+  /* 広告は専用クラスで個別管理（一般的な指定は削除） */
+  .vcol .ad-rect{ height: 250px !important; }
+  .vcol .ad-half{ height: 600px !important; }
+  .vcol .ad-slot img{
+    width: 100% !important; height: 100% !important; object-fit: cover !important;
+  }
+}
+
+
+/* ==== FINAL SUPER-OVERRIDE: PC 縦オートスライダーのサムネつぶれ完全禁止 ==== */
+@media (min-width:1180px){
+  /* 固定幅2カラム */
+  .right-gallery{ 
+    grid-template-columns:400px 400px !important; 
+    column-gap:24px !important; 
+    width:824px !important;
+    max-width:100% !important;
+  }
+  .right-gallery .vcol{ width:400px !important; overflow:hidden !important; }
+  .right-gallery .vcol .v-track{ gap:22px !important; }
+
+  /* 記事タイルの箱とサムネ寸法を最優先で固定 */
+  .right-gallery .vtile{ width:400px !important; }
+  .right-gallery .vtile .thumb{ width:400px !important; height:400px !important; min-height:400px !important; aspect-ratio:unset !important; }
+  .right-gallery .vtile .thumb img{
+    display:block !important;
+    inline-size:100% !important; /* width */
+    block-size:100% !important;  /* height */
+    max-width:none !important;
+    max-height:none !important;
+    object-fit:cover !important;
+    object-position:center !important;
+  }
+  /* 画像に付与されがちな自動 aspect-ratio を明示的に無効化 */
+  .right-gallery img{ aspect-ratio:auto !important; }
+}
+
+/* ===== HARD LOCK: PC縦オートスライダーのサムネが潰れる問題の最終対策 ===== */
+@media (min-width:1180px){
+  /* サムネの箱は固定寸法にし、画像は絶対配置で全面フィット */
+  .right-gallery .vtile{ display:block !important; width:400px !important; }
+  .right-gallery .vtile .thumb{ display:block !important; position:relative !important; width:400px !important; height:400px !important; min-height:400px !important; overflow:hidden !important; }
+  .right-gallery .vtile .thumb img{ position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; object-fit:cover !important; object-position:center !important; max-width:none !important; max-height:none !important; aspect-ratio:auto !important; }
+  /* 右2カラム自体も固定幅 */
+  .right-gallery{ 
+    grid-template-columns:400px 400px !important; 
+    column-gap:24px !important; 
+    width:824px !important;
+    max-width:100% !important;
+  }
+}
+/* ==== ULTRA-LOCK: PC縦オートスライダーのサムネ 400×400 を最優先で固定 ==== */
+@media (min-width:1180px){
+  .right-gallery{ grid-template-columns:400px 400px !important; column-gap:24px !important; width:824px !important; max-width:100% !important; }
+  .right-gallery .vcol{ width:400px !important; overflow:hidden !important; }
+  .right-gallery .vcol .v-track{ gap:22px !important; }
+  .right-gallery .vtile{ width:400px !important; display:block !important; }
+  .right-gallery .vtile .thumb{ position:relative !important; width:400px !important; height:400px !important; min-height:400px !important; aspect-ratio:auto !important; overflow:hidden !important; }
+  .right-gallery .vtile .thumb img{
+    position:absolute !important; inset:0 !important;
+    width:100% !important; height:100% !important;
+    max-width:none !important; max-height:none !important;
+    object-fit:cover !important; object-position:center !important;
+    transform:none !important;
+  }
+}
+/* === ABSOLUTE FINAL FIX: PC縦オートスライダーのサムネつぶれ防止（400×400 完全固定） === */
+@media (min-width:1180px){
+  .right-gallery{ grid-template-columns:400px 400px !important; column-gap:24px !important; width:824px !important; max-width:100% !important; }
+  .right-gallery .vcol{ width:400px !important; overflow:hidden !important; }
+  .right-gallery .vcol *{ max-width:none !important; }
+  .right-gallery .vtile{ width:400px !important; display:block !important; }
+  .right-gallery .vtile .thumb{ position:relative !important; display:block !important; inline-size:400px !important; block-size:400px !important; width:400px !important; height:400px !important; min-height:400px !important; overflow:hidden !important; }
+  .right-gallery .vtile .thumb img{ position:absolute !important; inset:0 !important; inline-size:100% !important; block-size:100% !important; width:100% !important; height:100% !important; object-fit:cover !important; object-position:center !important; }
+}
+/* === FINAL LOCK v2: PC縦オートスライダーのサムネ潰れを完全に禁止 === */
+@media (min-width:1180px){
+  /* サムネの箱は固定寸法・余白ゼロ */
+  .right-gallery .vtile .thumb{
+    display:block !important;
+    position:relative !important;
+    width:400px !important;
+    height:400px  !important;
+    min-height:400px !important;
+    line-height:0 !important;
+    padding:0 !important; margin:0 !important; border:0 !important;
+    overflow:hidden !important;
+  }
+  /* 画像は絶対配置で全面フィット（max-width の継承を無効化） */
+  .right-gallery .vtile .thumb img{
+    position:absolute !important; inset:0 !important;
+    width:100% !important; height:100% !important;
+    max-width:none !important; max-height:none !important;
+    object-fit:cover !important; object-position:center !important;
+    aspect-ratio:auto !important; transform:none !important;
+    display:block !important;
+  }
+  /* 右2カラム自体の列幅固定（再強制） */
+  .right-gallery{ grid-template-columns:400px 400px !important; column-gap:24px !important; width:824px !important; max-width:100% !important; }
+  .right-gallery .vcol{ width:400px !important; overflow:hidden !important; }
+  .right-gallery .vcol .v-track{ gap:22px !important; padding:0 !important; }
+}
+
+/* SP版レイアウト順序制御 - 追加部分 */
+@media (max-width:768px){
+  /* bandコンテナをflexに変更して順序制御 */
+  .band{
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  
+  /* 1. vcolA: 最初（市況データの後） */
+  #vcolA{
+    order: 1 !important;
+    display: block !important;
+    width: 100vw !important;
+    height: auto !important;
+    position: static !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: white !important;
+  }
+  
+  /* 2. left-hero: vcolAの後 */
+  .left-hero{ 
+    order: 2 !important;
+    display: flex !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 20px 24px !important;
+    background: white !important;
+  }
+  
+  /* 3. sp-lanes: left-heroの後 */
+  .sp-lanes{ 
+    order: 3 !important;
+    display: block !important;
+    background: white !important;
+  }
+  
+  /* 4. vcolB: sp-lanesの後 */
+  #vcolB{
+    order: 4 !important;
+    display: block !important;
+    width: 100vw !important;
+    height: auto !important;
+    position: static !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: white !important;
+  }
+  
+  /* right-galleryをSP版で展開して子要素を個別表示 */
+  .right-gallery{
+    display: contents !important;
+  }
+  
+  /* SP版ではアニメーションを完全に無効化 */
+  #vcolA .v-track,
+  #vcolB .v-track{
+    animation: none !important;
+    animation-play-state: paused !important;
+    position: static !important;
+    transform: none !important;
+    display: block !important;
+    gap: 0 !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    row-gap: 0 !important;
+    column-gap: 0 !important;
+  }
+  
+  /* v-track内のすべての直接の子要素の余白を削除 */
+  #vcolA .v-track > *,
+  #vcolB .v-track > * {
+    margin: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    padding-top: 0 !important;
+  }
+  
+  /* SP版でのvtileサイズ調整（広告以外） */
+  #vcolA .vtile:not(.ad-half-vertical):not(.ad-rect-vertical),
+  #vcolB .vtile:not(.ad-half-vertical):not(.ad-rect-vertical){
+    width: 100vw !important;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* vtileの直後の要素（PC版広告など）の余白も削除 */
+  .vtile + *,
+  a.vtile + * {
+    margin-top: 0 !important;
+  }
+  
+  /* 通常のvtileのthumbサイズ（広告以外） */
+  #vcolA .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .thumb,
+  #vcolB .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .thumb{
+    width: 100vw !important;
+    height: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* SP版でvtileのcap部分を最小限にする */
+  #vcolA .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .cap,
+  #vcolB .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .cap{
+    padding: 4px 8px !important;
+    font-size: 0.8rem !important;
+    line-height: 1.2 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+  }
+  
+  /* SP版でvtileのmeta部分を最小限にする */
+  #vcolA .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .meta,
+  #vcolB .vtile:not(.ad-half-vertical):not(.ad-rect-vertical) .meta{
+    font-size: 0.7rem !important;
+    margin: 0 0 2px 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Half Page広告専用設定 - vtileクラスが付いていても強制適用 */
+  #vcolA .vtile.ad-half-vertical,
+  #vcolB .vtile.ad-half-vertical{
+    width: 100vw !important;
+    height: calc(100vw * 1.5) !important; /* 2:3の縦長比率 */
+    margin-bottom: 1px !important;
+    display: block !important;
+  }
+  
+  /* MPU広告専用設定 - vtileクラスが付いていても強制適用 */
+  #vcolA .vtile.ad-rect-vertical,
+  #vcolB .vtile.ad-rect-vertical{
+    width: 100vw !important;
+    height: calc(100vw * 0.5) !important; /* 2:1の横長比率 */
+    margin-bottom: 1px !important;
+    display: block !important;
+  }
+  
+  /* SP版での広告サイズ調整 - MPU広告（アスペクト比2:1） */
+  #vcolA .ad-rect-vertical,
+  #vcolB .ad-rect-vertical,
+  #vcolA .ad-slot.ad-rect-vertical,
+  #vcolB .ad-slot.ad-rect-vertical{
+    width: 100vw !important;
+    height: calc(100vw * 0.5) !important; /* アスペクト比 400:200 = 2:1 */
+    min-width: 100vw !important;
+    min-height: calc(100vw * 0.5) !important;
+    max-width: 100vw !important;
+    max-height: calc(100vw * 0.5) !important;
+    display: flex !important;
+  }
+  
+  /* SP版での広告サイズ調整 - Half Page広告（400:600の縦長） */
+  #vcolA .ad-half-vertical,
+  #vcolB .ad-half-vertical,
+  #vcolA .ad-slot.ad-half-vertical,
+  #vcolB .ad-slot.ad-half-vertical{
+    width: 100vw !important;
+    height: calc(100vw * 1.5) !important; /* アスペクト比 400:600 = 2:3 */
+    min-width: 100vw !important;
+    min-height: calc(100vw * 1.5) !important;
+    max-width: 100vw !important;
+    max-height: calc(100vw * 1.5) !important;
+    display: flex !important;
+  }
+  
+  /* Half Page広告内の画像もアスペクト比を保持 */
+  #vcolA .ad-half-vertical img,
+  #vcolB .ad-half-vertical img{
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important; /* アスペクト比を保持 */
+    background: #f8fafc; /* 背景色追加 */
+  }
+  
+  /* MPU広告内の画像もアスペクト比を保持 */
+  #vcolA .ad-rect-vertical img,
+  #vcolB .ad-rect-vertical img{
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important; /* アスペクト比を保持 */
+    background: #f8fafc; /* 背景色追加 */
+  }
+  
+  /* vcolBの表示を強制 - デバッグ用追加 */
+  #vcolB{
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  /* セクションの境界を明確にする */
+  #vcolA,
+  #vcolB{
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  
+  /* トマトNEWS以降のセクションを6番目以降に配置 */
+  .band ~ section{
+    order: 6 !important;
+  }
+  
+  /* 最優先：Half Page広告の縦長サイズを完全に強制 */
+  .ad-half-vertical,
+  .vtile.ad-half-vertical,
+  .ad-slot.ad-half-vertical{
+    width: 100vw !important;
+    height: calc(100vw * 1.5) !important;
+    min-height: calc(100vw * 1.5) !important;
+    max-height: calc(100vw * 1.5) !important;
+  }
+  
+  /* 最優先：vtileクラスが付いたHalf Page広告も強制 */
+  .vcol .vtile.ad-half-vertical,
+  .v-track .vtile.ad-half-vertical,
+  .band .vtile.ad-half-vertical{
+    width: 100vw !important !important;
+    height: calc(100vw * 1.5) !important !important;
+  }
+  
+  /* Half Page広告内要素の設定 */
+  .ad-half-vertical > *,
+  .vtile.ad-half-vertical > *:not(.ad-badge){
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  /* SP版広告ラッパーの制御 */
+  .halfpage-ad-wrapper,
+  .mpu-ad-wrapper {
+    width: 100vw !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+}
+
+/* SP版Half Page広告サイズの最終強制制御 */
+@media screen and (max-width:768px){
+  /* ad-slotクラス用の基本設定を最初に */
+  .ad-slot{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+  }
+  
+  /* すべてのHalf Page広告セレクタを網羅して縦長に強制 */
+  .ad-half-vertical,
+  .vtile.ad-half-vertical,
+  .ad-slot.ad-half-vertical,
+  div.ad-half-vertical,
+  div.vtile.ad-half-vertical,
+  #vcolA .ad-half-vertical,
+  #vcolB .ad-half-vertical,
+  #vcolA .vtile.ad-half-vertical,
+  #vcolB .vtile.ad-half-vertical,
+  #vcolA .ad-slot.ad-half-vertical,
+  #vcolB .ad-slot.ad-half-vertical{
+    width: 100vw !important;
+    height: calc(100vw * 1.5) !important;
+    min-width: 100vw !important;
+    min-height: calc(100vw * 1.5) !important;
+    max-width: 100vw !important;
+    max-height: calc(100vw * 1.5) !important;
+    aspect-ratio: 2/3 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #f8fafc !important;
+    overflow: hidden !important;
+    position: relative !important;
+    margin-bottom: 1px !important;
+  }
+  
+  /* vtile.thumbの影響を完全排除（広告専用） */
+  .vtile.ad-half-vertical .thumb,
+  .ad-half-vertical .thumb{
+    display: none !important;
+  }
+  
+  /* 通常のvtileは影響を受けない */
+  .vtile:not(.ad-half-vertical):not(.ad-rect-vertical){
+    /* 通常のvtileスタイルを維持 */
+  }
+  
+  /* SP版で広告ラッパーがvtileの影響を受けないように */
+  @media (max-width: 768px) {
+    .halfpage-ad-wrapper,
+    .mpu-ad-wrapper {
+      /* vtileクラスの影響を完全にリセット */
+      aspect-ratio: unset !important;
+      border-radius: 0 !important;
+      width: 100vw !important;
+      height: auto !important;
+      overflow: hidden !important;
+      position: relative !important;
+    }
+    
+    .halfpage-ad-wrapper > *,
+    .mpu-ad-wrapper > * {
+      border-radius: 0 !important;
+      overflow: hidden !important;
+    }
+    
+    /* 広告ラッパー内の広告バッジのサイズ制限 */
+    .halfpage-ad-wrapper div[style*="position:absolute"],
+    .mpu-ad-wrapper div[style*="position:absolute"] {
+      width: auto !important;
+      height: auto !important;
+      max-width: 60px !important;
+      max-height: 30px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+    }
+  }
+  
+  /* 画像エラー時の代替表示 */
+  .ad-slot[data-ad-type="halfpage"]:not(:has(img)),
+  .ad-slot[data-ad-type="mpu"]:not(:has(img)){
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+  }
+  
+  .ad-slot[data-ad-type="halfpage"]::after,
+  .ad-slot[data-ad-type="mpu"]::after{
+    content: attr(data-ad-type) " 広告スペース" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    color: #94a3b8 !important;
+    font-size: 14px !important;
+    text-transform: uppercase !important;
+  }
+  
+  /* Half Page広告画像を適切に表示（インラインスタイルを完全上書き） */
+  .ad-half-vertical img,
+  .vtile.ad-half-vertical img,
+  .ad-half-vertical > img,
+  .ad-half-vertical a img,
+  .vtile.ad-half-vertical a img,
+  .ad-slot.ad-half-vertical img,
+  .ad-slot.ad-half-vertical a img,
+  #vcolA .ad-half-vertical img,
+  #vcolB .ad-half-vertical img{
+    width: 100% !important;
+    height: 100% !important;
+    min-width: auto !important;
+    min-height: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    object-position: center !important;
+    display: block !important;
+    margin: 0 auto !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  
+  /* リンク要素も適切にサイズ調整 */
+  .ad-half-vertical a,
+  .vtile.ad-half-vertical a,
+  .ad-slot.ad-half-vertical a{
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+    z-index: 1 !important;
+    background: transparent !important;
+  }
+  
+  /* 広告バッジを確実に表示 - サイズ制限を追加 */
+  .ad-badge{
+    position: absolute !important;
+    top: 10px !important;
+    left: 10px !important;
+    z-index: 10 !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 60px !important;
+    max-height: 30px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+  }
+  
+  /* Half Page広告内の全ての直接子要素を制御 */
+  .ad-half-vertical > *:not(.ad-badge),
+  .vtile.ad-half-vertical > *:not(.ad-badge){
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+  
+  /* SVGやその他の要素も制御 */
+  .ad-half-vertical svg,
+  .vtile.ad-half-vertical svg,
+  .ad-half-vertical canvas,
+  .vtile.ad-half-vertical canvas,
+  .ad-half-vertical video,
+  .vtile.ad-half-vertical video{
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+  }
+  
+  /* 画像読み込みエラー時の代替表示 */
+  .ad-half-vertical::before,
+  .vtile.ad-half-vertical::before{
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  }
+  
+  /* MPU広告も同様に調整 */
+  .ad-rect-vertical img,
+  .vtile.ad-rect-vertical img,
+  .ad-slot.ad-rect-vertical img{
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    object-position: center !important;
+    display: block !important;
+  }
+}
+
+/* === PC縦オートスライダー：潰れ総当り（動作維持・最小変更） === */
+@media (min-width:1180px){
+  /* カラムはそのまま。vtileの最小高さだけ保証 */
+  .right-gallery a.vtile{
+    display:block !important;
+    min-height:400px !important;    /* ← これで79px崩れを防止 */
+  }
+  /* サムネ＆広告の箱は高さ400pxで統一。中身は等比で中央 */
+  .right-gallery .vtile .thumb,
+  .right-gallery .ad-slot{
+    height:400px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    overflow:hidden !important;
+  }
+  .right-gallery .vtile .thumb img,
+  .right-gallery .ad-slot img{
+    width:auto !important;
+    height:100% !important;
+    object-fit:contain !important;
+    object-position:center !important;
+    max-width:none !important;
+    aspect-ratio:auto !important;
+    display:block !important;
+  }
+  /* サムネ内部だけ、絶対配置や疑似要素を無効化（重なり防止）。トラックや親は触らない */
+  .right-gallery .vtile .thumb > *{ position:static !important; }
+  .right-gallery .vtile .thumb::before,
+  .right-gallery .vtile .thumb::after{ content:none !important; }
+}
+
+
+:root{ --hdrH: 64px; --chipsH: 48px; }
+header{
+  position: fixed !important; top:0; left:0; right:0;
+  z-index: 1000 !important;
+  background: rgba(255,255,255,.88) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(12px) !important;
+  backdrop-filter: saturate(180%) blur(12px) !important;
+  border-bottom: 1px solid var(--border, #e5e7eb) !important;
+}
+header::after{ content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+  background: linear-gradient(180deg, rgba(0,0,0,.06), rgba(0,0,0,0)); pointer-events:none; }
+header .btn, header .hamb{ border-radius:999px !important; box-shadow:0 10px 24px rgba(16,24,40,.10) !important; }
+header .btn.accent{ border:0 !important; background:linear-gradient(135deg, var(--accent,#e0523d), var(--accent-2,#ff9a7d)) !important; color:#fff !important; }
+
+/* chips row (if exists) */
+.pill-bar, .chip-row, .category-chips{
+  position: fixed !important; top: var(--hdrH); left:0; right:0;
+  z-index: 900;
+  background: rgba(255,255,255,.88);
+  -webkit-backdrop-filter: saturate(180%) blur(10px);
+  backdrop-filter: saturate(180%) blur(10px);
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  overflow-x:auto; padding:8px var(--pad);
+}
+/* safe spacing */
+body{ padding-top: var(--hdrH); }
+body.has-chips{ padding-top: calc(var(--hdrH) + var(--chipsH)); }
+
+:root{ --kwH: 48px; }
+.kw-bar{
+  position:fixed; top:var(--hdrH,64px); left:0; right:0;
+  z-index:920;
+  background:rgba(255,255,255,.9);
+  -webkit-backdrop-filter:saturate(180%) blur(12px);
+  backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border, #e5e7eb);
+  overflow:hidden;
+  min-height: var(--kwH,48px);
+}
+.kw-inner{ width:min(1280px,96vw); margin:0 auto; padding:8px 16px; }
+.kw-track{
+  display:flex; gap:12px; align-items:center; white-space:nowrap;
+  will-change:transform;
+  animation:kw-marquee 24s linear infinite;
+}
+.kw-pill{
+  flex:0 0 auto; font-size:.92rem; color:#1f2937;
+  background:#f6f7f9; border:1px solid #e5e7eb; border-radius:999px;
+  padding:8px 14px; line-height:1;
+}
+.kw-bar:hover .kw-track{ animation-play-state:paused; }
+
+/* トマト価格情報セクション */
+/* SP版専用の市況情報（キーワードスライダー直下） */
+.sp-only-market{
+  display:block;
+}
+@media (min-width:1180px){
+  .sp-only-market{
+    display:none !important;
+  }
+}
+/* SP版の市況情報は現在の位置のまま表示 */
+@media (max-width:1179px){
+  #highlight .tomato-market-data{
+    display:none !important;
+  }
+}
+/* PC版：縦スライダーの左横に配置 */
+@media (min-width:1180px){
+  /* キーワードスライダー下の市況情報は非表示 */
+  body > .tomato-market-data{
+    display:none !important;
+  }
+  #highlight .tomato-market-data{
+    display:block !important;
+  }
+  #highlight .band{
+    position:relative;
+  }
+  
+  /* PC版ではキーワードスライダーを非表示 */
+  .kw-bar {
+    display: none !important;
+  }
+}
+
+/* ========================================
+   トマト市況データ - 4品種カードデザイン
+   ======================================== */
+
+.tomato-market-data {
+  width: 100%;
+  max-width: 450px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.market-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.market-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  letter-spacing: 0.02em;
+}
+
+.market-date {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.market-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.market-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.market-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  transition: opacity 0.2s ease;
+}
+
+/* 品種別のアクセントカラー */
+.market-card[data-variety="large"]::before {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.market-card[data-variety="medium"]::before {
+  background: linear-gradient(90deg, #f97316, #ea580c);
+}
+
+.market-card[data-variety="mini"]::before {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.market-card[data-variety="first"]::before {
+  background: linear-gradient(90deg, #eab308, #ca8a04);
+}
+
+.market-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #d1d5db;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.variety-info {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.variety-name {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 2px 0;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* 品種別のテキストカラー */
+.market-card[data-variety="large"] .variety-name {
+  color: #dc2626;
+}
+
+.market-card[data-variety="medium"] .variety-name {
+  color: #ea580c;
+}
+
+.market-card[data-variety="mini"] .variety-name {
+  color: #d97706;
+}
+
+.market-card[data-variety="first"] .variety-name {
+  color: #ca8a04;
+}
+
+.variety-code {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.price-section {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.price-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.price-display {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.current-price {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.price-unit {
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.price-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  width: fit-content;
+}
+
+.price-change.trend-up {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.price-change.trend-down {
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.change-icon {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.change-value {
+  font-weight: 700;
+}
+
+.change-label {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+.volume-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.volume-label {
+  font-size: 0.65rem;
+  color: #9ca3af;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.volume-display {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.volume-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+}
+
+.volume-unit {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+
+.market-footer {
+  text-align: center;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.data-source {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* PC版での配置調整 */
+@media (min-width: 1180px) {
+  .tomato-market-data {
+    position: absolute;
+    top: 200px;
+    left: 0;
+    right: auto;
+    width: 450px;
+    z-index: 10;
+  }
+  
+  #highlight .left-hero > p {
+    margin-top: 580px !important;
+  }
+}
+
+/* タブレット版 */
+@media (min-width: 768px) and (max-width: 1179px) {
+  .tomato-market-data {
+    max-width: 100%;
+  }
+  
+  .market-grid {
+    gap: 14px;
+  }
+  
+  .market-card {
+    padding: 16px;
+  }
+  
+  .variety-name {
+    font-size: 1.05rem;
+  }
+  
+  .current-price {
+    font-size: 1.9rem;
+  }
+  
+  .volume-area {
+    width: 95px;
+    padding: 10px 14px;
+    align-items: center;
+  }
+  
+  .volume-value {
+    font-size: 1.4rem;
+  }
+}
+
+/* SP版 */
+@media (max-width: 767px) {
+  .tomato-market-data.sp-only-market {
+    width: 100% !important;
+    max-width: 900px !important;
+    margin: 0 auto !important;
+    padding: 12px 6px;
+    background: #fafafa;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .market-header {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 10px;
+    padding: 0 8px;
+  }
+  
+  .market-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  
+  .market-date {
+    font-size: 0.65rem;
+    color: #64748b;
+    line-height: 1.4;
+  }
+  
+  /* 2列グリッド（デフォルト） */
+  .market-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  
+  /* 3列グリッド（幅広SP） */
+  @media (min-width: 520px) {
+    .market-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+  }
+  
+  /* 4列グリッド（さらに幅広） */
+  @media (min-width: 700px) {
+    .market-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+  }
+  
+  .market-footer {
+    width: 100%;
+    text-align: center;
+    padding-top: 8px;
+    margin-top: 8px;
+    border-top: 1px solid #e2e8f0;
+  }
+  
+  .data-source {
+    font-size: 0.65rem;
+    color: #94a3b8;
+  }
+  
+  .market-card {
+    display: block;
+    padding: 10px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: visible;
+  }
+  
+  .card-header {
+    display: flex;
+    margin-bottom: 6px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  
+  .variety-info {
+    display: block;
+    text-align: center;
+  }
+  
+  .variety-name {
+    font-size: 0.9rem;
+    display: block;
+    margin-bottom: 2px;
+  }
+  
+  .variety-code {
+    font-size: 0.65rem;
+    display: block;
+  }
+  
+  .card-body {
+    display: block;
+  }
+  
+  .price-section {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  
+  .price-area {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .price-display {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    white-space: nowrap;
+  }
+  
+  .current-price {
+    font-size: 1.6rem;
+  }
+  
+  .price-unit {
+    font-size: 0.7rem;
+  }
+  
+  .price-change {
+    display: inline-flex;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
+  
+  .volume-area {
+    padding: 6px 10px;
+    width: auto;
+    min-width: 55px;
+    flex-shrink: 0;
+    align-items: center;
+  }
+  
+  .volume-label {
+    font-size: 0.6rem;
+  }
+  
+  .volume-value {
+    font-size: 1.2rem;
+  }
+  
+  .volume-unit {
+    font-size: 0.7rem;
+  }
+}
+
+/* SP版：hero領域内での表示調整 */
+@media (max-width: 1179px) {
+  #highlight .tomato-market-data {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1180px) {
+  body > .tomato-market-data {
+    display: none !important;
+  }
+  
+  .sp-only-market {
+    display: none !important;
+  }
+  
+  #highlight .tomato-market-data {
+    display: block !important;
+  }
+}
+
+
+@keyframes kw-marquee{ from{ transform:translateX(0) } to{ transform:translateX(-50%) } }
+/* push content so header + kw bar don't overlap */
+body.has-kw{ padding-top: calc( (var(--hdrH,64px)) + var(--kwH,48px) ); }
+@media (max-width:768px){
+  :root{ --kwH: 52px; }
+  .kw-inner{ padding:8px 12px; }
+  .kw-pill{ font-size:.9rem; padding:8px 12px; }
+}
+
+/* target likely content containers */
+main img,
+section img,
+.article img,
+.card img,
+.list img,
+.slider img,
+.ad img,
+.ads img,
+.paper img,
+.feature img,
+.column img,
+.video img,
+.news img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  aspect-ratio: 1 / 1;
+}
+/* ensure containers become squares */
+main figure, main .thumb, main .image, main .media,
+section figure, section .thumb, section .image, section .media,
+.card .thumb, .card .image, .card .media,
+.list .thumb, .list .image, .list .media,
+.slider .thumb, .slider .image, .slider .media,
+.ad .thumb, .ad .image, .ad .media,
+.ads .thumb, .ads .image, .ads .media,
+.paper .thumb, .paper .image, .paper .media,
+.feature .thumb, .feature .image, .feature .media,
+.column .thumb, .column .image, .column .media,
+.video .thumb, .video .image, .video .media,
+.news .thumb, .news .image, .news .media {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 8px;
+}
+/* do not touch small UI icons inside header/nav/footer */
+header img, nav img, footer img { aspect-ratio: auto; height: auto; object-fit: contain; }
+
+/* ========================================
+   Inline Styles Extracted from index.html
+   ======================================== */
+
+/* ===== フッター基本スタイル ===== */
+.footer-wrapper {
+  max-width:1400px;
+  margin:0 auto;
+  padding:60px 20px 40px;
+}
+
+.footer-grid {
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr 1fr 1.5fr;
+  gap:40px;
+  margin-bottom:40px;
+}
+
+.footer-brand {
+  display:flex;
+  flex-direction:column;
+}
+
+.footer-brand p {
+  font-size:0.875rem;
+  color:var(--muted);
+  line-height:1.6;
+  margin:15px 0 0;
+}
+
+.social-icon {
+  width:36px;
+  height:36px;
+  border:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--muted);
+  transition:all 0.2s;
+}
+
+.social-icon:hover {
+  background:var(--accent);
+  color:#fff;
+  border-color:var(--accent);
+}
+
+.footer-heading {
+  font-size:0.75rem;
+  font-weight:700;
+  color:var(--text);
+  margin:0 0 15px;
+  text-transform:uppercase;
+  letter-spacing:0.1em;
+}
+
+.footer-links {
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+
+.footer-links li {
+  margin-bottom:10px;
+}
+
+.footer-links a {
+  color:var(--muted);
+  font-size:0.875rem;
+  transition:color 0.2s;
+}
+
+.footer-links a:hover {
+  color:var(--accent);
+}
+
+.newsletter-box {
+  background:#f8f9fa;
+  padding:25px;
+}
+
+.newsletter-form {
+  display:flex;
+  gap:8px;
+}
+
+.newsletter-input {
+  flex:1;
+  padding:8px 12px;
+  border:1px solid var(--border);
+  background:#fff;
+  font-size:0.875rem;
+}
+
+.newsletter-btn {
+  padding:8px 20px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  font-weight:600;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.footer-bottom {
+  padding-top:30px;
+  border-top:1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+}
+
+.footer-bottom-links {
+  display:flex;
+  gap:25px;
+}
+
+.footer-bottom-links a {
+  color:var(--muted);
+  font-size:0.813rem;
+}
+
+.footer-bottom-links span {
+  color:var(--muted);
+}
+
+.copyright {
+  font-size:0.813rem;
+  color:var(--muted);
+}
+
+/* フッター モバイル最適化 */
+@media (max-width:768px) {
+  .footer-wrapper {
+    padding:40px 15px 30px !important;
+  }
+  
+  .footer-grid {
+    display:flex !important;
+    flex-direction:column;
+    gap:0;
+    margin-bottom:0;
+  }
+  
+  .footer-brand {
+    padding-bottom:30px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:20px;
+  }
+  
+  /* アコーディオンメニュー */
+  .footer-column {
+    border-bottom:1px solid var(--border);
+    padding-bottom:0;
+    margin-bottom:0;
+  }
+  
+  .footer-heading {
+    margin:0;
+    padding:15px 0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    font-size:0.875rem;
+    text-transform:none;
+    letter-spacing:normal;
+    position:relative;
+  }
+  
+  .footer-heading::after {
+    content:'+';
+    font-size:1.25rem;
+    color:var(--muted);
+    transition:transform 0.3s;
+  }
+  
+  .footer-column.active .footer-heading::after {
+    transform:rotate(45deg);
+  }
+  
+  .footer-links {
+    max-height:0;
+    overflow:hidden;
+    transition:max-height 0.3s ease-out;
+  }
+  
+  .footer-column.active .footer-links {
+    max-height:300px;
+    padding-bottom:15px;
+  }
+  
+  .newsletter-box {
+    background:transparent;
+    padding:30px 0;
+    margin-bottom:20px;
+  }
+  
+  .newsletter-form {
+    flex-direction:column;
+    gap:12px;
+  }
+  
+  .newsletter-input {
+    padding:12px;
+    font-size:1rem;
+  }
+  
+  .newsletter-btn {
+    padding:12px;
+    font-size:1rem;
+    width:100%;
+  }
+  
+  .footer-bottom {
+    padding-top:20px;
+    border-top:none;
+    flex-direction:column;
+    text-align:center;
+  }
+  
+  .footer-bottom-links {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px 4px;
+    width:100%;
+    text-align:center;
+  }
+  
+  /* 区切り文字を非表示 */
+  .footer-bottom-links span {
+    display:none;
+  }
+  
+  .footer-bottom-links a {
+    padding:6px 4px;
+    font-size:0.65rem;
+    white-space:nowrap;
+    line-height:1.2;
+  }
+  
+  /* さらに小さい画面用 */
+  @media (max-width:360px) {
+    .footer-bottom-links a {
+      font-size:0.6rem;
+      padding:5px 2px;
+    }
+  }
+  
+  .copyright {
+    font-size:0.75rem !important;
+  }
+}
+
+/* ===== 広告サムネイル背景 ===== */
+@media (min-width:1180px){
+  .right-gallery .ad-slot{ position:relative; }
+  .right-gallery .ad-slot::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-position:center;
+    background-repeat:no-repeat;
+    background-size:contain;
+    background-image: var(--ad-img, none);
+    pointer-events:none;
+  }
+}
+
+/* ===== PC縦オートスライダー：画像を枠いっぱい（cover）で表示 ===== */
+@media (min-width:1180px){
+  .right-gallery .vtile .thumb,
+  .right-gallery .ad-slot{
+    height:400px !important;
+    overflow:hidden !important;
+    position:relative !important;
+  }
+  .right-gallery .vtile .thumb img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    object-position:center !important;
+    display:block !important;
+  }
+  .right-gallery .ad-slot::before{
+    background-size:cover !important;
+    background-position:center !important;
+  }
+}
+
+/* ===== ローカル画像マッピング（extra sections） ===== */
+@media (min-width:1180px){
+  .latest-news img,
+  .paper-ad img,
+  .preview-paper img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    object-position:center !important;
+    display:block !important;
+  }
+  .footer-ad{ position:relative !important; overflow:hidden !important; }
+  .footer-ad::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-position:center;
+    background-repeat:no-repeat;
+    background-size:cover;
+    background-image: var(--footerad-img, none);
+    pointer-events:none;
+  }
+}
+
+/* ===== セクション画像オーバーライド ===== */
+@media (min-width:1180px){
+  #news .card .image img,
+  #newspaper-ads .card .image img,
+  #paper .card .image img,
+  footer img[alt="フッター広告"]{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    object-position:center !important;
+    display:block !important;
+  }
+}
+
+/* ===== SP版横スライダー正方形強制 ===== */
+@media (max-width: 768px){
+  .sp-lanes .tile,
+  .lane .tile,
+  .lane-track .tile {
+    width: calc(100vw / 3) !important;
+    height: auto !important;
+  }
+  
+  .sp-lanes .tile .thumb,
+  .lane .tile .thumb,
+  .lane-track .tile .thumb,
+  #top .sp-lanes .tile .thumb,
+  main .sp-lanes .tile .thumb,
+  body .sp-lanes .tile .thumb {
+    width: calc(100vw / 3) !important;
+    height: calc(100vw / 3) !important;
+    aspect-ratio: 1/1 !important;
+    max-height: calc(100vw / 3) !important;
+    min-height: calc(100vw / 3) !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+  
+  .sp-lanes .tile .thumb img,
+  .lane .tile .thumb img,
+  .lane-track .tile .thumb img,
+  #top .sp-lanes .tile .thumb img,
+  main .sp-lanes .tile .thumb img,
+  body .sp-lanes .tile .thumb img {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    aspect-ratio: 1/1 !important;
+  }
+}
+
+/* ===== モバイルメニュー ===== */
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 280px;
+  height: 100vh;
+  background: #fff;
+  z-index: 1100;
+  transition: right 0.3s ease;
+  box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+}
+.mobile-menu.active {
+  right: 0;
+}
+.mobile-menu-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.mobile-menu-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+.mobile-menu-content {
+  padding: 20px;
+  overflow-y: auto;
+  height: calc(100vh - 80px);
+}
+.mobile-menu-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.mobile-menu-content li {
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.mobile-menu-content a {
+  display: block;
+  color: #0f172a;
+  text-decoration: none;
+}
+.mobile-menu-buttons {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 2px solid #e5e7eb;
+}
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1099;
+  display: none;
+}
+.mobile-menu-overlay.active {
+  display: block;
+}
+
+/* ===== SP版専用：広告ラッパーの表示制御 ===== */
+@media (min-width: 769px) {
+  .halfpage-ad-wrapper,
+  .mpu-ad-wrapper {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+  
+  .pc-only-ad {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  .ad-slot.ad-rect-vertical.pc-only-ad {
+    display: block !important;
+  }
+  
+  .ad-slot.ad-half-vertical.pc-only-ad {
+    display: block !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .ad-slot.ad-half-vertical.pc-only-ad,
+  .ad-slot.ad-rect-vertical.pc-only-ad,
+  div.ad-slot.ad-half-vertical.pc-only-ad,
+  div.ad-slot.ad-rect-vertical.pc-only-ad,
+  .vcol .ad-slot.ad-half-vertical.pc-only-ad,
+  .vcol .ad-slot.ad-rect-vertical.pc-only-ad,
+  .v-track .ad-slot.ad-half-vertical.pc-only-ad,
+  .v-track .ad-slot.ad-rect-vertical.pc-only-ad,
+  .ad-slot.pc-only-ad,
+  .pc-only-ad {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    pointer-events: none !important;
+    line-height: 0 !important;
+    flex: 0 0 0 !important;
+    flex-basis: 0 !important;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    grid-row: 0 !important;
+    grid-column: 0 !important;
+  }
+  
+  .ad-slot.ad-half-vertical.pc-only-ad *,
+  .ad-slot.ad-rect-vertical.pc-only-ad *,
+  .pc-only-ad * {
+    display: none !important;
+    height: 0 !important;
+    width: 0 !important;
+  }
+  
+  .ad-slot.ad-half-vertical.pc-only-ad,
+  .ad-slot.ad-rect-vertical.pc-only-ad {
+    background: transparent !important;
+  }
+  
+  .halfpage-ad-wrapper {
+    display: block !important;
+    width: 100vw !important;
+    margin: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+  }
+  
+  .mpu-ad-wrapper {
+    display: block !important;
+    width: 100vw !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+  }
+  
+  .halfpage-ad-wrapper img,
+  .mpu-ad-wrapper img {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+  }
+  
+  img {
+    object-fit: contain !important;
+    object-position: center !important;
+    display: block !important;
+  }
+  
+  .ad-slot.ad-rect-vertical[data-ad-type="mpu"] .ad-badge{
+    position: absolute !important;
+    top: 10px !important;
+    left: 10px !important;
+    z-index: 10 !important;
+  }
+}
+
+/* ===== SP版広告表示の最終修正 ===== */
+@media (max-width: 768px) {
+  .halfpage-ad-wrapper {
+    display: block !important;
+    width: 100vw !important;
+    height: auto !important;
+    margin: 0 !important;
+    margin-top: -1px !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+  
+  .v-track .halfpage-ad-wrapper,
+  #vcolA .halfpage-ad-wrapper,
+  #vcolB .halfpage-ad-wrapper,
+  #vcolA .v-track .halfpage-ad-wrapper,
+  #vcolB .v-track .halfpage-ad-wrapper {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    transform: translateY(0) !important;
+    position: relative !important;
+    top: 0 !important;
+  }
+  
+  .ad-slot.ad-half-vertical.pc-only-ad + .halfpage-ad-wrapper {
+    margin-top: 0 !important;
+    position: relative !important;
+  }
+  
+  .ad-slot + .halfpage-ad-wrapper,
+  .ad-slot.ad-half-vertical.pc-only-ad + .halfpage-ad-wrapper,
+  .pc-only-ad + .halfpage-ad-wrapper,
+  .vtile + .ad-slot + .halfpage-ad-wrapper,
+  * + .halfpage-ad-wrapper {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  
+  .vtile + .ad-slot.ad-half-vertical.pc-only-ad,
+  a.vtile + .ad-slot.ad-half-vertical.pc-only-ad {
+    margin: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  
+  .ad-slot.ad-half-vertical.pc-only-ad + .halfpage-ad-wrapper,
+  .pc-only-ad + .halfpage-ad-wrapper {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    position: relative !important;
+    top: 0 !important;
+  }
+  
+  .vtile + .ad-slot.ad-half-vertical.pc-only-ad + .halfpage-ad-wrapper {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  
+  .vtile + .halfpage-ad-wrapper,
+  a.vtile + .halfpage-ad-wrapper {
+    margin-top: 0 !important;
+  }
+  
+  .halfpage-ad-wrapper .halfpage-inner {
+    position: relative !important;
+    width: 100vw !important;
+    height: calc(100vw * 1.5) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    display: block !important;
+  }
+  
+  .halfpage-ad-wrapper img {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    border-radius: 0 !important;
+    display: block !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+  
+  .mpu-ad-wrapper {
+    display: block !important;
+    width: 100vw !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+  
+  .mpu-ad-wrapper .mpu-inner {
+    position: relative !important;
+    width: 100vw !important;
+    height: calc(100vw * 0.5) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    display: block !important;
+  }
+  
+  .mpu-ad-wrapper img {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    border-radius: 0 !important;
+    display: block !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+  
+  .halfpage-ad-wrapper .ad-badge,
+  .mpu-ad-wrapper .ad-badge {
+    position: absolute !important;
+    top: 10px !important;
+    left: 10px !important;
+    z-index: 10 !important;
+    background: #334155 !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+  }
+}
+
+/* ===== CRITICAL FIX: SP版でPC版広告を完全に削除 ===== */
+@media (max-width: 768px) {
+  div.ad-slot.ad-half-vertical.pc-only-ad,
+  .v-track > div.ad-slot.ad-half-vertical.pc-only-ad,
+  #vcolA div.ad-slot.ad-half-vertical.pc-only-ad,
+  #vcolB div.ad-slot.ad-half-vertical.pc-only-ad,
+  a.vtile + div.ad-slot.ad-half-vertical.pc-only-ad {
+    display: none !important;
+    visibility: collapse !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    min-height: 0 !important;
+    width: 0 !important;
+    max-width: 0 !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+    flex: none !important;
+  }
+}

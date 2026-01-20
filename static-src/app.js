@@ -454,12 +454,63 @@
     `;
   }
 
+  // ========= TOP PAGE CARD GRID (index.html with #post-grid) =========
+  function formatDateSlash(dateStr) {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      return parts.join("/");
+    }
+    return dateStr;
+  }
+
+  function createTopPageCardHtml(post) {
+    const title = escapeHtml(post.title || "(タイトルなし)");
+    const date = formatDateSlash(post.date_ymd);
+    const url = post.url || "detail.html?id=" + post.id;
+    const image = post.featured_image || "/static-src/tomato/img/latest_1.jpg";
+
+    return `
+      <a class="card" href="${url}">
+        <div class="image">
+          <img src="${image}" alt="${title}" loading="lazy">
+        </div>
+        <div class="body">
+          <div class="meta">${date}</div>
+          <h3>${title}</h3>
+        </div>
+      </a>
+    `;
+  }
+
+  function renderTopPageGrid(posts) {
+    const grid = document.getElementById("post-grid");
+    if (!grid) return;
+
+    // Filter only published posts (status === 'publish', or all if no status field)
+    const publishedPosts = posts.filter(function (p) {
+      if (!p.hasOwnProperty("status")) return true;
+      return p.status === "publish";
+    });
+
+    if (publishedPosts.length === 0) {
+      grid.innerHTML =
+        '<p style="grid-column: span 12; text-align: center; padding: 40px; color: #64748b;">公開済みの記事がありません</p>';
+      return;
+    }
+
+    grid.innerHTML = publishedPosts.map(createTopPageCardHtml).join("");
+  }
+  // ========= END TOP PAGE CARD GRID =========
+
   async function main() {
     const paper = getPaperFromPath();
     if (!paper) return;
 
     // index.html uses #post-list
     const hasPostList = !!$("#post-list");
+    // Top page (card grid with #post-grid)
+    const hasPostGrid = !!document.getElementById("post-grid");
     // list.html uses .grid .tile
     const hasTileGrid = !!document.querySelector(".grid .tile");
     // detail.html uses article.article-content OR #post-detail
@@ -470,6 +521,14 @@
       const url = `/static/${paper}/posts.json`;
       const posts = await fetchJson(url);
       renderList(posts, paper);
+      return;
+    }
+
+    // Top page (card grid with #post-grid)
+    if (hasPostGrid) {
+      const url = `/static/${paper}/posts.json`;
+      const posts = await fetchJson(url);
+      renderTopPageGrid(posts);
       return;
     }
 
@@ -506,3 +565,517 @@
 
   main().catch((e) => showError(String(e && e.message ? e.message : e)));
 })();
+
+
+/* ========================================
+   TOP PAGE SCRIPTS (from tomato/js/script.js)
+   ======================================== */
+
+/**
+ * Tomato News - Main JavaScript
+ * トマト新聞メインスクリプト
+ */
+
+/* ===== Header Height Calculation ===== */
+function updateHeaderHeight(){
+  var hdr = document.querySelector('header');
+  if(hdr){
+    // Use double requestAnimationFrame to ensure media queries are evaluated
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        var height = Math.ceil(hdr.getBoundingClientRect().height);
+        if(height > 0){
+          document.documentElement.style.setProperty('--hdrH', height + 'px');
+        }
+      });
+    });
+  }
+}
+
+// Update keyword bar height
+function updateKeywordHeight(){
+  var kwBar = document.querySelector('.kw-bar');
+  if(kwBar){
+    var height = Math.ceil(kwBar.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--kwH', height + 'px');
+  } else {
+    document.documentElement.style.setProperty('--kwH', '0px');
+  }
+}
+
+// Initialize with defaults
+document.documentElement.style.setProperty('--kwH', '0px');
+document.documentElement.style.setProperty('--hdrH', '64px'); // Default mobile height
+
+// Function to setup height tracking once header is found
+function setupHeaderHeightTracking(){
+  var hdr = document.querySelector('header');
+  if(!hdr) return;
+  
+  // Header found, update heights
+  updateHeaderHeight();
+  updateKeywordHeight();
+  
+  // Update multiple times to catch media query changes
+  setTimeout(updateHeaderHeight, 50);
+  setTimeout(updateHeaderHeight, 150);
+  setTimeout(updateHeaderHeight, 300);
+  setTimeout(updateHeaderHeight, 500);
+  
+  // Watch for resize to recalculate
+  var resizeTimer;
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){
+      updateHeaderHeight();
+      updateKeywordHeight();
+    }, 100);
+  });
+  
+  // Also update after window loads
+  window.addEventListener('load', function(){
+    updateHeaderHeight();
+    updateKeywordHeight();
+  });
+}
+
+// Wait for header to load - check immediately and also listen for event from components.js
+(function checkHeader(){
+  var hdr = document.querySelector('header');
+  if(hdr){
+    setupHeaderHeightTracking();
+  } else {
+    // Header not loaded yet, check again shortly
+    setTimeout(checkHeader, 50);
+  }
+})();
+
+// Listen for headerLoaded event from components.js
+window.addEventListener('headerLoaded', function(){
+  setupHeaderHeightTracking();
+});
+
+// Chips handling (unchanged)
+(function(){
+  var chips = document.querySelector('.pill-bar, .chip-row, .category-chips');
+  if(chips){
+    var ch = Math.ceil(chips.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--chipsH', ch + 'px');
+    document.body.classList.add('has-chips');
+    var ph = document.createElement('div'); ph.style.height = ch + 'px';
+    chips.parentNode.insertBefore(ph, chips.nextSibling);
+  }
+})();
+
+/* ===== Footer Accordion Function ===== */
+function toggleFooterMenu(element) {
+  if (window.innerWidth <= 768) {
+    element.classList.toggle('active');
+  }
+}
+
+/* ===== Utilities ===== */
+const once = (fn) => { let done=false; return (...a)=>{ if(done) return; done=true; fn(...a); }; };
+const debounce = (fn,ms=240)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; };
+
+/* ===== Demo Modal ===== */
+function openModal(kind){ alert(kind==='signin' ? 'ログイン（ダミー）' : '会員登録（ダミー）'); }
+
+/* ===== Seamless Horizontal Lanes ===== */
+function prepareSeamless(id){
+  const track = document.getElementById(id);
+  if(!track || track.dataset.cloned) return;
+  const children = Array.from(track.children);
+  children.forEach(el => track.appendChild(el.cloneNode(true)));
+  track.dataset.cloned = "1";
+}
+
+/* ===== Vertical Columns ===== */
+function initVCol(colId, {speed=0.34, direction=1}={}){
+  const col = document.getElementById(colId);
+  if(!col) return;
+  if(col.dataset.inited==="1") return;
+  const track = col.querySelector('.v-track');
+  if(!track) return;
+  const items = Array.from(track.children);
+  if(!track.dataset.cloned){
+    items.forEach(el => track.appendChild(el.cloneNode(true)));
+    track.dataset.cloned = "1";
+  }
+  let y = 0, playing = true, rafId = 0;
+  const loopH = () => track.scrollHeight/2;
+  const setY = val => { y=val; track.style.transform = `translateY(${y}px)`; };
+  const step = () => {
+    if(playing){
+      setY(y - speed*direction);
+      if(direction===1 && -y >= loopH()) setY(0);
+      if(direction===-1 && y >= 0) setY(-loopH());
+    }
+    rafId = requestAnimationFrame(step);
+  };
+  const start = once(()=>{ setY(direction===1 ? 0 : -loopH()/2); rafId=requestAnimationFrame(step); });
+  const stop = ()=>{ playing=false; };
+  const resume = ()=>{ playing=true; };
+  col.addEventListener('mouseenter',stop);
+  col.addEventListener('mouseleave',resume);
+  const ro = new ResizeObserver(()=> start());
+  ro.observe(track);
+  col.dataset.inited = "1";
+  col._destroy = ()=>{ cancelAnimationFrame(rafId); ro.disconnect(); col.dataset.inited=""; };
+}
+
+function destroyVCols(){
+  ['vcolA','vcolB'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && el.dataset.inited==="1" && typeof el._destroy === 'function'){ el._destroy(); }
+    // SP版では複製された要素を削除
+    const track = el ? el.querySelector('.v-track') : null;
+    if(track && track.dataset.cloned === "1"){
+      const children = Array.from(track.children);
+      const half = Math.floor(children.length / 2);
+      // 後半（複製された要素）を削除
+      children.slice(half).forEach(child => child.remove());
+      track.dataset.cloned = "";
+    }
+  });
+}
+
+function boot(){
+  ['laneTrackA','laneTrackB','laneTrackVideo'].forEach(prepareSeamless);
+  const isPC = window.matchMedia('(min-width:1180px)').matches;
+  if(isPC){
+    initVCol('vcolA',{speed:0.32, direction:1});
+    initVCol('vcolB',{speed:0.27, direction:-1});
+  }else{
+    destroyVCols();
+  }
+  // mobile sticky ad: show after delay if viewport <= 900px
+  const sticky = document.getElementById('stickyAd');
+  if(window.matchMedia('(max-width:900px)').matches){
+    setTimeout(()=>sticky.classList.add('active'), 1200);
+  }else{
+    sticky.classList.remove('active');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', boot);
+window.addEventListener('load', boot);
+window.addEventListener('resize', debounce(boot, 200));
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') boot(); });
+
+/* ===== Ad Thumbnail Background Assignment ===== */
+(function(){
+  var slots = document.querySelectorAll('.right-gallery .ad-slot');
+  for (var i = 0; i < slots.length; i++) {
+    var n = i + 1;
+    slots[i].style.setProperty('--ad-img', 'url(./img/ad_' + n + '.jpg)');
+  }
+})();
+
+/* ===== Local Image Mapping for Extra Sections ===== */
+(function(){
+  // 新着NEWS（latest_X.jpg）
+  document.querySelectorAll('.latest-news img').forEach(function(el, i){
+    el.src = './img/latest_' + (i + 1) + '.jpg';
+  });
+
+  // 新聞広告紹介（paperad_X.jpg）
+  document.querySelectorAll('.paper-ad img').forEach(function(el, i){
+    el.src = './img/paperad_' + (i + 1) + '.jpg';
+  });
+
+  // 紙面プレビュー（preview_X.jpg）
+  document.querySelectorAll('.preview-paper img').forEach(function(el, i){
+    el.src = './img/preview_' + (i + 1) + '.jpg';
+  });
+
+  // フッター広告（footerad_X.jpg） — 疑似要素背景で割当
+  document.querySelectorAll('.footer-ad').forEach(function(el, i){
+    el.style.setProperty('--footerad-img', 'url(./img/footerad_' + (i + 1) + '.jpg)');
+  });
+})();
+
+/* ===== Override Selectors and Local Image Fix ===== */
+(function(){
+  // 新着NEWS: section#news 内の .card .image img
+  document.querySelectorAll('#news .card .image img').forEach(function(el, i){
+    el.src = './img/latest_' + (i + 1) + '.jpg';
+  });
+
+  // 新聞広告紹介枠: section#newspaper-ads 内の .card .image img
+  document.querySelectorAll('#newspaper-ads .card .image img').forEach(function(el, i){
+    el.src = './img/paperad_' + (i + 1) + '.jpg';
+  });
+
+  // 紙面プレビュー: section#paper 内の .card .image img
+  document.querySelectorAll('#paper .card .image img').forEach(function(el, i){
+    el.src = './img/preview_' + (i + 1) + '.jpg';
+  });
+
+  // フッター広告: alt="フッター広告" のimgを置換（タグはそのまま）
+  var fimg = document.querySelector('footer img[alt="フッター広告"]');
+  if (fimg){ fimg.src = './img/footerad_1.jpg'; }
+})();
+
+/* ===== KW Slider Boot ===== */
+(function(){
+  // Measure kw-bar height and set --kwH, then add body class for padding compensation
+  function applyKWPadding(){
+    var kb = document.querySelector('.kw-bar');
+    if(!kb) return;
+    var h = Math.ceil(kb.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--kwH', h + 'px');
+    document.body.classList.add('has-kw');
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyKWPadding);
+  } else {
+    applyKWPadding();
+  }
+  window.addEventListener('resize', function(){ clearTimeout(window.__kw_t); window.__kw_t=setTimeout(applyKWPadding, 150); });
+})();
+
+/* ===== KW Slider Boot v2 ===== */
+(function(){
+  function headerHeight(){
+    var h=64;
+    var hdr = document.querySelector('header, .header, [data-header]');
+    if(hdr){ h = Math.ceil(hdr.getBoundingClientRect().height); }
+    document.documentElement.style.setProperty('--hdrH', h+'px');
+  }
+  function kwHeight(){
+    var kb = document.querySelector('.kw-bar');
+    if(!kb) return;
+    var h = Math.ceil(kb.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--kwH', h+'px');
+    document.body.classList.add('has-kw');
+  }
+  function init(){
+    headerHeight(); kwHeight();
+  }
+  if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', init); }
+  else { init(); }
+  window.addEventListener('resize', function(){ clearTimeout(window.__kw_r); window.__kw_r=setTimeout(init, 120); });
+})();
+
+/* ===== Square Thumbs Boot ===== */
+(function(){
+  function forceSquares(){
+    var scope = document.querySelector('main') || document.body;
+    var imgs = scope.querySelectorAll('img');
+    imgs.forEach(function(img){
+      if (img.closest('header, nav, footer')) return;
+      var p = img.parentElement;
+      if(!p) return;
+      var cs = getComputedStyle(p);
+      // if parent has no aspect ratio, set it to square for thumbnails that look like cards
+      if (!cs.aspectRatio || cs.aspectRatio == 'auto') {
+        if (p.className.match(/card|list|slider|thumb|image|media|ad|paper|feature|column|video|news/i)) {
+          p.style.aspectRatio = '1 / 1';
+          p.style.overflow = 'hidden';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'cover';
+          img.style.aspectRatio = '1 / 1';
+        }
+      }
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', forceSquares);
+  } else {
+    forceSquares();
+  }
+  window.addEventListener('resize', function(){ clearTimeout(window.__sq_t); window.__sq_t=setTimeout(forceSquares, 150); });
+})();
+
+/* ===== Mobile Menu Toggle ===== */
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobileMenu');
+  const overlay = document.getElementById('mobileMenuOverlay');
+  menu.classList.toggle('active');
+  overlay.classList.toggle('active');
+}
+
+/* ===== Dynamic Market Data Fetching - 4品種対応 ===== */
+(function() {
+  // トマト市況データ管理 - 4品種対応
+  class TomatoMarketData {
+    constructor() {
+      this.items = [];
+      this.lastUpdate = null;
+    }
+
+    // デモデータの生成（PDFの仕様に基づく）
+    generateDemoData() {
+      this.items = [
+        {
+          item_code: 34400,
+          item_name: "大玉トマト",
+          quantity_ton: 47,
+          avg_price: 878,
+          diff_prev: { sign: "UP", value: 131 },
+          file_date: "2025-11-26"
+        },
+        {
+          item_code: 34480,
+          item_name: "中玉トマト",
+          quantity_ton: 32,
+          avg_price: 945,
+          diff_prev: { sign: "DOWN", value: 58 },
+          file_date: "2025-11-26"
+        },
+        {
+          item_code: 34460,
+          item_name: "ミニトマト",
+          quantity_ton: 28,
+          avg_price: 1120,
+          diff_prev: { sign: "UP", value: 89 },
+          file_date: "2025-11-26"
+        },
+        {
+          item_code: 34410,
+          item_name: "ファーストトマト",
+          quantity_ton: null, // オフシーズン
+          avg_price: null,
+          diff_prev: { sign: null, value: null },
+          file_date: "2025-11-26"
+        }
+      ];
+      
+      this.lastUpdate = new Date();
+      return this;
+    }
+
+    // WordPress REST APIからデータを取得
+    async fetchRealData() {
+      try {
+        const response = await fetch('/wp-json/tomato/v1/latest', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('データ取得に失敗しました');
+        }
+        
+        const data = await response.json();
+        this.items = data.items || [];
+        this.lastUpdate = new Date(data.updated_at);
+        
+        return this;
+      } catch (error) {
+        console.log('APIが利用できないため、デモデータを使用します');
+        return this.generateDemoData();
+      }
+    }
+  }
+
+  // UI更新クラス - 4品種カード対応
+  class MarketUI {
+    updateMarketCards(data) {
+      data.items.forEach(item => {
+        const code = item.item_code;
+        
+        // PC版とSP版の両方の価格を更新
+        const priceIds = [`price-${code}`, `price-${code}-sp`];
+        priceIds.forEach(id => {
+          const priceEl = document.getElementById(id);
+          if (priceEl) {
+            priceEl.textContent = item.avg_price != null ? item.avg_price.toLocaleString() : '—';
+          }
+        });
+        
+        // PC版とSP版の両方の前市比を更新
+        const changeIds = [`change-${code}`, `change-${code}-sp`];
+        changeIds.forEach(id => {
+          const changeContainer = document.getElementById(id);
+          if (changeContainer) {
+            const iconEl = changeContainer.querySelector('.change-icon');
+            const valueEl = changeContainer.querySelector('.change-value');
+            
+            // クラスをリセット
+            changeContainer.classList.remove('trend-up', 'trend-down');
+            
+            if (item.diff_prev && item.diff_prev.value != null) {
+              valueEl.textContent = item.diff_prev.value.toLocaleString();
+              
+              if (item.diff_prev.sign === 'UP') {
+                changeContainer.classList.add('trend-up');
+                iconEl.textContent = '↗';
+              } else if (item.diff_prev.sign === 'DOWN') {
+                changeContainer.classList.add('trend-down');
+                iconEl.textContent = '↘';
+              } else if (item.diff_prev.sign === 'EQUAL') {
+                iconEl.textContent = '→';
+              }
+            } else {
+              iconEl.textContent = '—';
+              valueEl.textContent = '—';
+            }
+          }
+        });
+        
+        // PC版とSP版の両方の取引量を更新
+        const quantityIds = [`quantity-${code}`, `quantity-${code}-sp`];
+        quantityIds.forEach(id => {
+          const quantityEl = document.getElementById(id);
+          if (quantityEl) {
+            quantityEl.textContent = item.quantity_ton != null ? item.quantity_ton.toLocaleString() : '—';
+          }
+        });
+      });
+      
+      // 更新日時を表示
+      if (data.lastUpdate) {
+        const dateStr = data.lastUpdate.toLocaleDateString('ja-JP', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        
+        const dateElements = document.querySelectorAll('.market-date');
+        dateElements.forEach(el => {
+          el.textContent = `${dateStr}現在 / 日農平均価格（円/kg）`;
+        });
+      }
+    }
+  }
+
+  // 初期化と定期更新
+  async function initMarketData() {
+    const marketData = new TomatoMarketData();
+    const ui = new MarketUI();
+    
+    // データ取得と表示を更新する関数
+    async function updateMarketData() {
+      try {
+        await marketData.fetchRealData();
+        ui.updateMarketCards(marketData);
+        
+        console.log('トマト市況データを更新しました:', {
+          itemCount: marketData.items.length,
+          lastUpdate: marketData.lastUpdate
+        });
+      } catch (error) {
+        console.error('Market Data Update Error:', error);
+      }
+    }
+    
+    // 初回読み込み
+    await updateMarketData();
+    
+    // 5分ごとに更新
+    setInterval(updateMarketData, 5 * 60 * 1000);
+  }
+  
+  // DOMContentLoadedイベントで初期化
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMarketData);
+  } else {
+    initMarketData();
+  }
+})();
+
