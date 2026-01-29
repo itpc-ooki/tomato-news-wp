@@ -25,19 +25,18 @@ add_action('init', function () {
 });
 
 /**
- * 2) ACF Field Group: 新聞マスタ設定
- * - ②-2方針：テンプレは管理画面で選ばない（増えるたびにchoices追加が必要になるため）
- * - slug からテンプレを自動決定:
- *   template-{slug}-index.php
- * - 出力先:
- *   /var/www/static/{output_subdir}/index.html
- *   ※ output_subdir が空なら slug を使う
+ * 2) ACF Field Groups
+ * - 新聞マスタ設定
+ * - 広告枠（ad_item）設定
  */
 add_action('acf/init', function () {
 
   // ACFが無効の環境では何もしない
   if (!function_exists('acf_add_local_field_group')) return;
 
+  // ---------------------------------------------------------------------------
+  // ACF Field Group: 新聞マスタ設定
+  // ---------------------------------------------------------------------------
   acf_add_local_field_group([
     'key' => 'group_newspaper_master',
     'title' => '新聞マスタ設定',
@@ -60,7 +59,6 @@ add_action('acf/init', function () {
         'required' => 0,
         'wrapper' => ['width' => '50'],
       ],
-      // 任意：表示名（テンプレ内で使いたい場合）
       [
         'key' => 'field_newspaper_display_name',
         'label' => '表示名（任意）',
@@ -85,4 +83,72 @@ add_action('acf/init', function () {
     'instruction_placement' => 'label',
     'active' => true,
   ]);
+
+  // ---------------------------------------------------------------------------
+  // ACF Field Group: 広告枠（ad_item）設定
+  // ---------------------------------------------------------------------------
+  acf_add_local_field_group([
+    'key' => 'group_ad_item_fields',
+    'title' => '広告枠：画像 / URL / 動画',
+    'fields' => [
+
+      // リンクURL
+      [
+        'key' => 'field_ad_item_link_url',
+        'label' => 'リンクURL',
+        'name' => 'link_url',
+        'type' => 'url',
+        'instructions' => 'クリック先のURLを入力してください。',
+        'required' => 0,
+        'wrapper' => ['width' => '100'],
+        'default_value' => '',
+        'placeholder' => 'https://example.com/',
+      ],
+
+      // 画像
+      [
+        'key' => 'field_ad_item_image',
+        'label' => '画像',
+        'name' => 'image',
+        'type' => 'image',
+        'instructions' => '広告 / PR / スポンサー枠に表示する画像を選択してください。',
+        'required' => 0,
+        'wrapper' => ['width' => '100'],
+        'return_format' => 'array',   // array | id | url すべて対応（cli-static-build.php側で対応済）
+        'preview_size' => 'medium',
+        'library' => 'all',
+        'mime_types' => 'jpg,jpeg,png,gif,webp',
+      ],
+
+      // 動画（スポンサー動画用）
+      [
+        'key' => 'field_ad_item_video',
+        'label' => '動画（スポンサー動画用）',
+        'name' => 'video',
+        'type' => 'file',
+        'instructions' => "スポンサー動画広告紹介（sponsor_video）の場合に設定してください。\n他の枠タイプでは空でOKです。",
+        'required' => 0,
+        'wrapper' => ['width' => '100'],
+        'return_format' => 'array',   // array | id | url すべて対応
+        'library' => 'all',
+        'mime_types' => 'mp4,webm,mov',
+      ],
+
+    ],
+    'location' => [
+      [
+        [
+          'param' => 'post_type',
+          'operator' => '==',
+          'value' => 'ad_item',
+        ],
+      ],
+    ],
+    'position' => 'normal',
+    'style' => 'default',
+    'label_placement' => 'top',
+    'instruction_placement' => 'label',
+    'active' => true,
+  ]);
+
 });
