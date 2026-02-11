@@ -111,6 +111,58 @@ class Tomato_Static_Builder_ModeB {
     }
   }
 
+
+  /**
+   * Rewrite "/static/..." asset paths inside generated HTML to relative paths.
+   * This makes the same build work both:
+   * - Local: served under "/static/..."
+   * - S3: served at bucket root "/..."
+   *
+   * Example (depth=1 for /tomato/index.html):
+   *   /static/style.css -> ../style.css
+   *   /static/app.js    -> ../app.js
+   *   /static/common/...-> ../common/...
+   */
+  private static function rewrite_static_prefix_in_html(string $file, int $depth): void {
+    if (!is_file($file)) return;
+
+    $html = file_get_contents($file);
+    if ($html === false) return;
+
+    $prefix = str_repeat('../', max(0, $depth));
+
+    // Replace /static/... (both " and ')
+    $html = preg_replace('#(["\'])/static/#', '$1' . $prefix, $html);
+
+    // Also handle cases like href="/static" (no trailing slash)
+    $html = preg_replace('#(["\'])/static(["\'])#', '$1' . $prefix . '$2', $html);
+
+    file_put_contents($file, $html);
+  }
+
+  private static function rewrite_static_prefix_in_html_under(string $root): void {
+    $root = rtrim($root, '/');
+    if (!is_dir($root)) return;
+
+    $it = new RecursiveIteratorIterator(
+      new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)
+    );
+
+    foreach ($it as $f) {
+      /** @var SplFileInfo $f */
+      if (!$f->isFile()) continue;
+      if (strtolower($f->getExtension()) !== 'html') continue;
+
+      $file = $f->getPathname();
+
+      // Depth is number of path segments from $root to the html file's directory.
+      $rel_dir = ltrim(str_replace($root, '', $f->getPath()), '/');
+      $depth = $rel_dir === '' ? 0 : substr_count($rel_dir, '/') + 1;
+
+      self::rewrite_static_prefix_in_html($file, $depth);
+    }
+  }
+
   /**
    * Copy common front assets from /static-src to /static.
    *
@@ -150,6 +202,10 @@ class Tomato_Static_Builder_ModeB {
 
     // Account pages (login / register / mypage)
     self::rcopy($src . '/account', $dst . '/account');
+
+
+    // Make /static/... paths work on both local (/static/...) and S3 bucket root (/...)
+    self::rewrite_static_prefix_in_html_under(self::static_root());
   }
 
 
@@ -192,33 +248,34 @@ private static function sync_uploads_assets(): void {
 
     $url = (string) $url;
 
-    // Already relative
+    // If it's a root-relative path, make it relative so it works both:
+    // - Local:  http://localhost:8080/static/{paper}/index.html
+    // - S3:     http://.../{paper}/index.html
+    //
+    // Example:
+    //   /wp-content/uploads/...   -> ../wp-content/uploads/...
+    //   /static/wp-content/...    -> ../wp-content/...
     if (strpos($url, '/') === 0) {
-      // In staging we deploy only /static, so serve uploads from /static/wp-content/uploads/...
-      if (strpos($url, '/wp-content/uploads/') === 0 && strpos($url, '/static/wp-content/uploads/') !== 0) {
-        return '/static' . $url;
+      // Normalize "/static/..." to "/..."
+      if (strpos($url, '/static/') === 0) {
+        $url = substr($url, strlen('/static'));
+        if ($url === '') $url = '/';
       }
+
+      // Uploads (and other wp-content assets): point to root wp-content, but as a relative path from paper pages.
+      if (strpos($url, '/wp-content/') === 0) {
+        return '../' . ltrim($url, '/');
+      }
+
       return $url;
     }
 
-    $path = wp_parse_url($url, PHP_URL_PATH);
-    if (!$path) {
-      // fallback: return original (better than null)
+    // Absolute URL (http/https) -> keep as-is
+    if (preg_match('#^https?://#i', $url)) {
       return $url;
     }
 
-    $query = wp_parse_url($url, PHP_URL_QUERY);
-
-    // In staging we deploy only /static, so serve uploads from /static/wp-content/uploads/...
-    if (strpos($path, '/wp-content/uploads/') === 0 && strpos($path, '/static/wp-content/uploads/') !== 0) {
-      $path = '/static' . $path;
-    }
-
-    if ($query) {
-      return $path . '?' . $query;
-    }
-
-    return $path;
+    return $url;
   }
 
 
