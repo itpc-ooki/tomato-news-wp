@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>マイページ | トマト新聞</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- Common header/footer styles -->
+  <link rel="stylesheet" href="/static/common/css/styles.css">
+</head>
+<body class="page-mypage">
+
+<div id="header-container"></div>
+
+<div class="main-content">
+<div id="successMessage" class="success-message">変更を保存しました</div>
+<div class="page-header">
+<h1 class="page-title">マイページ</h1>
+<p class="page-subtitle">会員情報の確認・編集ができます</p>
+</div>
+<form id="mypageForm">
+
+<!-- 基本情報 -->
+<div class="card">
+<div class="card-header">
+<h2 class="card-title">
+<span class="card-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
+基本情報
+</h2>
+</div>
+<div class="card-body">
+<div class="form-group">
+<label class="form-label">メールアドレス<span class="required">*</span></label>
+<input type="email" name="email" class="form-input" value="user@example.com" required>
+</div>
+<div class="form-group">
+<label class="form-label">パスワード</label>
+<input type="password" name="password" class="form-input" placeholder="変更する場合のみ入力してください">
+<small style="color: var(--muted); font-size: 0.875rem; display: block; margin-top: 4px;">※アルファベット大文字・小文字、数字を含む8文字以上20字以内の半角英数で入力してください</small>
+</div>
+<div class="form-group">
+<label class="form-label">パスワード（確認）</label>
+<input type="password" name="password_confirm" class="form-input" placeholder="確認用パスワードを再入力してください">
+</div>
+<div class="form-group">
+<label class="form-label">ニックネーム<span class="required">*</span></label>
+<input type="text" name="nickname" class="form-input" value="トマト太郎" required>
+</div>
+<div class="form-group">
+<label class="form-label">性別<span class="required">*</span></label>
+<div class="radio-group">
+<label class="radio-item selected"><input type="radio" name="gender" value="男" checked required><span>男</span></label>
+<label class="radio-item"><input type="radio" name="gender" value="女" required><span>女</span></label>
+</div>
+</div>
+<div class="form-group">
+<label class="form-label">都道府県<span class="required">*</span></label>
+<select name="prefecture" class="form-select" required>
+<option value="">選択してください</option>
+<option value="北海道">北海道</option>
+<option value="青森県">青森県</option>
+<option value="岩手県">岩手県</option>
+<option value="宮城県">宮城県</option>
+<option value="秋田県">秋田県</option>
+<option value="山形県">山形県</option>
+<option value="福島県">福島県</option>
+<option value="茨城県">茨城県</option>
+<option value="栃木県" selected>栃木県</option>
+<option value="群馬県">群馬県</option>
+<option value="埼玉県">埼玉県</option>
+<option value="千葉県">千葉県</option>
+<option value="東京都">東京都</option>
+<option value="神奈川県">神奈川県</option>
+<option value="新潟県">新潟県</option>
+<option value="富山県">富山県</option>
+<option value="石川県">石川県</option>
+<option value="福井県">福井県</option>
+<option value="山梨県">山梨県</option>
+<option value="長野県">長野県</option>
+<option value="岐阜県">岐阜県</option>
+<option value="静岡県">静岡県</option>
+<option value="愛知県">愛知県</option>
+<option value="三重県">三重県</option>
+<option value="滋賀県">滋賀県</option>
+<option value="京都府">京都府</option>
+<option value="大阪府">大阪府</option>
+<option value="兵庫県">兵庫県</option>
+<option value="奈良県">奈良県</option>
+<option value="和歌山県">和歌山県</option>
+<option value="鳥取県">鳥取県</option>
+<option value="島根県">島根県</option>
+<option value="岡山県">岡山県</option>
+<option value="広島県">広島県</option>
+<option value="山口県">山口県</option>
+<option value="徳島県">徳島県</option>
+<option value="香川県">香川県</option>
+<option value="愛媛県">愛媛県</option>
+<option value="高知県">高知県</option>
+<option value="福岡県">福岡県</option>
+<option value="佐賀県">佐賀県</option>
+<option value="長崎県">長崎県</option>
+<option value="熊本県">熊本県</option>
+<option value="大分県">大分県</option>
+<option value="宮崎県">宮崎県</option>
+<option value="鹿児島県">鹿児島県</option>
+<option value="沖縄県">沖縄県</option>
+</select>
+</div>
+<div class="form-group">
+<label class="form-label">市町村<span class="required">*</span></label>
+<input type="text" name="city" class="form-input" value="宇都宮市" required placeholder="○○市○○町">
+</div>
+<div class="form-group">
+<label class="form-label">職業<span class="required">*</span></label>
+<div class="radio-group">
+<label class="radio-item selected"><input type="radio" name="occupation" value="専業農家" checked required><span>専業農家</span></label>
+<label class="radio-item"><input type="radio" name="occupation" value="兼業農家" required><span>兼業農家</span></label>
+<label class="radio-item"><input type="radio" name="occupation" value="農業法人" required><span>農業法人</span></label>
+<label class="radio-item"><input type="radio" name="occupation" value="JA営農指導員" required><span>JA営農指導員</span></label>
+<label class="radio-item"><input type="radio" name="occupation" value="農業普及指導員" required><span>農業普及指導員</span></label>
+<label class="radio-item"><input type="radio" name="occupation" value="研究職" required><span>研究職</span></label>
+<label class="radio-item"><input type="radio" name="occupation" value="その他" required><span>その他（会社員・団体職員・公務員・学生など）</span></label>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 栽培情報 -->
+<div class="card">
+<div class="card-header">
+<h2 class="card-title">
+<span class="card-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 22c4.97 0 9-4.03 9-9-4.97 0-9 4.03-9 9zM5.6 10.25c0 1.38 1.12 2.5 2.5 2.5.53 0 1.01-.16 1.42-.44l-.02.19c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5l-.02-.19c.4.28.89.44 1.42.44 1.38 0 2.5-1.12 2.5-2.5 0-1-.59-1.85-1.43-2.25.84-.4 1.43-1.25 1.43-2.25 0-1.38-1.12-2.5-2.5-2.5-.53 0-1.01.16-1.42.44l.02-.19C14.5 2.12 13.38 1 12 1S9.5 2.12 9.5 3.5l.02.19c-.4-.28-.89-.44-1.42-.44-1.38 0-2.5 1.12-2.5 2.5 0 1 .59 1.85 1.43 2.25-.84.4-1.43 1.25-1.43 2.25z"/></svg></span>
+栽培情報
+</h2>
+</div>
+<div class="card-body">
+<div class="form-group">
+<label class="form-label">営農規模<span class="required">*</span></label>
+<select class="form-select" name="farm_scale" required>
+<option value="">選択してください</option>
+<option value="農業をしていない">農業をしていない</option>
+<option value="家庭菜園">家庭菜園</option>
+<option value="10a未満">10a未満</option>
+<option value="10a～25a未満" selected>10a～25a未満</option>
+<option value="25a～50a未満">25a～50a未満</option>
+<option value="50a～1ha未満">50a～1ha未満</option>
+<option value="1ha～10ha未満">1ha～10ha未満</option>
+<option value="10ha～20ha未満">10ha～20ha未満</option>
+<option value="20ha～30ha未満">20ha～30ha未満</option>
+<option value="30ha以上">30ha以上</option>
+</select>
+</div>
+<div class="form-group">
+<label class="form-label">栽培品目（1品目目）<span class="optional">（任意）</span></label>
+<select class="form-select" name="crop_1">
+<option value="">―</option>
+<option value="大玉トマト" selected>大玉トマト</option>
+<option value="中玉トマト">中玉トマト</option>
+<option value="ミニトマト">ミニトマト</option>
+<option value="トマト台木">トマト台木</option>
+<option value="水稲">水稲</option>
+<option value="麦類">麦類</option>
+<option value="豆類">豆類</option>
+<option value="スイートコーン">スイートコーン</option>
+<option value="ハクサイ">ハクサイ</option>
+<option value="キャベツ">キャベツ</option>
+<option value="レタス">レタス</option>
+<option value="ホウレンソウ">ホウレンソウ</option>
+<option value="小松菜">小松菜</option>
+<option value="長ネギ（白ネギ）">長ネギ（白ネギ）</option>
+<option value="青ネギ（葉ネギ）">青ネギ（葉ネギ）</option>
+<option value="キュウリ">キュウリ</option>
+<option value="ナス">ナス</option>
+<option value="タマネギ">タマネギ</option>
+<option value="カボチャ">カボチャ</option>
+<option value="サツマイモ">サツマイモ</option>
+<option value="じゃがいも">じゃがいも</option>
+<option value="ニンジン">ニンジン</option>
+<option value="イチゴ">イチゴ</option>
+<option value="果樹類">果樹類</option>
+<option value="畜産">畜産</option>
+<option value="酪農">酪農</option>
+<option value="ブロッコリー">ブロッコリー</option>
+<option value="アスパラガス">アスパラガス</option>
+<option value="お茶">お茶</option>
+<option value="ピーマン">ピーマン</option>
+<option value="その他">その他</option>
+</select>
+</div>
+<div class="form-group">
+<label class="form-label">栽培品目（2品目目）<span class="optional">（任意）</span></label>
+<select class="form-select" name="crop_2">
+<option value="">―</option>
+<option value="大玉トマト">大玉トマト</option>
+<option value="中玉トマト">中玉トマト</option>
+<option value="ミニトマト" selected>ミニトマト</option>
+<option value="トマト台木">トマト台木</option>
+<option value="水稲">水稲</option>
+<option value="麦類">麦類</option>
+<option value="豆類">豆類</option>
+<option value="スイートコーン">スイートコーン</option>
+<option value="ハクサイ">ハクサイ</option>
+<option value="キャベツ">キャベツ</option>
+<option value="レタス">レタス</option>
+<option value="ホウレンソウ">ホウレンソウ</option>
+<option value="小松菜">小松菜</option>
+<option value="長ネギ（白ネギ）">長ネギ（白ネギ）</option>
+<option value="青ネギ（葉ネギ）">青ネギ（葉ネギ）</option>
+<option value="キュウリ">キュウリ</option>
+<option value="ナス">ナス</option>
+<option value="タマネギ">タマネギ</option>
+<option value="カボチャ">カボチャ</option>
+<option value="サツマイモ">サツマイモ</option>
+<option value="じゃがいも">じゃがいも</option>
+<option value="ニンジン">ニンジン</option>
+<option value="イチゴ">イチゴ</option>
+<option value="果樹類">果樹類</option>
+<option value="畜産">畜産</option>
+<option value="酪農">酪農</option>
+<option value="ブロッコリー">ブロッコリー</option>
+<option value="アスパラガス">アスパラガス</option>
+<option value="お茶">お茶</option>
+<option value="ピーマン">ピーマン</option>
+<option value="その他">その他</option>
+</select>
+</div>
+<div class="form-group">
+<label class="form-label">今後栽培したい品目<span class="optional">（任意）</span></label>
+<select class="form-select" name="future_crop">
+<option value="">―</option>
+<option value="大玉トマト">大玉トマト</option>
+<option value="中玉トマト">中玉トマト</option>
+<option value="ミニトマト">ミニトマト</option>
+<option value="トマト台木">トマト台木</option>
+<option value="水稲">水稲</option>
+<option value="麦類">麦類</option>
+<option value="豆類">豆類</option>
+<option value="スイートコーン">スイートコーン</option>
+<option value="ハクサイ">ハクサイ</option>
+<option value="キャベツ">キャベツ</option>
+<option value="レタス">レタス</option>
+<option value="ホウレンソウ">ホウレンソウ</option>
+<option value="小松菜">小松菜</option>
+<option value="長ネギ（白ネギ）">長ネギ（白ネギ）</option>
+<option value="青ネギ（葉ネギ）">青ネギ（葉ネギ）</option>
+<option value="キュウリ">キュウリ</option>
+<option value="ナス">ナス</option>
+<option value="タマネギ">タマネギ</option>
+<option value="カボチャ">カボチャ</option>
+<option value="サツマイモ">サツマイモ</option>
+<option value="じゃがいも">じゃがいも</option>
+<option value="ニンジン">ニンジン</option>
+<option value="イチゴ">イチゴ</option>
+<option value="果樹類">果樹類</option>
+<option value="畜産">畜産</option>
+<option value="酪農">酪農</option>
+<option value="ブロッコリー">ブロッコリー</option>
+<option value="アスパラガス">アスパラガス</option>
+<option value="お茶">お茶</option>
+<option value="ピーマン">ピーマン</option>
+<option value="その他">その他</option>
+</select>
+</div>
+</div>
+</div>
+
+<!-- 興味・関心 -->
+<div class="card">
+<div class="card-header">
+<h2 class="card-title">
+<span class="card-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span>
+興味・関心
+</h2>
+</div>
+<div class="card-body">
+<div class="form-group">
+<label class="form-label">興味のある分野<span class="optional">（任意・複数選択可）</span></label>
+<div class="checkbox-group">
+<label class="checkbox-item selected"><input type="checkbox" name="interests" value="栽培技術" checked><span>栽培技術</span></label>
+<label class="checkbox-item selected"><input type="checkbox" name="interests" value="病害虫対策" checked><span>病害虫対策</span></label>
+<label class="checkbox-item"><input type="checkbox" name="interests" value="品種情報"><span>品種情報</span></label>
+<label class="checkbox-item"><input type="checkbox" name="interests" value="市況・流通"><span>市況・流通</span></label>
+<label class="checkbox-item"><input type="checkbox" name="interests" value="スマート農業"><span>スマート農業</span></label>
+<label class="checkbox-item"><input type="checkbox" name="interests" value="環境制御"><span>環境制御</span></label>
+<label class="checkbox-item"><input type="checkbox" name="interests" value="有機栽培"><span>有機栽培</span></label>
+<label class="checkbox-item"><input type="checkbox" name="interests" value="補助金・支援制度"><span>補助金・支援制度</span></label>
+</div>
+</div>
+<div class="form-group">
+<label class="form-label">情報配信の希望<span class="optional">（任意・複数選択可）</span></label>
+<div class="checkbox-group">
+<label class="checkbox-item selected"><input type="checkbox" name="newsletter" value="週刊ニュースレター" checked><span>週刊ニュースレター</span></label>
+<label class="checkbox-item selected"><input type="checkbox" name="newsletter" value="新製品・サービス情報" checked><span>新製品・サービス情報</span></label>
+<label class="checkbox-item selected"><input type="checkbox" name="newsletter" value="セミナー・イベント案内" checked><span>セミナー・イベント案内</span></label>
+<label class="checkbox-item"><input type="checkbox" name="newsletter" value="市況速報"><span>市況速報</span></label>
+</div>
+</div>
+</div>
+</div>
+<div class="form-actions">
+<button type="button" class="btn-large btn-secondary" onclick="window.location.href='../index.html'">キャンセル</button>
+<button type="submit" class="btn-large btn-primary">変更を保存</button>
+</div>
+</form>
+</div>
+
+<!-- Footer will be loaded here by JavaScript -->
+<div id="footer-container"></div>
+
+  <!-- 全paper共通 -->
+  <script src="/static/auth.js"></script>
+  <script src="/static/app.js"></script>
+  <!-- Common component loader (header/footer) -->
+  <script src="/static/common/js/components.js"></script>
+</body>
+</html>

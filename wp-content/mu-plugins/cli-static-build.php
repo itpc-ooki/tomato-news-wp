@@ -135,6 +135,10 @@ class Tomato_Static_Builder_ModeB {
     if (is_file($src . '/app.js')) {
       @copy($src . '/app.js', $dst . '/app.js');
     }
+    // Auth helper (Login/Registration/Mypage)
+    if (is_file($src . '/auth.js')) {
+      @copy($src . '/auth.js', $dst . '/auth.js');
+    }
     if (is_file($src . '/style.css')) {
       @copy($src . '/style.css', $dst . '/style.css');
     }
@@ -143,6 +147,9 @@ class Tomato_Static_Builder_ModeB {
     // NOTE: /static-src is not deployed in S3/CloudFront, so these must be copied into /static.
     self::rcopy($src . '/common',     $dst . '/common');
     self::rcopy($src . '/components', $dst . '/components');
+
+    // Account pages (login / register / mypage)
+    self::rcopy($src . '/account', $dst . '/account');
   }
 
 
@@ -359,6 +366,30 @@ private static function sync_uploads_assets(): void {
             'image' => $image_rel,
           ];
 
+          // Ads placement controls (for "ads" bucket)
+          if ($key === 'ads') {
+            // Column: A (left/vcolA) or B (right/vcolB)
+            $col = self::get_acf_field_value('ad_column', $id);
+            $col = is_string($col) ? strtoupper(trim($col)) : '';
+            if ($col !== 'A' && $col !== 'B') $col = 'A';
+
+            // Size: medium (ad-half-vertical) or small (ad-rect-vertical)
+            $size = self::get_acf_field_value('ad_size', $id);
+            $size = is_string($size) ? strtolower(trim($size)) : '';
+            if ($size !== 'medium' && $size !== 'small') $size = 'small';
+
+            // Optional extra class
+            $extra_class = self::get_acf_field_value('ad_extra_class', $id);
+            $extra_class = is_string($extra_class) ? trim($extra_class) : '';
+            if ($extra_class === '') $extra_class = null;
+
+            $item['column'] = $col;
+            $item['size'] = $size;
+            $item['class'] = ($size === 'medium') ? 'ad-half-vertical' : 'ad-rect-vertical';
+            $item['extra_class'] = $extra_class;
+          }
+
+
           if ($key === 'sponsor_videos') {
             $video_url = null;
 
@@ -470,6 +501,11 @@ private static function sync_uploads_assets(): void {
         // featured image (relative path)
         $featured_image = self::get_featured_image_url($post_id);
 
+        // article type (taxonomy: article_type)
+        // e.g. "ニュース" (uses term name)
+        $article_type_names = wp_get_post_terms($post_id, 'article_type', ['fields' => 'names']);
+        $article_type = (!is_wp_error($article_type_names) && !empty($article_type_names)) ? $article_type_names[0] : null;
+
         $list[] = [
           'id'       => $post_id,
           'title'    => $title,
@@ -480,6 +516,7 @@ private static function sync_uploads_assets(): void {
           // Use query param id for simplicity (detail.html?id=XX)
           'url'      => 'detail.html?id=' . $post_id,
           'featured_image' => $featured_image,
+          'article_type' => $article_type,
         ];
 
         // detail json
@@ -493,6 +530,7 @@ private static function sync_uploads_assets(): void {
           'slug'       => $slug,
           'categories' => [$paper],
           'featured_image' => $featured_image,
+          'article_type' => $article_type,
         ];
 
         $detail_path = $posts_dir . '/' . $post_id . '.json';

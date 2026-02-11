@@ -13,6 +13,105 @@
 (function () {
   "use strict";
 
+  /* =====================================================================
+   * Common component loader (header/footer) + sticky offsets
+   * (merged from /static/common/js/components.js)
+   * ===================================================================== */
+
+  // Load header component
+  (async function() {
+    try {
+      const response = await fetch('/static/components/header.html', { cache: 'no-store' });
+      const html = await response.text();
+      const headerContainer = document.getElementById('header-container');
+      if (headerContainer) {
+        headerContainer.innerHTML = html;
+        window.dispatchEvent(new CustomEvent('headerLoaded'));
+      }
+    } catch (error) {
+      console.error('Error loading header:', error);
+    }
+  })();
+
+  // Load footer component
+  (async function() {
+    try {
+      const response = await fetch('/static/components/footer.html', { cache: 'no-store' });
+      const html = await response.text();
+      const footerContainer = document.getElementById('footer-container');
+      if (footerContainer) {
+        footerContainer.innerHTML = html;
+      }
+    } catch (error) {
+      console.error('Error loading footer:', error);
+    }
+  })();
+
+
+  // ===== Sticky offsets (header / kw-bar) =====
+  (function () {
+    "use strict";
+
+    function setCssVar(name, value) {
+      document.documentElement.style.setProperty(name, value);
+    }
+
+    function updateOffsets() {
+      const header = document.querySelector("header");
+      if (header) {
+        const h = Math.ceil(header.getBoundingClientRect().height);
+        setCssVar("--hdrH", h + "px");
+        // Keep compatibility with CSS that uses --header-height
+        setCssVar("--header-height", h + "px");
+      }
+
+      const kb = document.querySelector(".kw-bar");
+      if (!kb) {
+        document.body.classList.remove("has-kw");
+        setCssVar("--kwH", "0px");
+        return;
+      }
+
+      const kbStyle = window.getComputedStyle(kb);
+      const isVisible = kbStyle.display !== "none" && kbStyle.visibility !== "hidden";
+      if (!isVisible) {
+        document.body.classList.remove("has-kw");
+        setCssVar("--kwH", "0px");
+        return;
+      }
+
+      const kwH = Math.ceil(kb.getBoundingClientRect().height) || 0;
+      setCssVar("--kwH", kwH + "px");
+      document.body.classList.add("has-kw");
+    }
+
+    const debounced = (function () {
+      let t = 0;
+      return function () {
+        clearTimeout(t);
+        t = setTimeout(updateOffsets, 100);
+      };
+    })();
+
+    // Run after header is injected
+    window.addEventListener("headerLoaded", function () {
+      updateOffsets();
+      // Images/fonts may change header height after injection
+      setTimeout(updateOffsets, 0);
+      setTimeout(updateOffsets, 250);
+    });
+
+    // Also run on first load (for pages that already have header in HTML)
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", updateOffsets);
+    } else {
+      updateOffsets();
+    }
+
+    window.addEventListener("resize", debounced);
+  })();
+
+
   function $(sel) {
     return document.querySelector(sel);
   }
@@ -32,6 +131,59 @@
     if (idx !== -1 && parts.length >= idx + 2) return parts[idx + 1];
     return null;
   }
+
+  // =========================================================
+  // Header account links: keep ?paper=... in sync with current paper
+  // - Works on /static/{paper}/* pages (paper from path)
+  // - Works on /static/account/* pages (paper from query param)
+  // =========================================================
+  function getCurrentPaper() {
+    const fromPath = getPaperFromPath();
+    // If we are on /static/account/... then the "paper" lives in query string
+    if (!fromPath || fromPath === "account") {
+      const qp = getQueryParam("paper");
+      return qp ? String(qp) : null;
+    }
+    return fromPath;
+  }
+
+  function updateHeaderAccountLinks() {
+    const paper = getCurrentPaper();
+    if (!paper) return;
+
+    const loginHref = `/static/account/login.html?paper=${encodeURIComponent(paper)}`;
+    const registerHref = `/static/account/register.html?paper=${encodeURIComponent(paper)}`;
+    const mypageHref = `/static/account/mypage.html?paper=${encodeURIComponent(paper)}`;
+
+    const ids = {
+      loginLogoutBtn: loginHref,
+      mobileLoginBtn: loginHref,
+      registerBtn: registerHref,
+      mobileRegisterBtn: registerHref,
+      mypageBtn: mypageHref,
+      mobileMypageBtn: mypageHref,
+    };
+
+    Object.keys(ids).forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      // anchors only (buttons should not exist anymore, but keep it safe)
+      if (el.tagName && el.tagName.toLowerCase() === "a") {
+        el.setAttribute("href", ids[id]);
+      }
+    });
+  }
+
+  // Run after header is injected
+  window.addEventListener("headerLoaded", updateHeaderAccountLinks);
+
+  // Also run on first load (for pages that already have header in HTML)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", updateHeaderAccountLinks);
+  } else {
+    updateHeaderAccountLinks();
+  }
+
 
   function getQueryParam(name) {
     return new URLSearchParams(window.location.search).get(name);
@@ -121,6 +273,198 @@
     }
     return "";
   }
+
+
+  function formatSlashDate(ymd) {
+    if (!ymd) return "";
+    const parts = String(ymd).split("-");
+    if (parts.length !== 3) return String(ymd);
+    return `${parts[0]}/${parts[1]}/${parts[2]}`;
+  }
+
+  function formatSlashDateFromPost(post) {
+    if (post && post.date_ymd) return formatSlashDate(post.date_ymd);
+    if (post && post.date) return formatSlashDate(String(post.date).slice(0, 10));
+    return "";
+  }
+
+  function buildNewsCard(post) {
+    const article = document.createElement("article");
+    article.className = "card";
+
+    const href = post.url || `detail.html?id=${post.id}`;
+    article.setAttribute("role", "link");
+    article.setAttribute("tabindex", "0");
+    article.addEventListener("click", () => {
+      window.location.href = href;
+    });
+    article.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        window.location.href = href;
+      }
+    });
+
+    const imgWrap = document.createElement("div");
+    imgWrap.className = "image";
+    const img = document.createElement("img");
+    const title = stripHtml(post.title || "");
+    const imgUrl = resolveUrlMaybeRelative(post.featured_image || "");
+    if (imgUrl) {
+      img.src = imgUrl;
+      img.alt = title;
+      img.loading = "lazy";
+    } else {
+      // keep layout but avoid broken image icon
+      img.alt = "";
+      img.style.display = "none";
+    }
+    imgWrap.appendChild(img);
+
+    const body = document.createElement("div");
+    body.className = "body";
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const dateText = formatSlashDateFromPost(post);
+    const typeText = post.article_type ? String(post.article_type) : "";
+    meta.textContent = typeText ? `${dateText} / ${typeText}` : dateText;
+
+    const h3 = document.createElement("h3");
+    h3.textContent = title;
+
+    body.appendChild(meta);
+    body.appendChild(h3);
+
+    article.appendChild(imgWrap);
+    article.appendChild(body);
+
+    return article;
+  }
+
+  
+async function renderNewsSection(posts, paper) {
+  const section = document.getElementById("news");
+  const grid = document.querySelector("#news .grid");
+  if (!grid) return;
+
+  const all = Array.isArray(posts) ? posts : [];
+  const newsPosts = all.filter((p) => p && p.article_type === "ニュース");
+
+  // Load PR from placements.json (if available)
+  let prItems = [];
+  try {
+    const placements = await fetchJson(`/static/${paper}/placements.json`);
+    prItems = Array.isArray(placements && placements.pr) ? placements.pr : [];
+  } catch (e) {
+    // Keep working even if placements.json is missing
+    prItems = [];
+  }
+
+  const prCount = prItems.length;
+
+  // If nothing to show, hide whole section
+  if (newsPosts.length === 0 && prCount === 0) {
+    if (section) section.style.display = "none";
+    return;
+  }
+  if (section) section.style.display = "";
+
+  function buildNativePrCard(item) {
+    const a = document.createElement("a");
+    a.className = "native-card";
+    a.href = item && item.url ? String(item.url) : "#";
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.setAttribute("aria-label", "記事タイアップ（PR）へ");
+
+    const title = stripHtml(item && item.title ? item.title : "");
+    const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+
+    const badge = document.createElement("div");
+    badge.className = "badge";
+    badge.textContent = "PR";
+
+    const image = document.createElement("div");
+    image.className = "image";
+    const img = document.createElement("img");
+    if (imgUrl) img.src = imgUrl;
+    img.alt = title;
+    img.loading = "lazy";
+    image.appendChild(img);
+
+    const body = document.createElement("div");
+    body.className = "body";
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = "記事広告／タイアップ";
+
+    const h3 = document.createElement("h3");
+    h3.textContent = title || "PR";
+
+    body.appendChild(meta);
+    body.appendChild(h3);
+
+    a.appendChild(badge);
+    a.appendChild(image);
+    a.appendChild(body);
+
+    return a;
+  }
+
+  // Decide how many news cards to show
+  let newsToShow = [];
+
+  if (prCount > 0) {
+    const total = 8;
+    const prToUse = prItems.slice(0, total);
+    const maxNews = Math.max(0, total - prToUse.length);
+    newsToShow = newsPosts.slice(0, maxNews);
+
+    // Rebuild grid deterministically:
+    // - If there is at least 1 "ニュース", place the first PR right after the first news card
+    // - If there are 2+ PR items, place the remaining PR items at the very end
+    //   (this avoids PR being side-by-side near the top and keeps placement stable)
+    grid.innerHTML = "";
+
+    const firstNews = newsToShow.length > 0 ? newsToShow[0] : null;
+    const remainingNews = newsToShow.length > 1 ? newsToShow.slice(1) : [];
+
+    const firstPr = prToUse.length > 0 ? prToUse[0] : null;
+    const remainingPr = prToUse.length > 1 ? prToUse.slice(1) : [];
+
+    if (firstNews) grid.appendChild(buildNewsCard(firstNews));
+    if (firstPr && firstNews) {
+      // Place first PR as the 2nd item (after the first news card)
+      grid.appendChild(buildNativePrCard(firstPr));
+    }
+
+    // If there are no news cards, just render PR(s) normally
+    if (!firstNews && firstPr) {
+      grid.appendChild(buildNativePrCard(firstPr));
+    }
+
+    remainingNews.forEach((p) => grid.appendChild(buildNewsCard(p)));
+
+    // If there are multiple PR items, keep the remaining PR items at the end
+    remainingPr.forEach((pr) => grid.appendChild(buildNativePrCard(pr)));
+
+    return;
+  }
+
+  // No PR:
+  // - If news < 6 -> show only news (all)
+  // - Else -> cap to 8
+  if (newsPosts.length < 6) {
+    newsToShow = newsPosts;
+  } else {
+    newsToShow = newsPosts.slice(0, 8);
+  }
+
+  grid.innerHTML = "";
+  newsToShow.forEach((p) => grid.appendChild(buildNewsCard(p)));
+}
 
   // ===== Added: normalize title + prefer tag text for .meta =====
   function stripHtml(text) {
@@ -535,6 +879,510 @@
     `;
   }
 
+  // =========================================================
+  // ✅ Added: Market.json rendering for index.html
+  // - Updates existing DOM ids in index.html (PC + SP)
+  // - Does NOT touch other pages
+  // =========================================================
+  function hasMarketUi() {
+    return (
+      !!document.querySelector(".market-carousel") ||
+      !!document.querySelector(".sp-only-market") ||
+      !!document.querySelector("[id^='price-'][id$='-sp']") ||
+      !!document.querySelector("[id^='price-']")
+    );
+  }
+
+  function mapVarietyKeyToCode(varietyKey) {
+    // Based on your current index.html IDs:
+    // big -> 34400, mid -> 34480, mini -> 34460, first -> 34410
+    switch (String(varietyKey || "").toLowerCase()) {
+      case "big":
+        return "34400";
+      case "mid":
+        return "34480";
+      case "mini":
+        return "34460";
+      case "first":
+        return "34410";
+      default:
+        return null;
+    }
+  }
+
+  function normalizeTrend(trend, diff) {
+    const t = String(trend || "").toLowerCase();
+    if (t === "up" || t === "down" || t === "same" || t === "none") return t;
+
+    // fallback from diff
+    const n = typeof diff === "number" ? diff : parseFloat(String(diff || ""));
+    if (!Number.isFinite(n)) return "none";
+    if (n > 0) return "up";
+    if (n < 0) return "down";
+    return "same";
+  }
+
+  function applyTrendUi(changeEl, trend, diff) {
+    if (!changeEl) return;
+
+    const t = normalizeTrend(trend, diff);
+
+    // remove existing trend-* classes (safe even if not present)
+    changeEl.classList.remove("trend-up", "trend-down", "trend-same");
+
+    const iconEl = changeEl.querySelector(".change-icon");
+    const valueEl = changeEl.querySelector(".change-value");
+
+    if (t === "up") {
+      changeEl.classList.add("trend-up");
+      if (iconEl) iconEl.textContent = "↗";
+      if (valueEl)
+        valueEl.textContent =
+          typeof diff === "number" ? String(Math.abs(diff)) : "—";
+      return;
+    }
+
+    if (t === "down") {
+      changeEl.classList.add("trend-down");
+      if (iconEl) iconEl.textContent = "↘";
+      if (valueEl)
+        valueEl.textContent =
+          typeof diff === "number" ? String(Math.abs(diff)) : "—";
+      return;
+    }
+
+    if (t === "same") {
+      changeEl.classList.add("trend-same");
+      if (iconEl) iconEl.textContent = "→";
+      if (valueEl)
+        valueEl.textContent =
+          typeof diff === "number" ? String(Math.abs(diff)) : "0";
+      return;
+    }
+
+    // none (no data)
+    if (iconEl) iconEl.textContent = "—";
+    if (valueEl) valueEl.textContent = "—";
+  }
+
+  function setTextById(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = value;
+  }
+
+  function renderMarketDataIntoDom(market) {
+    if (!market || !Array.isArray(market.items)) return;
+
+    // Update "market-date" text (PC and SP blocks share the same class)
+    const asOf = market.as_of ? formatJapaneseDate(String(market.as_of)) : "";
+    const unitPrice =
+      market.unit && market.unit.price ? String(market.unit.price) : "円/kg";
+    const dateLabel = asOf
+      ? `${asOf}現在 / 日農平均価格（${unitPrice}）`
+      : `— / 日農平均価格（${unitPrice}）`;
+
+    document.querySelectorAll(".market-date").forEach((el) => {
+      el.textContent = dateLabel;
+    });
+
+    market.items.forEach((item) => {
+      const code = mapVarietyKeyToCode(item && item.variety_key);
+      if (!code) return;
+
+      const price = typeof item.price === "number" ? String(item.price) : "—";
+      const volume = typeof item.volume === "number" ? String(item.volume) : "—";
+
+      // PC ids
+      setTextById(`price-${code}`, price);
+      setTextById(`quantity-${code}`, volume);
+
+      const pcChange = document.getElementById(`change-${code}`);
+      applyTrendUi(pcChange, item.trend, item.diff);
+
+      // SP ids
+      setTextById(`price-${code}-sp`, price);
+      setTextById(`quantity-${code}-sp`, volume);
+
+      const spChange = document.getElementById(`change-${code}-sp`);
+      applyTrendUi(spChange, item.trend, item.diff);
+    });
+  }
+
+  async function loadAndRenderMarketJson(paper) {
+    // Only for pages that actually have market UI
+    if (!hasMarketUi()) return;
+
+    const url = `/static/${paper}/market.json`;
+    try {
+      const market = await fetchJson(url);
+      renderMarketDataIntoDom(market);
+    } catch (e) {
+      // Do not break the page; just log
+      console.warn("[market.json] failed:", e && e.message ? e.message : e);
+    }
+  }
+  // =========================================================
+  // ✅ End Added: Market.json rendering
+  // =========================================================
+
+  // =========================================================
+  // ✅ Added: placements.json rendering for sponsor videos (index.html)
+  // - Renders placements.json "sponsor_videos" into #laneTrackVideo under #sponsor-ads
+  // - If sponsor_videos is 0/undefined -> hides #sponsor-ads
+  // - Keeps existing hard-coded markup as fallback (we clear & rebuild only when data exists)
+  // =========================================================
+  function hasSponsorAdsUi() {
+    return (
+      !!document.getElementById("laneTrackVideo") &&
+      !!document.getElementById("sponsor-ads")
+    );
+  }
+
+  function buildSponsorVideoTile(item) {
+    const a = document.createElement("a");
+    a.className = "tile";
+    a.href = item && item.url ? String(item.url) : "#";
+    a.target = "_blank";
+    a.rel = "noopener";
+
+    const title = stripHtml(item && item.title ? item.title : "");
+    const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+
+    const thumb = document.createElement("div");
+    thumb.className = "thumb";
+
+    const img = document.createElement("img");
+    if (imgUrl) img.src = imgUrl;
+    img.alt = title;
+    img.loading = "lazy";
+    thumb.appendChild(img);
+
+    const cap = document.createElement("div");
+    cap.className = "cap";
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = "PR";
+
+    const capTitle = document.createElement("div");
+    capTitle.textContent = title;
+
+    cap.appendChild(meta);
+    cap.appendChild(capTitle);
+
+    a.appendChild(thumb);
+    a.appendChild(cap);
+
+    return a;
+  }
+
+  function renderSponsorVideosIntoDom(placements) {
+    if (!hasSponsorAdsUi()) return;
+
+    const section = document.getElementById("sponsor-ads");
+    const track = document.getElementById("laneTrackVideo");
+    if (!section || !track) return;
+
+    const items = Array.isArray(placements && placements.sponsor_videos)
+      ? placements.sponsor_videos
+      : [];
+
+    if (items.length === 0) {
+      // If no sponsor videos, hide entire section
+      section.style.display = "none";
+      return;
+    }
+
+    // Show section if it was hidden
+    section.style.display = "";
+
+    // Clear current hard-coded tiles and rebuild with JSON data
+    track.innerHTML = "";
+    items.forEach((item) => {
+      track.appendChild(buildSponsorVideoTile(item));
+    });
+  }
+
+  // =========================================================
+  // ✅ Added: placements.json rendering for sponsor ads (index.html)
+  // - Renders placements.json "sponsor_ads" into <section id="newspaper-ads"> .grid a.card
+  // - If sponsor_ads is 0/undefined -> hides #newspaper-ads
+  // - Uses existing <a class="card"> as placeholders; creates more if needed
+  // =========================================================
+  function hasNewspaperAdsUi() {
+    return (
+      !!document.querySelector("#newspaper-ads .grid") &&
+      !!document.getElementById("newspaper-ads")
+    );
+  }
+
+  function buildSponsorAdCard(item) {
+    const a = document.createElement("a");
+    a.className = "card";
+    a.href = item && item.url ? String(item.url) : "#";
+    a.target = "_blank";
+    a.rel = "noopener";
+
+    const title = stripHtml(item && item.title ? item.title : "");
+    const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+
+    const imgWrap = document.createElement("div");
+    imgWrap.className = "image";
+
+    const img = document.createElement("img");
+    if (imgUrl) img.src = imgUrl;
+    img.alt = title;
+    img.loading = "lazy";
+    imgWrap.appendChild(img);
+
+    const body = document.createElement("div");
+    body.className = "body";
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = "スポンサー";
+
+    const h3 = document.createElement("h3");
+    h3.textContent = title;
+
+    body.appendChild(meta);
+    body.appendChild(h3);
+
+    a.appendChild(imgWrap);
+    a.appendChild(body);
+
+    return a;
+  }
+
+  function renderNewspaperSponsorAdsIntoDom(placements) {
+    if (!hasNewspaperAdsUi()) return;
+
+    const section = document.getElementById("newspaper-ads");
+    const grid = document.querySelector("#newspaper-ads .grid");
+    if (!section || !grid) return;
+
+    const items = Array.isArray(placements && placements.sponsor_ads)
+      ? placements.sponsor_ads
+      : [];
+
+    if (items.length === 0) {
+      section.style.display = "none";
+      return;
+    }
+
+    section.style.display = "";
+
+    // Use existing <a.card> placeholders (from static-src), create more if needed
+    let cards = Array.from(grid.querySelectorAll("a.card"));
+    if (cards.length < items.length) {
+      const needed = items.length - cards.length;
+      for (let i = 0; i < needed; i++) {
+        const a = document.createElement("a");
+        a.className = "card";
+        a.href = "#";
+        a.target = "_blank";
+        a.rel = "noopener";
+        grid.appendChild(a);
+      }
+      cards = Array.from(grid.querySelectorAll("a.card"));
+    }
+
+    cards.forEach((a, idx) => {
+      const item = items[idx];
+
+      if (!item) {
+        a.style.display = "none";
+        return;
+      }
+
+      a.style.display = "";
+
+      // Replace card content
+      a.href = item && item.url ? String(item.url) : "#";
+      a.target = "_blank";
+      a.rel = "noopener";
+
+      const title = stripHtml(item && item.title ? item.title : "");
+      const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+
+      a.innerHTML = "";
+
+      const imgWrap = document.createElement("div");
+      imgWrap.className = "image";
+
+      const img = document.createElement("img");
+      if (imgUrl) img.src = imgUrl;
+      img.alt = title;
+      img.loading = "lazy";
+      imgWrap.appendChild(img);
+
+      const body = document.createElement("div");
+      body.className = "body";
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = "スポンサー";
+
+      const h3 = document.createElement("h3");
+      h3.textContent = title;
+
+      body.appendChild(meta);
+      body.appendChild(h3);
+
+      a.appendChild(imgWrap);
+      a.appendChild(body);
+    });
+  }
+  // =========================================================
+  // ✅ End Added: placements.json rendering for sponsor ads
+  // =========================================================
+
+
+  
+
+  // =========================================================
+  // ✅ Added: placements.json rendering for side ads (index.html)
+  // - Renders placements.json "ads" into .right-gallery .ad-slot under #vcolA / #vcolB
+  // - Admin controls:
+  //   - item.column: "A" (left/vcolA) or "B" (right/vcolB)
+  //   - item.size: "medium" or "small" -> class "ad-half-vertical" / "ad-rect-vertical"
+  //   - item.extra_class: optional additional class(es)
+  // - If no ads -> hides all existing .ad-slot + their SP wrappers
+  // =========================================================
+  function hasSideAdsUi() {
+    return (
+      !!document.querySelector(".right-gallery") &&
+      (!!document.querySelector("#vcolA .ad-slot") ||
+        !!document.querySelector("#vcolB .ad-slot"))
+    );
+  }
+
+  function getAdSlotClassFromItem(item) {
+    // Allow server to provide explicit class, otherwise derive from size
+    const explicit = item && typeof item.class === "string" ? item.class.trim() : "";
+    if (explicit) return explicit;
+
+    const size = item && typeof item.size === "string" ? item.size.trim().toLowerCase() : "";
+    return size === "medium" ? "ad-half-vertical" : "ad-rect-vertical";
+  }
+
+  function normalizeAdColumn(item) {
+    const c = item && typeof item.column === "string" ? item.column.trim().toUpperCase() : "";
+    if (c === "B") return "B";
+    return "A";
+  }
+
+  function setSlotHidden(slot, hidden) {
+    if (!slot) return;
+    slot.style.display = hidden ? "none" : "";
+    // Also hide the adjacent SP wrapper if it exists
+    const next = slot.nextElementSibling;
+    if (next && (next.classList.contains("mpu-ad-wrapper") || next.classList.contains("halfpage-ad-wrapper"))) {
+      next.style.display = hidden ? "none" : "";
+    }
+  }
+
+  function applyAdToSlot(slot, item) {
+    if (!slot || !item) return;
+
+    // Reset size classes
+    slot.classList.remove("ad-half-vertical", "ad-rect-vertical");
+
+    const sizeClass = getAdSlotClassFromItem(item);
+    if (sizeClass) slot.classList.add(sizeClass);
+
+    const extra = item && typeof item.extra_class === "string" ? item.extra_class.trim() : "";
+    if (extra) {
+      extra.split(/\s+/).filter(Boolean).forEach((cls) => slot.classList.add(cls));
+    }
+
+    const title = stripHtml(item && item.title ? item.title : "");
+    const href = item && item.url ? String(item.url) : "";
+    const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+
+    // Update img inside slot
+    const img = slot.querySelector("img");
+    if (img && imgUrl) img.src = imgUrl;
+    if (img) img.alt = title;
+
+    // Make clickable (keep markup as-is; just add a click handler)
+    if (href) {
+      slot.style.cursor = "pointer";
+      slot.onclick = () => window.open(href, "_blank", "noopener");
+    } else {
+      slot.style.cursor = "";
+      slot.onclick = null;
+    }
+
+    // Also update SP wrapper image if present
+    const next = slot.nextElementSibling;
+    if (next && (next.classList.contains("mpu-ad-wrapper") || next.classList.contains("halfpage-ad-wrapper"))) {
+      const wrapperImg = next.querySelector("img");
+      if (wrapperImg && imgUrl) wrapperImg.src = imgUrl;
+      if (wrapperImg) wrapperImg.alt = title;
+
+      if (href) {
+        next.style.cursor = "pointer";
+        next.onclick = () => window.open(href, "_blank", "noopener");
+      } else {
+        next.style.cursor = "";
+        next.onclick = null;
+      }
+    }
+  }
+
+  function renderSideAdsIntoDom(placements) {
+    if (!hasSideAdsUi()) return;
+
+    const items = Array.isArray(placements && placements.ads) ? placements.ads : [];
+
+    const slotsA = Array.from(document.querySelectorAll("#vcolA .ad-slot"));
+    const slotsB = Array.from(document.querySelectorAll("#vcolB .ad-slot"));
+
+    // Hide everything first (so "no ads" case is clean)
+    slotsA.forEach((s) => setSlotHidden(s, true));
+    slotsB.forEach((s) => setSlotHidden(s, true));
+
+    if (items.length === 0) return;
+
+    let idxA = 0;
+    let idxB = 0;
+
+    items.forEach((item) => {
+      const col = normalizeAdColumn(item);
+      if (col === "B") {
+        const slot = slotsB[idxB++];
+        if (!slot) return;
+        applyAdToSlot(slot, item);
+        setSlotHidden(slot, false);
+      } else {
+        const slot = slotsA[idxA++];
+        if (!slot) return;
+        applyAdToSlot(slot, item);
+        setSlotHidden(slot, false);
+      }
+    });
+  }
+async function loadAndRenderPlacementsJson(paper) {
+    // Only for pages that actually have placements UI
+    if (!hasSponsorAdsUi() && !hasNewspaperAdsUi() && !hasSideAdsUi()) return;
+
+    const url = `/static/${paper}/placements.json`;
+    try {
+      const placements = await fetchJson(url);
+      renderSponsorVideosIntoDom(placements);
+      renderNewspaperSponsorAdsIntoDom(placements);
+      renderSideAdsIntoDom(placements);
+    } catch (e) {
+      // Do not break the page; keep hard-coded fallback
+      console.warn("[placements.json] failed:", e && e.message ? e.message : e);
+    }
+  }
+  // =========================================================
+  // ✅ End Added: placements.json rendering for sponsor videos
+  // =========================================================
+
   async function main() {
     const paper = getPaperFromPath();
     if (!paper) return;
@@ -554,6 +1402,15 @@
       const posts = await fetchJson(url);
       renderTopVtiles(posts);
       renderTopLaneTiles(posts); // ✅ add: fill .sp-lanes tiles too
+      // ✅ Added: fill "トマトNEWS" cards (#news) from posts.json (article_type)
+      await renderNewsSection(posts, paper);
+
+      // ✅ Added: fill market UI from market.json (PC + SP)
+      await loadAndRenderMarketJson(paper);
+
+      // ✅ Added: fill sponsor videos from placements.json
+      await loadAndRenderPlacementsJson(paper);
+
       return;
     }
 
@@ -589,3 +1446,751 @@
 
   main().catch((e) => showError(String(e && e.message ? e.message : e)));
 })();
+
+
+/* =====================================================================
+ * Legacy inline scripts migrated from index_latest.html
+ * (kept isolated and guarded where appropriate)
+ * ===================================================================== */
+
+/* --- from list_latest.html <script> (css href fix) --- */
+/* When opened as file://, "/static/style.css" points to the filesystem root and won't load.
+   Use a relative path only for file:// previews. */
+(function(){
+  var l = document.getElementById('app-css');
+  if(!l) return;
+  if (location.protocol === 'file:') l.setAttribute('href', 'static/style.css');
+})();
+
+/* --- from index_latest.html <script> (block #2) --- */
+(function(){
+  var hdr = document.querySelector('header');
+  if(hdr){ document.documentElement.style.setProperty('--hdrH', Math.ceil(hdr.getBoundingClientRect().height) + 'px'); }
+  var chips = document.querySelector('.pill-bar, .chip-row, .category-chips');
+  if(chips){
+    var ch = Math.ceil(chips.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--chipsH', ch + 'px');
+    document.body.classList.add('has-chips');
+    var ph = document.createElement('div'); ph.style.height = ch + 'px';
+    chips.parentNode.insertBefore(ph, chips.nextSibling);
+  }
+})();
+
+
+/* --- from list_latest.html <script> (header height) --- */
+// ヘッダー高さを動的に取得
+document.addEventListener('DOMContentLoaded', function() {
+  const header = document.querySelector('header');
+  if(header){
+    function setHeaderHeight() {
+      const h = header.getBoundingClientRect().height;
+      document.documentElement.style.setProperty('--header-height', h + 'px');
+    }
+    setHeaderHeight();
+    window.addEventListener('resize', setHeaderHeight);
+  }
+});
+
+/* --- from index_latest.html <script> (block #3) --- */
+// フッターアコーディオン機能
+function toggleFooterMenu(element) {
+  if (window.innerWidth <= 768) {
+    element.classList.toggle('active');
+  }
+}
+
+/* --- from index_latest.html <script> (block #4) --- */
+/* ===== utilities ===== */
+const once = (fn) => { let done=false; return (...a)=>{ if(done) return; done=true; fn(...a); }; };
+const debounce = (fn,ms=240)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; };
+
+/* ===== demo modal ===== */
+/* ===== seamless horizontal lanes ===== */
+function prepareSeamless(id){
+  const track = document.getElementById(id);
+  if(!track || track.dataset.cloned) return;
+  const children = Array.from(track.children);
+  children.forEach(el => track.appendChild(el.cloneNode(true)));
+  track.dataset.cloned = "1";
+}
+
+/* ===== vertical columns ===== */
+function initVCol(colId, {speed=0.34, direction=1}={}){
+  const col = document.getElementById(colId);
+  if(!col) return;
+  if(col.dataset.inited==="1") return;
+  const track = col.querySelector('.v-track');
+  if(!track) return;
+  const items = Array.from(track.children);
+  if(!track.dataset.cloned){
+    items.forEach(el => track.appendChild(el.cloneNode(true)));
+    track.dataset.cloned = "1";
+  }
+  let y = 0, playing = true, rafId = 0;
+  const loopH = () => track.scrollHeight/2;
+  const setY = val => { y=val; track.style.transform = `translateY(${y}px)`; };
+  const step = () => {
+    if(playing){
+      setY(y - speed*direction);
+      if(direction===1 && -y >= loopH()) setY(0);
+      if(direction===-1 && y >= 0) setY(-loopH());
+    }
+    rafId = requestAnimationFrame(step);
+  };
+  const start = once(()=>{ setY(direction===1 ? 0 : -loopH()/2); rafId=requestAnimationFrame(step); });
+  const stop = ()=>{ playing=false; };
+  const resume = ()=>{ playing=true; };
+  col.addEventListener('mouseenter',stop);
+  col.addEventListener('mouseleave',resume);
+  const ro = new ResizeObserver(()=> start());
+  ro.observe(track);
+  col.dataset.inited = "1";
+  col._destroy = ()=>{ cancelAnimationFrame(rafId); ro.disconnect(); col.dataset.inited=""; };
+}
+
+function destroyVCols(){
+  ['vcolA','vcolB'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && el.dataset.inited==="1" && typeof el._destroy === 'function'){ el._destroy(); }
+    // SP版では複製された要素を削除
+    const track = el ? el.querySelector('.v-track') : null;
+    if(track && track.dataset.cloned === "1"){
+      const children = Array.from(track.children);
+      const half = Math.floor(children.length / 2);
+      // 後半（複製された要素）を削除
+      children.slice(half).forEach(child => child.remove());
+      track.dataset.cloned = "";
+    }
+  });
+}
+
+function boot(){
+  ['laneTrackA','laneTrackB','laneTrackVideo'].forEach(prepareSeamless);
+  const isPC = window.matchMedia('(min-width:1180px)').matches;
+  if(isPC){
+    initVCol('vcolA',{speed:0.32, direction:1});
+    initVCol('vcolB',{speed:0.27, direction:-1});
+  }else{
+    destroyVCols();
+  }
+  // mobile sticky ad: show after delay if viewport <= 900px
+  const sticky = document.getElementById('stickyAd');
+  if(window.matchMedia('(max-width:900px)').matches){
+    setTimeout(()=>sticky.classList.add('active'), 1200);
+  }else{
+    sticky.classList.remove('active');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', boot);
+window.addEventListener('load', boot);
+window.addEventListener('resize', debounce(boot, 200));
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') boot(); });
+
+/* --- from index_latest.html <script> (block #5) --- */
+(function(){
+  var isLegacy = (location && (location.protocol==='file:' || /index_latest\.html$/.test(location.pathname||'') || /detail_latest\.html$/.test(location.pathname||'')));
+  if(!isLegacy) return;
+// 広告タグはそのままに、JSで順番にサムネファイルを割り当てる
+  (function(){
+    var slots = document.querySelectorAll('.right-gallery .ad-slot');
+    for (var i = 0; i < slots.length; i++) {
+      var n = i + 1;
+      slots[i].style.setProperty('--ad-img', 'url(./ad_' + n + '.jpg)');
+    }
+  })();
+})();
+
+/* --- from index_latest.html <script> (block #6) --- */
+(function(){
+  var isLegacy = (location && (location.protocol==='file:' || /index_latest\.html$/.test(location.pathname||'') || /detail_latest\.html$/.test(location.pathname||'')));
+  if(!isLegacy) return;
+// ローカル画像の自動割当（命名規則に従う）
+(function(){
+  // 新着NEWS（latest_X.jpg）
+  document.querySelectorAll('.latest-news img').forEach(function(el, i){
+    el.src = './latest_' + (i + 1) + '.jpg';
+  });
+
+  // 新聞広告紹介（paperad_X.jpg）
+  document.querySelectorAll('.paper-ad img').forEach(function(el, i){
+    el.src = './paperad_' + (i + 1) + '.jpg';
+  });
+
+  // 紙面プレビュー（preview_X.jpg）
+  document.querySelectorAll('.preview-paper img').forEach(function(el, i){
+    el.src = './preview_' + (i + 1) + '.jpg';
+  });
+
+  // フッター広告（footerad_X.jpg） — 疑似要素背景で割当
+  document.querySelectorAll('.footer-ad').forEach(function(el, i){
+    el.style.setProperty('--footerad-img', 'url(./footerad_' + (i + 1) + '.jpg)');
+  });
+})();
+})();
+
+/* --- from index_latest.html <script> (block #7) --- */
+(function(){
+  var isLegacy = (location && (location.protocol==='file:' || /index_latest\.html$/.test(location.pathname||'') || /detail_latest\.html$/.test(location.pathname||'')));
+  if(!isLegacy) return;
+(function(){
+  // 新着NEWS: section#news 内の .card .image img
+  document.querySelectorAll('#news .card .image img').forEach(function(el, i){
+    el.src = './latest_' + (i + 1) + '.jpg';
+  });
+
+  // 新聞広告紹介枠: section#newspaper-ads 内の .card .image img
+  document.querySelectorAll('#newspaper-ads .card .image img').forEach(function(el, i){
+    el.src = './paperad_' + (i + 1) + '.jpg';
+  });
+
+  // 紙面プレビュー: section#paper 内の .card .image img
+  document.querySelectorAll('#paper .card .image img').forEach(function(el, i){
+    el.src = './preview_' + (i + 1) + '.jpg';
+  });
+
+  // フッター広告: alt="フッター広告" のimgを置換（タグはそのまま）
+  var fimg = document.querySelector('footer img[alt="フッター広告"]');
+  if (fimg){ fimg.src = './footerad_1.jpg'; }
+})();
+})();
+
+/* --- from index_latest.html <script id="kw-slider-boot"> (block #8) --- */
+(function(){
+  // Measure kw-bar height and set --kwH, then add body class for padding compensation
+  function applyKWPadding(){
+    var kb = document.querySelector('.kw-bar');
+    if(!kb) return;
+    var h = Math.ceil(kb.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--kwH', h + 'px');
+    document.body.classList.add('has-kw');
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyKWPadding);
+  } else {
+    applyKWPadding();
+  }
+  window.addEventListener('resize', function(){ clearTimeout(window.__kw_t); window.__kw_t=setTimeout(applyKWPadding, 150); });
+})();
+
+/* --- from list_latest.html <script id="kw-slider-boot-v2"> --- */
+(function(){
+  function headerHeight(){
+    var h=64;
+    var hdr = document.querySelector("header, .header, [data-header]");
+    if(hdr){ h = Math.ceil(hdr.getBoundingClientRect().height); }
+    document.documentElement.style.setProperty("--hdrH", h+"px");
+    document.documentElement.style.setProperty("--header-height", h+"px");
+  }
+  function kwHeight(){
+    var kb = document.querySelector(".kw-bar");
+    if(!kb){
+      document.documentElement.style.setProperty("--kwH", "0px");
+      document.body.classList.remove("has-kw");
+      return;
+    }
+    var st = window.getComputedStyle(kb);
+    var visible = st.display !== "none" && st.visibility !== "hidden";
+    if(!visible){
+      document.documentElement.style.setProperty("--kwH", "0px");
+      document.body.classList.remove("has-kw");
+      return;
+    }
+    var h = Math.ceil(kb.getBoundingClientRect().height) || 0;
+    document.documentElement.style.setProperty("--kwH", h+"px");
+    document.body.classList.add("has-kw");
+  }
+  function init(){
+    headerHeight(); kwHeight();
+  }
+  if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded", init); }
+  else { init(); }
+
+  // header is injected by components.js on most pages
+  window.addEventListener("headerLoaded", function(){ setTimeout(init, 0); setTimeout(init, 250); });
+
+  window.addEventListener("resize", function(){ clearTimeout(window.__kw_r); window.__kw_r=setTimeout(init, 120); });
+})();
+/* --- from index_latest.html <script id="square-thumbs-boot"> (block #10) --- */
+(function(){
+  function forceSquares(){
+    var scope = document.querySelector('main') || document.body;
+    var imgs = scope.querySelectorAll('img');
+    imgs.forEach(function(img){
+      if (img.closest('header, nav, footer')) return;
+      var p = img.parentElement;
+      if(!p) return;
+      var cs = getComputedStyle(p);
+      // if parent has no aspect ratio, set it to square for thumbnails that look like cards
+      if (!cs.aspectRatio || cs.aspectRatio == 'auto') {
+        if (p.className.match(/card|list|slider|thumb|image|media|ad|paper|feature|column|video|news/i)) {
+          p.style.aspectRatio = '1 / 1';
+          p.style.overflow = 'hidden';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'cover';
+          img.style.aspectRatio = '1 / 1';
+        }
+      }
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', forceSquares);
+  } else {
+    forceSquares();
+  }
+  window.addEventListener('resize', function(){ clearTimeout(window.__sq_t); window.__sq_t=setTimeout(forceSquares, 150); });
+})();
+
+/* --- from index_latest.html <script> (block #11) --- */
+function openModal(type) {
+  alert(type + ' モーダル（仮）');
+  // 実際の実装では適切なモーダル表示処理
+}
+
+// 画像拡大モーダル機能
+function openImageModal() {
+  const modal = document.getElementById('imageModal');
+  const modalImg = document.getElementById('modalImage');
+  const img = document.getElementById('mainImage');
+
+  if (!modal || !modalImg || !img) return;
+
+  modal.classList.add('active');
+  modalImg.src = img.src;
+  document.body.style.overflow = 'hidden'; // スクロール防止
+}
+
+function closeImageModal() {
+  const modal = document.getElementById('imageModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  document.body.style.overflow = ''; // スクロール復帰
+}
+
+// ESCキーでモーダルを閉じる
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeImageModal();
+  }
+});
+
+
+// 市況データカルーセル機能（1カードずつスライド、常に2カード表示）
+let marketCarouselIndex = { pc: 0, sp: 0 };
+
+function slideMarket(direction, version) {
+  const grid = document.getElementById('market-grid-' + version);
+  const cards = Array.from(grid.querySelectorAll('.market-card'));
+  const totalCards = cards.length;
+  
+  // 現在のインデックスを更新（1カードずつ移動）
+  marketCarouselIndex[version] += direction;
+  
+  // ループ処理
+  if (marketCarouselIndex[version] < 0) {
+    marketCarouselIndex[version] = totalCards - 1;
+  } else if (marketCarouselIndex[version] >= totalCards) {
+    marketCarouselIndex[version] = 0;
+  }
+  
+  // カードの表示/非表示と順序を切り替え
+  const currentIdx = marketCarouselIndex[version];
+  const nextIdx = (currentIdx + 1) % totalCards;
+  
+  cards.forEach((card, index) => {
+    if (index === currentIdx) {
+      card.style.display = 'block';
+      card.style.order = '1'; // 左側に表示
+    } else if (index === nextIdx) {
+      card.style.display = 'block';
+      card.style.order = '2'; // 右側に表示
+    } else {
+      card.style.display = 'none';
+      card.style.order = '99';
+    }
+  });
+  
+  // ドットインジケーターを更新
+  if (version === 'pc') {
+    updateMarketIndicators();
+  } else {
+    updateMarketIndicatorsSP();
+  }
+}
+
+// ページインジケーターを更新
+function updateMarketIndicators() {
+  // PC版のtomato-market-data内のドットのみを取得
+  const pcSection = document.querySelector('.left-hero .tomato-market-data');
+  if (!pcSection) return;
+  
+  const dots = pcSection.querySelectorAll('.indicator-dot');
+  const currentPage = marketCarouselIndex.pc;
+  
+  dots.forEach((dot, index) => {
+    if (index === currentPage) {
+      dot.classList.add('active');
+    } else {
+      dot.classList.remove('active');
+    }
+  });
+}
+
+// 特定のページに移動（1カードずつ）
+function goToMarketPage(pageIndex) {
+  const grid = document.getElementById('market-grid-pc');
+  const cards = Array.from(grid.querySelectorAll('.market-card'));
+  const totalCards = cards.length;
+  
+  marketCarouselIndex.pc = pageIndex;
+  
+  const currentIdx = marketCarouselIndex.pc;
+  const nextIdx = (currentIdx + 1) % totalCards;
+  
+  cards.forEach((card, index) => {
+    if (index === currentIdx) {
+      card.style.display = 'block';
+      card.style.order = '1'; // 左側に表示
+    } else if (index === nextIdx) {
+      card.style.display = 'block';
+      card.style.order = '2'; // 右側に表示
+    } else {
+      card.style.display = 'none';
+      card.style.order = '99';
+    }
+  });
+  
+  updateMarketIndicators();
+  
+  // 自動スライドをリセット（手動操作時）
+  resetAutoSlide();
+}
+
+// 特定のページに移動（SP版、1カードずつ）
+function goToMarketPageSP(pageIndex) {
+  const grid = document.getElementById('market-grid-sp');
+  const cards = Array.from(grid.querySelectorAll('.market-card'));
+  const totalCards = cards.length;
+  
+  marketCarouselIndex.sp = pageIndex;
+  
+  const currentIdx = marketCarouselIndex.sp;
+  const nextIdx = (currentIdx + 1) % totalCards;
+  
+  cards.forEach((card, index) => {
+    if (index === currentIdx) {
+      card.style.display = 'block';
+      card.style.order = '1'; // 左側に表示
+    } else if (index === nextIdx) {
+      card.style.display = 'block';
+      card.style.order = '2'; // 右側に表示
+    } else {
+      card.style.display = 'none';
+      card.style.order = '99';
+    }
+  });
+  
+  updateMarketIndicatorsSP();
+  
+  // 自動スライドをリセット（手動操作時）
+  resetAutoSlide();
+}
+
+// ページインジケーターを更新（SP版）
+function updateMarketIndicatorsSP() {
+  const spSection = document.querySelector('.tomato-market-data.sp-only-market');
+  if (!spSection) return;
+  
+  const dots = spSection.querySelectorAll('.indicator-dot');
+  const currentPage = marketCarouselIndex.sp;
+  
+  dots.forEach((dot, index) => {
+    if (index === currentPage) {
+      dot.classList.add('active');
+    } else {
+      dot.classList.remove('active');
+    }
+  });
+}
+
+// ページ読み込み時にナビゲーションボタンの状態を初期化
+document.addEventListener('DOMContentLoaded', function() {
+  const pcGrid = document.getElementById('market-grid-pc');
+  const spGrid = document.getElementById('market-grid-sp');
+  
+  // 初期状態で最初の2つのカードのみ表示（インデックス0と1）
+  if (pcGrid) {
+    const pcCards = pcGrid.querySelectorAll('.market-card');
+    pcCards.forEach((card, index) => {
+      if (index === 0) {
+        card.style.display = 'block';
+        card.style.order = '1'; // 左側に表示
+      } else if (index === 1) {
+        card.style.display = 'block';
+        card.style.order = '2'; // 右側に表示
+      } else {
+        card.style.display = 'none';
+        card.style.order = '99';
+      }
+    });
+    // 初期状態のドットを設定
+    updateMarketIndicators();
+  }
+  
+  if (spGrid) {
+    const spCards = spGrid.querySelectorAll('.market-card');
+    spCards.forEach((card, index) => {
+      if (index === 0) {
+        card.style.display = 'block';
+        card.style.order = '1'; // 左側に表示
+      } else if (index === 1) {
+        card.style.display = 'block';
+        card.style.order = '2'; // 右側に表示
+      } else {
+        card.style.display = 'none';
+        card.style.order = '99';
+      }
+    });
+    // 初期状態のドットを設定
+    updateMarketIndicatorsSP();
+  }
+  
+  // 自動スライド機能を開始
+  startAutoSlide();
+});
+
+// 自動スライド用のタイマーID
+let autoSlideTimer = null;
+
+// 自動スライドを開始（1カードずつスライド）
+function startAutoSlide() {
+  // 既存のタイマーがあればクリア
+  if (autoSlideTimer) {
+    clearInterval(autoSlideTimer);
+  }
+  
+  // 5秒ごとに次のカードに移動（1カードずつ）
+  autoSlideTimer = setInterval(() => {
+    // PC版
+    const pcGrid = document.getElementById('market-grid-pc');
+    if (pcGrid && window.matchMedia('(min-width:1180px)').matches) {
+      const cards = Array.from(pcGrid.querySelectorAll('.market-card'));
+      const totalCards = cards.length;
+      const nextIndex = (marketCarouselIndex.pc + 1) % totalCards;
+      goToMarketPage(nextIndex);
+    }
+    
+    // SP版
+    const spGrid = document.getElementById('market-grid-sp');
+    if (spGrid && window.matchMedia('(max-width:1179px)').matches) {
+      const cards = Array.from(spGrid.querySelectorAll('.market-card'));
+      const totalCards = cards.length;
+      const nextIndex = (marketCarouselIndex.sp + 1) % totalCards;
+      goToMarketPageSP(nextIndex);
+    }
+  }, 5000); // 5秒ごと
+}
+
+// 自動スライドを停止
+function stopAutoSlide() {
+  if (autoSlideTimer) {
+    clearInterval(autoSlideTimer);
+    autoSlideTimer = null;
+  }
+}
+
+// 自動スライドをリセット（ユーザーが手動操作した時に呼ぶ）
+function resetAutoSlide() {
+  stopAutoSlide();
+  startAutoSlide();
+}
+
+/* --- from index_latest.html <script> (block #12) --- */
+(function(){
+  var isLegacy = (location && (/index_latest\.html$/.test(location.pathname||'') || /detail_latest\.html$/.test(location.pathname||'') || document.title.indexOf('社長レク用') !== -1));
+  if(!isLegacy) return;
+(function() {
+  // トマト市況データ管理 - 4品種対応
+  class TomatoMarketData {
+    constructor() {
+      this.items = [];
+      this.lastUpdate = null;
+    }
+
+    // デモデータの生成（PDFの仕様に基づく）
+    generateDemoData() {
+      this.items = [
+        {
+          item_code: 34400,
+          item_name: "大玉トマト",
+          quantity_ton: 47,
+          avg_price: 878,
+          diff_prev: { sign: "UP", value: 131 },
+          file_date: "2025-11-26"
+        },
+        {
+          item_code: 34480,
+          item_name: "中玉トマト",
+          quantity_ton: 32,
+          avg_price: 945,
+          diff_prev: { sign: "DOWN", value: 58 },
+          file_date: "2025-11-26"
+        },
+        {
+          item_code: 34460,
+          item_name: "ミニトマト",
+          quantity_ton: 28,
+          avg_price: 1120,
+          diff_prev: { sign: "UP", value: 89 },
+          file_date: "2025-11-26"
+        }
+        /*
+        ,{
+          item_code: 34410,
+          item_name: "ファーストトマト",
+          quantity_ton: null, // オフシーズン
+          avg_price: null,
+          diff_prev: { sign: null, value: null },
+          file_date: "2025-11-26"
+        }
+        */
+      ];
+      
+      this.lastUpdate = new Date();
+      return this;
+    }
+
+    // WordPress REST APIからデータを取得
+    async fetchRealData() {
+      try {
+        const response = await fetch('/wp-json/tomato/v1/latest', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('データ取得に失敗しました');
+        }
+        
+        const data = await response.json();
+        this.items = data.items || [];
+        this.lastUpdate = new Date(data.updated_at);
+        
+        return this;
+      } catch (error) {
+        console.log('APIが利用できないため、デモデータを使用します');
+        return this.generateDemoData();
+      }
+    }
+  }
+
+  // UI更新クラス - 4品種カード対応
+  class MarketUI {
+    updateMarketCards(data) {
+      data.items.forEach(item => {
+        const code = item.item_code;
+        
+        // PC版とSP版の両方の価格を更新
+        const priceIds = [`price-${code}`, `price-${code}-sp`];
+        priceIds.forEach(id => {
+          const priceEl = document.getElementById(id);
+          if (priceEl) {
+            priceEl.textContent = item.avg_price != null ? item.avg_price.toLocaleString() : '—';
+          }
+        });
+        
+        // PC版とSP版の両方の前市比を更新
+        const changeIds = [`change-${code}`, `change-${code}-sp`];
+        changeIds.forEach(id => {
+          const changeContainer = document.getElementById(id);
+          if (changeContainer) {
+            const iconEl = changeContainer.querySelector('.change-icon');
+            const valueEl = changeContainer.querySelector('.change-value');
+            
+            // クラスをリセット
+            changeContainer.classList.remove('trend-up', 'trend-down');
+            
+            if (item.diff_prev && item.diff_prev.value != null) {
+              valueEl.textContent = item.diff_prev.value.toLocaleString();
+              
+              if (item.diff_prev.sign === 'UP') {
+                changeContainer.classList.add('trend-up');
+                iconEl.textContent = '↗';
+              } else if (item.diff_prev.sign === 'DOWN') {
+                changeContainer.classList.add('trend-down');
+                iconEl.textContent = '↘';
+              } else if (item.diff_prev.sign === 'EQUAL') {
+                iconEl.textContent = '→';
+              }
+            } else {
+              iconEl.textContent = '—';
+              valueEl.textContent = '—';
+            }
+          }
+        });
+        
+        // PC版とSP版の両方の取引量を更新
+        const quantityIds = [`quantity-${code}`, `quantity-${code}-sp`];
+        quantityIds.forEach(id => {
+          const quantityEl = document.getElementById(id);
+          if (quantityEl) {
+            quantityEl.textContent = item.quantity_ton != null ? item.quantity_ton.toLocaleString() : '—';
+          }
+        });
+      });
+      
+      // 更新日時を表示
+      if (data.lastUpdate) {
+        const dateStr = data.lastUpdate.toLocaleDateString('ja-JP', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        
+        const dateElements = document.querySelectorAll('.market-date');
+        dateElements.forEach(el => {
+          el.textContent = `${dateStr}現在 / 日農平均価格（円/kg）`;
+        });
+      }
+    }
+  }
+
+  // 初期化と定期更新
+  async function initMarketData() {
+    const marketData = new TomatoMarketData();
+    const ui = new MarketUI();
+    
+    // データ取得と表示を更新する関数
+    async function updateMarketData() {
+      try {
+        await marketData.fetchRealData();
+        ui.updateMarketCards(marketData);
+        
+        console.log('トマト市況データを更新しました:', {
+          itemCount: marketData.items.length,
+          lastUpdate: marketData.lastUpdate
+        });
+      } catch (error) {
+        console.error('Market Data Update Error:', error);
+      }
+    }
+    
+    // 初回読み込み
+    await updateMarketData();
+    
+    // 5分ごとに更新
+    setInterval(updateMarketData, 5 * 60 * 1000);
+  }
+  
+  // DOMContentLoadedイベントで初期化
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMarketData);
+  } else {
+    initMarketData();
+  }
+})();
+})();
+

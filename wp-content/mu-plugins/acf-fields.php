@@ -134,6 +134,56 @@ add_action('acf/init', function () {
         'mime_types' => 'mp4,webm,mov',
       ],
 
+      // 表示カラム（広告=ads用）
+      [
+        'key' => 'field_ad_item_column',
+        'label' => '表示位置（ads用）',
+        'name' => 'ad_column',
+        'type' => 'select',
+        'instructions' => "広告（ads）の場合に、どちらの縦カラムに表示するかを選択してください。\n左: vcolA / 右: vcolB",
+        'required' => 0,
+        'wrapper' => ['width' => '50'],
+        'choices' => [
+          'A' => '左（vcolA）',
+          'B' => '右（vcolB）',
+        ],
+        'default_value' => 'A',
+        'allow_null' => 0,
+        'ui' => 1,
+      ],
+
+      // 広告サイズ（広告=ads用）
+      [
+        'key' => 'field_ad_item_size',
+        'label' => '広告サイズ（ads用）',
+        'name' => 'ad_size',
+        'type' => 'select',
+        'instructions' => "広告（ads）の場合に、サイズを選択してください。\n中サイズ: ad-half-vertical / 小サイズ: ad-rect-vertical",
+        'required' => 0,
+        'wrapper' => ['width' => '50'],
+        'choices' => [
+          'medium' => '中サイズ',
+          'small'  => '小サイズ',
+        ],
+        'default_value' => 'small',
+        'allow_null' => 0,
+        'ui' => 1,
+      ],
+
+      // 追加クラス（任意）
+      [
+        'key' => 'field_ad_item_extra_class',
+        'label' => '追加CSSクラス（任意）',
+        'name' => 'ad_extra_class',
+        'type' => 'text',
+        'instructions' => '必要な場合のみ、ad-slotに追加したいクラス名を入力してください（スペース区切り可）。',
+        'required' => 0,
+        'wrapper' => ['width' => '100'],
+        'default_value' => '',
+        'placeholder' => '例: my-custom-class',
+      ],
+
+
     ],
     'location' => [
       [

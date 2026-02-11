@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>トマト新聞</title>
   <link rel="stylesheet" href="/static/style.css" />
-  <!-- Common header/footer styles -->
-  <link rel="stylesheet" href="/static/common/css/styles.css">
 </head>
 <body>
 
@@ -206,135 +204,114 @@
           <h2 class="market-title">最新の市況データ</h2>
           <p class="market-date">2025年11月26日現在 / 日農平均価格（円/kg）</p>
         </div>
-        
-        <div class="market-grid">
-          <!-- 大玉トマト -->
-          <div class="market-card" data-variety="large">
-            <div class="card-header">
-              <div class="variety-info">
-                <h3 class="variety-name">大玉トマト</h3>
-                <span class="variety-code">34400</span>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="price-section">
-                <div class="price-area">
-                  <div class="price-display">
-                    <span class="current-price" id="price-34400">878</span>
-                    <span class="price-unit">円</span>
-                  </div>
-                  <div class="price-change trend-up" id="change-34400">
-                    <span class="change-icon">↗</span>
-                    <span class="change-value">131</span>
-                    <span class="change-label">円</span>
-                  </div>
-                </div>
-                <div class="volume-area">
-                  <span class="volume-label">取引量</span>
-                  <div class="volume-display">
-                    <span class="volume-value" id="quantity-34400">47</span>
-                    <span class="volume-unit">トン</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- 中玉トマト -->
-          <div class="market-card" data-variety="medium">
-            <div class="card-header">
-              <div class="variety-info">
-                <h3 class="variety-name">中玉トマト</h3>
-                <span class="variety-code">34480</span>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="price-section">
-                <div class="price-area">
-                  <div class="price-display">
-                    <span class="current-price" id="price-34480">—</span>
-                    <span class="price-unit">円</span>
-                  </div>
-                  <div class="price-change" id="change-34480">
-                    <span class="change-icon">—</span>
-                    <span class="change-value">—</span>
-                    <span class="change-label">円</span>
-                  </div>
-                </div>
-                <div class="volume-area">
-                  <span class="volume-label">取引量</span>
-                  <div class="volume-display">
-                    <span class="volume-value" id="quantity-34480">—</span>
-                    <span class="volume-unit">トン</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="market-carousel">
+          <div class="market-grid" id="market-grid-pc">
 
-          <!-- ミニトマト -->
-          <div class="market-card" data-variety="mini">
-            <div class="card-header">
-              <div class="variety-info">
-                <h3 class="variety-name">ミニトマト</h3>
-                <span class="variety-code">34460</span>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="price-section">
-                <div class="price-area">
-                  <div class="price-display">
-                    <span class="current-price" id="price-34460">—</span>
-                    <span class="price-unit">円</span>
-                  </div>
-                  <div class="price-change" id="change-34460">
-                    <span class="change-icon">—</span>
-                    <span class="change-value">—</span>
-                    <span class="change-label">円</span>
-                  </div>
-                </div>
-                <div class="volume-area">
-                  <span class="volume-label">取引量</span>
-                  <div class="volume-display">
-                    <span class="volume-value" id="quantity-34460">—</span>
-                    <span class="volume-unit">トン</span>
-                  </div>
+            <!-- 大玉トマト -->
+            <div class="market-card" data-variety="large" data-index="0">
+              <div class="card-header">
+                <div class="variety-info">
+                  <h3 class="variety-name">大玉トマト</h3>
+                  <span class="variety-code">34400</span>
                 </div>
               </div>
+              <div class="card-body">
+                <div class="price-section">
+                  <div class="price-area">
+                    <div class="price-display">
+                      <span class="current-price" id="price-34400">—</span>
+                      <span class="price-unit">円</span>
+                    </div>
+                    <div class="price-change" id="change-34400">
+                      <span class="change-icon">—</span>
+                      <span class="change-value">—</span>
+                      <span class="change-label">円</span>
+                    </div>
+                  </div>
+                  <div class="volume-area">
+                    <span class="volume-label">取引量</span>
+                    <div class="volume-display">
+                      <span class="volume-value" id="quantity-34400">—</span>
+                      <span class="volume-unit">トン</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <!-- ファーストトマト -->
-          <div class="market-card" data-variety="first">
-            <div class="card-header">
-              <div class="variety-info">
-                <h3 class="variety-name">ファーストトマト</h3>
-                <span class="variety-code">34410</span>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="price-section">
-                <div class="price-area">
-                  <div class="price-display">
-                    <span class="current-price" id="price-34410">—</span>
-                    <span class="price-unit">円</span>
-                  </div>
-                  <div class="price-change" id="change-34410">
-                    <span class="change-icon">—</span>
-                    <span class="change-value">—</span>
-                    <span class="change-label">円</span>
-                  </div>
-                </div>
-                <div class="volume-area">
-                  <span class="volume-label">取引量</span>
-                  <div class="volume-display">
-                    <span class="volume-value" id="quantity-34410">—</span>
-                    <span class="volume-unit">トン</span>
-                  </div>
+            <!-- ミニトマト -->
+            <div class="market-card" data-variety="mini" data-index="1">
+              <div class="card-header">
+                <div class="variety-info">
+                  <h3 class="variety-name">ミニトマト</h3>
+                  <span class="variety-code">34460</span>
                 </div>
               </div>
+              <div class="card-body">
+                <div class="price-section">
+                  <div class="price-area">
+                    <div class="price-display">
+                      <span class="current-price" id="price-34460">—</span>
+                      <span class="price-unit">円</span>
+                    </div>
+                    <div class="price-change" id="change-34460">
+                      <span class="change-icon">—</span>
+                      <span class="change-value">—</span>
+                      <span class="change-label">円</span>
+                    </div>
+                  </div>
+                  <div class="volume-area">
+                    <span class="volume-label">取引量</span>
+                    <div class="volume-display">
+                      <span class="volume-value" id="quantity-34460">—</span>
+                      <span class="volume-unit">トン</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            <!-- 中玉トマト -->
+            <div class="market-card" data-variety="medium" data-index="2">
+              <div class="card-header">
+                <div class="variety-info">
+                  <h3 class="variety-name">中玉トマト</h3>
+                  <span class="variety-code">34480</span>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="price-section">
+                  <div class="price-area">
+                    <div class="price-display">
+                      <span class="current-price" id="price-34480">—</span>
+                      <span class="price-unit">円</span>
+                    </div>
+                    <div class="price-change" id="change-34480">
+                      <span class="change-icon">—</span>
+                      <span class="change-value">—</span>
+                      <span class="change-label">円</span>
+                    </div>
+                  </div>
+                  <div class="volume-area">
+                    <span class="volume-label">取引量</span>
+                    <div class="volume-display">
+                      <span class="volume-value" id="quantity-34480">—</span>
+                      <span class="volume-unit">トン</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
+        </div>
+
+        <!-- ページインジケーター（ドット） -->
+        <div class="market-indicators">
+          <button class="indicator-dot active" onclick="goToMarketPage(0)" aria-label="1ページ目"></button>
+          <button class="indicator-dot" onclick="goToMarketPage(1)" aria-label="2ページ目"></button>
+          <button class="indicator-dot" onclick="goToMarketPage(2)" aria-label="3ページ目"></button>
         </div>
         
         <div class="market-footer">
@@ -350,74 +327,100 @@
         <div class="sp-lanes">
           <div class="lane">
             <div class="lane-track animate-x" id="laneTrackA">
-              <a class="tile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_1.jpg" alt=""></div><div class="cap"><div class="meta">熊本</div><div>黄化葉巻病の抑制</div></div></a>
-              <a class="tile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_2.jpg" alt=""></div><div class="cap"><div class="meta">品種</div><div>桃太郎みなみ</div></div></a>
-              <a class="tile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_3.jpg" alt=""></div><div class="cap"><div class="meta">特集</div><div>冬春取りトマト</div></div></a>
+              <a class="tile" href="#"><div class="thumb"><img alt=""></div><div class="cap"><div class="meta"></div><div></div></div></a>
+              <a class="tile" href="#"><div class="thumb"><img alt=""></div><div class="cap"><div class="meta"></div><div></div></div></a>
+              <a class="tile" href="#"><div class="thumb"><img alt=""></div><div class="cap"><div class="meta"></div><div></div></div></a>
             </div>
           </div>
           <div class="lane">
             <div class="lane-track animate-x reverse" id="laneTrackB">
-              <a class="tile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_4.jpg" alt=""></div><div class="cap"><div class="meta">コラム</div><div>初動の重要性</div></div></a>
-              <a class="tile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_5.jpg" alt=""></div><div class="cap"><div class="meta">栄養</div><div>EC安定化</div></div></a>
-              <a class="tile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_6.jpg" alt=""></div><div class="cap"><div class="meta">熊本</div><div>現場の工夫</div></div></a>
+              <a class="tile" href="#"><div class="thumb"><img alt=""></div><div class="cap"><div class="meta"></div><div></div></div></a>
+              <a class="tile" href="#"><div class="thumb"><img alt=""></div><div class="cap"><div class="meta"></div><div></div></div></a>
+              <a class="tile" href="#"><div class="thumb"><img alt=""></div><div class="cap"><div class="meta"></div><div></div></div></a>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="right-gallery">
+            <div class="right-gallery">
         <div class="vcol" id="vcolA">
           <div class="v-track">
-            <a class="vtile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_7.jpg" alt=""></div><div class="cap"><div class="meta">トマトサンプル</div><div>サンプルタイトル</div></div></a>
-            <!-- MPU（200x400） -->
-            <!-- PC版広告 -->
-            <div class="ad-slot ad-rect-vertical pc-only-ad">
+            <!-- Tiles/ads in this column are rendered dynamically by /static/app.js -->
+            <a class="vtile" href="#">
+              <div class="thumb"><img alt=""></div>
+              <div class="cap"><div class="meta"></div><div></div></div>
+            </a>
+
+            <!-- Ad slot (filled by placements.json) -->
+            <div class="ad-slot pc-only-ad">
               <div class="ad-badge">広告</div>
-              <img src="./ad_mpu1.jpg" alt="MPU 広告">
+              <img alt="広告">
             </div>
-            <!-- SP版広告 -->
             <div class="mpu-ad-wrapper">
               <div class="mpu-inner">
                 <div class="ad-badge">広告</div>
-                <img src="./ad_mpu1.jpg" alt="MPU 広告">
+                <img alt="広告">
               </div>
             </div>
-            <a class="vtile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_8.jpg" alt=""></div><div class="cap"><div class="meta">トマトサンプル</div><div>サンプルタイトル</div></div></a>
-            <!-- Half Page（600x400） -->
-            <!-- PC版広告 -->
-            <div class="ad-slot ad-half-vertical pc-only-ad">
+
+            <a class="vtile" href="#">
+              <div class="thumb"><img alt=""></div>
+              <div class="cap"><div class="meta"></div><div></div></div>
+            </a>
+
+            <!-- Ad slot (filled by placements.json) -->
+            <div class="ad-slot pc-only-ad">
               <div class="ad-badge">広告</div>
-              <img src="./ad_halfpage.jpg" alt="Half Page 広告">
+              <img alt="広告">
             </div>
-            <!-- SP版広告 -->
             <div class="halfpage-ad-wrapper">
               <div class="halfpage-inner">
                 <div class="ad-badge">広告</div>
-                <img src="./ad_halfpage.jpg" alt="Half Page 広告">
+                <img alt="広告">
               </div>
             </div>
-            <a class="vtile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_9.jpg" alt=""></div><div class="cap"><div class="meta">トマトサンプル</div><div>サンプルタイトル</div></div></a>
+
+            <a class="vtile" href="#">
+              <div class="thumb"><img alt=""></div>
+              <div class="cap"><div class="meta"></div><div></div></div>
+            </a>
           </div>
         </div>
+
         <div class="vcol" id="vcolB">
           <div class="v-track">
-            <a class="vtile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_10.jpg" alt=""></div><div class="cap"><div class="meta">トマトサンプル</div><div>サンプルタイトル</div></div></a>
-            <a class="vtile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_11.jpg" alt=""></div><div class="cap"><div class="meta">トマトサンプル</div><div>サンプルタイトル</div></div></a>
-            <!-- MPU（200x400） -->
-            <!-- PC版広告 -->
-            <div class="ad-slot ad-rect-vertical pc-only-ad">
+            <!-- Tiles/ads in this column are rendered dynamically by /static/app.js -->
+            <a class="vtile" href="#">
+              <div class="thumb"><img alt=""></div>
+              <div class="cap"><div class="meta"></div><div></div></div>
+            </a>
+
+            <a class="vtile" href="#">
+              <div class="thumb"><img alt=""></div>
+              <div class="cap"><div class="meta"></div><div></div></div>
+            </a>
+
+            <!-- Ad slot (filled by placements.json) -->
+            <div class="ad-slot pc-only-ad">
               <div class="ad-badge">広告</div>
-              <img src="./ad_mpu2.jpg" alt="MPU 広告">
+              <img alt="広告">
             </div>
-            <!-- SP版広告 -->
             <div class="mpu-ad-wrapper">
               <div class="mpu-inner">
                 <div class="ad-badge">広告</div>
-                <img src="./ad_mpu2.jpg" alt="MPU 広告">
+                <img alt="広告">
               </div>
             </div>
-            <a class="vtile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_12.jpg" alt=""></div><div class="cap"><div class="meta">トマトサンプル</div><div>サンプルタイトル</div></div></a>
-            <a class="vtile" href="トマト_DETAIL_20251107.html"><div class="thumb"><img src="./news_13.jpg" alt=""></div><div class="cap"><div class="meta">トマトサンプル</div><div>サンプルタイトル</div></div></a>
+
+            <a class="vtile" href="#">
+              <div class="thumb"><img alt=""></div>
+              <div class="cap"><div class="meta"></div><div></div></div>
+            </a>
+
+            <a class="vtile" href="#">
+              <div class="thumb"><img alt=""></div>
+              <div class="cap"><div class="meta"></div><div></div></div>
+            </a>
           </div>
         </div>
       </div>
@@ -430,18 +433,9 @@
     <div class="cat">
       <h2>トマトNEWS</h2>
       <div class="grid">
-        <article class="card"><div class="image"><img src="/mnt/data/e73a9b46-cb56-4354-9969-16443384d19e.png" alt=""></div><div class="body"><div class="meta">2025/07/08</div><h3>黄化葉巻病 抑制の現場</h3></div></article>
-        <article class="card"><div class="image"><img src="/mnt/data/b21a2ee6-8345-490b-8bfc-f998d5b83030.png" alt=""></div><div class="body"><div class="meta">2025/07/06</div><h3>品種活用：桃太郎みなみ</h3></div></article>
 
-        <!-- インフィード（記事タイアップ） -->
-        <a class="native-card" href="https://pr.agrinews.co.jp/ad/tomato202506" target="_blank" rel="noopener" aria-label="記事タイアップ（PR）へ">
-          <div class="badge">PR</div>
-          <div class="image"><img src="./news_ad_1.jpg" alt="トマト特集・特設サイト"></div>
-          <div class="body"><div class="meta">記事広告／タイアップ</div><h3>トマト特集・特設サイト</h3></div>
-        </a>
 
-        <article class="card"><div class="image"><img src="/mnt/data/03089c0d-d655-43f8-b724-30584ef2b13e.png" alt=""></div><div class="body"><div class="meta">2025/07/05</div><h3>特集：冬春取りの潮流</h3></div></article>
-        <article class="card"><div class="image"><img src="/mnt/data/965734f5-169c-4ab2-aa1d-e58a57c04915.png" alt=""></div><div class="body"><div class="meta">2025/07/03</div><h3>地域便り：朝市レポート</h3></div></article>
+        <!-- News cards will be injected here by /static/app.js -->
       </div>
     </div>
   </section>
@@ -451,20 +445,8 @@
     <div class="cat">
       <h2>スポンサー動画広告紹介</h2>
       <div class="lane" style="border-radius:0; background:linear-gradient(180deg,#fafafa,#fff); padding:12px">
-        <div class="lane-track animate-x" id="laneTrackVideo">
-          <a class="tile" href="https://pr.agrinews.co.jp/ad/tomato202506" target="_blank" rel="noopener">
-            <div class="thumb"><img src="./news_14.jpg" alt=""></div>
-            <div class="cap"><div class="meta">PR</div><div>栽培ノウハウショート</div></div>
-          </a>
-          <a class="tile" href="https://pr.agrinews.co.jp/ad/tomato202506" target="_blank" rel="noopener">
-            <div class="thumb"><img src="./news_15.jpg" alt=""></div>
-            <div class="cap"><div class="meta">PR</div><div>環境制御のポイント</div></div>
-          </a>
-          <a class="tile" href="https://pr.agrinews.co.jp/ad/tomato202506" target="_blank" rel="noopener">
-            <div class="thumb"><img src="./news_16.jpg" alt=""></div>
-            <div class="cap"><div class="meta">PR</div><div>品種と病害耐性</div></div>
-          </a>
-        </div>
+        <!-- sponsor_videos will be injected here by /static/app.js -->
+        <div class="lane-track animate-x" id="laneTrackVideo"></div>
       </div>
       <p class="meta" style="margin-top:8px">※ 動画はCMSで差替え可能。最初の3秒で訴求＋サムネにテロップ／ブランドロゴ推奨。</p>
     </div>
@@ -475,22 +457,10 @@
     <div class="cat">
       <h2>スポンサー広告</h2>
       <div class="grid">
-        <a class="card" href="https://pr.agrinews.co.jp/ad/tomato202506/%E5%BA%83%E5%91%8A%E4%B8%80%E8%A6%A7" target="_blank" rel="noopener">
-          <div class="image"><img src="./news_ad_2.jpg" alt="2025年6月 トマト特集"></div>
-          <div class="body"><div class="meta">PR 掲載実績</div><h3>2025年6月 トマト特集</h3></div>
-        </a>
-        <a class="card" href="https://pr.agrinews.co.jp/ad/tomato202506/%E5%BA%83%E5%91%8A%E4%B8%80%E8%A6%A7" target="_blank" rel="noopener">
-          <div class="image"><img src="/mnt/data/965734f5-169c-4ab2-aa1d-e58a57c04915.png" alt=""></div>
-          <div class="body"><div class="meta">PR 掲載実績</div><h3>タイアップ紙面の抜粋</h3></div>
-        </a>
-        <a class="card" href="https://pr.agrinews.co.jp/ad/tomato202506/%E5%BA%83%E5%91%8A%E4%B8%80%E8%A6%A7" target="_blank" rel="noopener">
-          <div class="image"><img src="/mnt/data/2aa09c0b-8b4e-44f2-904e-e5cddd7e6a44.png" alt=""></div>
-          <div class="body"><div class="meta">PR 掲載実績</div><h3>掲載広告一覧を見る</h3></div>
-        </a>
-        <a class="card" href="https://pr.agrinews.co.jp/ad/tomato202506" target="_blank" rel="noopener">
-          <div class="image"><img src="/mnt/data/3bada236-18fc-4490-9c03-fd566e80d738.png" alt=""></div>
-          <div class="body"><div class="meta">PR</div><h3>特設サイトへ</h3></div>
-        </a>
+        <a class="card" href="#" target="_blank" rel="noopener"></a>
+        <a class="card" href="#" target="_blank" rel="noopener"></a>
+        <a class="card" href="#" target="_blank" rel="noopener"></a>
+        <a class="card" href="#" target="_blank" rel="noopener"></a>
       </div>
       <p class="meta" style="margin-top:8px">※ トップをすっきり保ちたい場合は、この枠を2階層目（/ads）に分離し、トップでは1枚のみハイライト表示する設計も可能。</p>
     </div>
@@ -526,8 +496,7 @@
 <div id="footer-container"></div>
 
   <!-- 全paper共通 -->
+  <script src="/static/auth.js"></script>
   <script src="/static/app.js"></script>
-  <!-- Common component loader (header/footer) -->
-  <script src="/static/common/js/components.js"></script>
 </body>
 </html>

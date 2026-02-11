@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>会員登録 | トマト新聞</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- Common header/footer styles -->
+  <link rel="stylesheet" href="/static/common/css/styles.css">
+</head>
+<body class="page-register">
+
+<div id="header-container"></div>
+
+<!-- 登録フォーム -->
+    <div class="registration-container">
+      <div class="page-actions">
+        <button type="button" class="btn" onclick="cancelRegistration()">キャンセル</button>
+        <button type="button" class="btn" onclick="window.location.href=window.__paperTop()">TOPへ戻る</button>
+      </div>
+        <div class="registration-card">
+            <!-- プログレスバー -->
+            <div class="progress-header">
+                <h1 class="progress-title">会員登録</h1>
+                <div class="progress-bar">
+                    <div class="progress-step" onclick="goToStep(1)">
+                        <div class="step-circle active" id="step-1">1</div>
+                        <div class="step-label">基本情報</div>
+                    </div>
+                    <div class="progress-step" onclick="goToStep(2)">
+                        <div class="step-circle" id="step-2">2</div>
+                        <div class="step-label">栽培情報</div>
+                    </div>
+                    <div class="progress-step" onclick="goToStep(3)">
+                        <div class="step-circle" id="step-3">3</div>
+                        <div class="step-label">興味・関心</div>
+                    </div>
+                    <div class="progress-step" onclick="goToStep(4)">
+                        <div class="step-circle" id="step-4">4</div>
+                        <div class="step-label">確認</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- フォームコンテンツ -->
+            <div class="form-content">
+                <form id="registrationForm">
+                    <!-- ステップ1: 基本情報 -->
+                    <div class="form-step active" id="form-step-1">
+                        <h2 class="step-title">基本情報の入力</h2>
+                        <p class="step-subtitle">まずは基本的な情報を教えてください</p>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                メールアドレス<span class="required">*</span>
+                            </label>
+                            <input type="email" class="form-input" name="email" required placeholder="example@email.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                パスワード<span class="required">*</span>
+                            </label>
+                            <input type="password" class="form-input" name="password" required 
+                                   placeholder="8～20文字の半角英数字"
+                                   pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,20}$"
+                                   minlength="8" maxlength="20">
+                            <p class="form-hint">アルファベット大文字・小文字、数字を含む8文字以上20字以内の半角英数で入力してください</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                パスワード（確認）<span class="required">*</span>
+                            </label>
+                            <input type="password" class="form-input" name="password_confirm" required 
+                                   placeholder="パスワードを再入力"
+                                   minlength="8" maxlength="20">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                ニックネーム<span class="required">*</span>
+                            </label>
+                            <input type="text" class="form-input" name="nickname" required placeholder="トマト太郎">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                性別<span class="required">*</span>
+                            </label>
+                            <div class="radio-group">
+                                <label class="radio-item">
+                                    <input type="radio" name="gender" value="男" required>
+                                    <span>男</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="gender" value="女" required>
+                                    <span>女</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    都道府県<span class="required">*</span>
+                                </label>
+                                <select class="form-select" name="prefecture" required>
+                                    <option value="">選択してください</option>
+                                    <option value="北海道">北海道</option>
+                                    <option value="青森県">青森県</option>
+                                    <option value="岩手県">岩手県</option>
+                                    <option value="宮城県">宮城県</option>
+                                    <option value="秋田県">秋田県</option>
+                                    <option value="山形県">山形県</option>
+                                    <option value="福島県">福島県</option>
+                                    <option value="茨城県">茨城県</option>
+                                    <option value="栃木県">栃木県</option>
+                                    <option value="群馬県">群馬県</option>
+                                    <option value="埼玉県">埼玉県</option>
+                                    <option value="千葉県">千葉県</option>
+                                    <option value="東京都">東京都</option>
+                                    <option value="神奈川県">神奈川県</option>
+                                    <option value="新潟県">新潟県</option>
+                                    <option value="富山県">富山県</option>
+                                    <option value="石川県">石川県</option>
+                                    <option value="福井県">福井県</option>
+                                    <option value="山梨県">山梨県</option>
+                                    <option value="長野県">長野県</option>
+                                    <option value="岐阜県">岐阜県</option>
+                                    <option value="静岡県">静岡県</option>
+                                    <option value="愛知県">愛知県</option>
+                                    <option value="三重県">三重県</option>
+                                    <option value="滋賀県">滋賀県</option>
+                                    <option value="京都府">京都府</option>
+                                    <option value="大阪府">大阪府</option>
+                                    <option value="兵庫県">兵庫県</option>
+                                    <option value="奈良県">奈良県</option>
+                                    <option value="和歌山県">和歌山県</option>
+                                    <option value="鳥取県">鳥取県</option>
+                                    <option value="島根県">島根県</option>
+                                    <option value="岡山県">岡山県</option>
+                                    <option value="広島県">広島県</option>
+                                    <option value="山口県">山口県</option>
+                                    <option value="徳島県">徳島県</option>
+                                    <option value="香川県">香川県</option>
+                                    <option value="愛媛県">愛媛県</option>
+                                    <option value="高知県">高知県</option>
+                                    <option value="福岡県">福岡県</option>
+                                    <option value="佐賀県">佐賀県</option>
+                                    <option value="長崎県">長崎県</option>
+                                    <option value="熊本県">熊本県</option>
+                                    <option value="大分県">大分県</option>
+                                    <option value="宮崎県">宮崎県</option>
+                                    <option value="鹿児島県">鹿児島県</option>
+                                    <option value="沖縄県">沖縄県</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    市町村<span class="required">*</span>
+                                </label>
+                                <input type="text" class="form-input" name="city" required placeholder="○○市○○町">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                職業<span class="required">*</span>
+                            </label>
+                            <div class="radio-group">
+                                <label class="radio-item">
+                                    <input type="radio" name="occupation" value="専業農家" required>
+                                    <span>専業農家</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="occupation" value="兼業農家" required>
+                                    <span>兼業農家</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="occupation" value="農業法人" required>
+                                    <span>農業法人</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="occupation" value="JA営農指導員" required>
+                                    <span>JA営農指導員</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="occupation" value="農業普及指導員" required>
+                                    <span>農業普及指導員</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="occupation" value="研究職" required>
+                                    <span>研究職</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="occupation" value="その他" required>
+                                    <span>その他（会社員・団体職員・公務員・学生など）</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ステップ2: 栽培情報 -->
+                    <div class="form-step" id="form-step-2">
+                        <h2 class="step-title">栽培情報</h2>
+                        <p class="step-subtitle">栽培に関する情報を教えてください</p>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                営農規模<span class="required">*</span>
+                            </label>
+                            <select class="form-select" name="farm_scale" required>
+                                <option value="">選択してください</option>
+                                <option value="農業をしていない">農業をしていない</option>
+                                <option value="家庭菜園">家庭菜園</option>
+                                <option value="10a未満">10a未満</option>
+                                <option value="10a～25a未満">10a～25a未満</option>
+                                <option value="25a～50a未満">25a～50a未満</option>
+                                <option value="50a～1ha未満">50a～1ha未満</option>
+                                <option value="1ha～10ha未満">1ha～10ha未満</option>
+                                <option value="10ha～20ha未満">10ha～20ha未満</option>
+                                <option value="20ha～30ha未満">20ha～30ha未満</option>
+                                <option value="30ha以上">30ha以上</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    栽培品目（1品目目）<span class="optional">（任意）</span>
+                                </label>
+                                <select class="form-select" name="crop_1">
+                                    <option value="">―</option>
+                                    <option value="大玉トマト">大玉トマト</option>
+                                    <option value="中玉トマト">中玉トマト</option>
+                                    <option value="ミニトマト">ミニトマト</option>
+                                    <option value="トマト台木">トマト台木</option>
+                                    <option value="水稲">水稲</option>
+                                    <option value="麦類">麦類</option>
+                                    <option value="豆類">豆類</option>
+                                    <option value="スイートコーン">スイートコーン</option>
+                                    <option value="ハクサイ">ハクサイ</option>
+                                    <option value="キャベツ">キャベツ</option>
+                                    <option value="レタス">レタス</option>
+                                    <option value="ホウレンソウ">ホウレンソウ</option>
+                                    <option value="小松菜">小松菜</option>
+                                    <option value="長ネギ（白ネギ）">長ネギ（白ネギ）</option>
+                                    <option value="青ネギ（葉ネギ）">青ネギ（葉ネギ）</option>
+                                    <option value="キュウリ">キュウリ</option>
+                                    <option value="ナス">ナス</option>
+                                    <option value="タマネギ">タマネギ</option>
+                                    <option value="カボチャ">カボチャ</option>
+                                    <option value="サツマイモ">サツマイモ</option>
+                                    <option value="じゃがいも">じゃがいも</option>
+                                    <option value="ニンジン">ニンジン</option>
+                                    <option value="イチゴ">イチゴ</option>
+                                    <option value="果樹類">果樹類</option>
+                                    <option value="畜産">畜産</option>
+                                    <option value="酪農">酪農</option>
+                                    <option value="ブロッコリー">ブロッコリー</option>
+                                    <option value="アスパラガス">アスパラガス</option>
+                                    <option value="お茶">お茶</option>
+                                    <option value="ピーマン">ピーマン</option>
+                                    <option value="その他">その他</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    栽培品目（2品目目）<span class="optional">（任意）</span>
+                                </label>
+                                <select class="form-select" name="crop_2">
+                                    <option value="">―</option>
+                                    <option value="大玉トマト">大玉トマト</option>
+                                    <option value="中玉トマト">中玉トマト</option>
+                                    <option value="ミニトマト">ミニトマト</option>
+                                    <option value="トマト台木">トマト台木</option>
+                                    <option value="水稲">水稲</option>
+                                    <option value="麦類">麦類</option>
+                                    <option value="豆類">豆類</option>
+                                    <option value="スイートコーン">スイートコーン</option>
+                                    <option value="ハクサイ">ハクサイ</option>
+                                    <option value="キャベツ">キャベツ</option>
+                                    <option value="レタス">レタス</option>
+                                    <option value="ホウレンソウ">ホウレンソウ</option>
+                                    <option value="小松菜">小松菜</option>
+                                    <option value="長ネギ（白ネギ）">長ネギ（白ネギ）</option>
+                                    <option value="青ネギ（葉ネギ）">青ネギ（葉ネギ）</option>
+                                    <option value="キュウリ">キュウリ</option>
+                                    <option value="ナス">ナス</option>
+                                    <option value="タマネギ">タマネギ</option>
+                                    <option value="カボチャ">カボチャ</option>
+                                    <option value="サツマイモ">サツマイモ</option>
+                                    <option value="じゃがいも">じゃがいも</option>
+                                    <option value="ニンジン">ニンジン</option>
+                                    <option value="イチゴ">イチゴ</option>
+                                    <option value="果樹類">果樹類</option>
+                                    <option value="畜産">畜産</option>
+                                    <option value="酪農">酪農</option>
+                                    <option value="ブロッコリー">ブロッコリー</option>
+                                    <option value="アスパラガス">アスパラガス</option>
+                                    <option value="お茶">お茶</option>
+                                    <option value="ピーマン">ピーマン</option>
+                                    <option value="その他">その他</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                今後栽培したい品目<span class="optional">（任意）</span>
+                            </label>
+                            <select class="form-select" name="future_crop">
+                                <option value="">―</option>
+                                <option value="大玉トマト">大玉トマト</option>
+                                <option value="中玉トマト">中玉トマト</option>
+                                <option value="ミニトマト">ミニトマト</option>
+                                <option value="トマト台木">トマト台木</option>
+                                <option value="水稲">水稲</option>
+                                <option value="麦類">麦類</option>
+                                <option value="豆類">豆類</option>
+                                <option value="スイートコーン">スイートコーン</option>
+                                <option value="ハクサイ">ハクサイ</option>
+                                <option value="キャベツ">キャベツ</option>
+                                <option value="レタス">レタス</option>
+                                <option value="ホウレンソウ">ホウレンソウ</option>
+                                <option value="小松菜">小松菜</option>
+                                <option value="長ネギ（白ネギ）">長ネギ（白ネギ）</option>
+                                <option value="青ネギ（葉ネギ）">青ネギ（葉ネギ）</option>
+                                <option value="キュウリ">キュウリ</option>
+                                <option value="ナス">ナス</option>
+                                <option value="タマネギ">タマネギ</option>
+                                <option value="カボチャ">カボチャ</option>
+                                <option value="サツマイモ">サツマイモ</option>
+                                <option value="じゃがいも">じゃがいも</option>
+                                <option value="ニンジン">ニンジン</option>
+                                <option value="イチゴ">イチゴ</option>
+                                <option value="果樹類">果樹類</option>
+                                <option value="畜産">畜産</option>
+                                <option value="酪農">酪農</option>
+                                <option value="ブロッコリー">ブロッコリー</option>
+                                <option value="アスパラガス">アスパラガス</option>
+                                <option value="お茶">お茶</option>
+                                <option value="ピーマン">ピーマン</option>
+                                <option value="その他">その他</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- ステップ3: 興味・関心 -->
+                    <div class="form-step" id="form-step-3">
+                        <h2 class="step-title">興味・関心</h2>
+                        <p class="step-subtitle">今後の情報提供の参考にさせていただきます</p>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                興味のある分野<span class="optional">（任意・複数選択可）</span>
+                            </label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="interests" value="栽培技術">
+                                    <span>栽培技術</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="interests" value="病害虫対策">
+                                    <span>病害虫対策</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="interests" value="品種情報">
+                                    <span>品種情報</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="interests" value="市況・流通">
+                                    <span>市況・流通</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="interests" value="スマート農業">
+                                    <span>スマート農業</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="interests" value="環境制御">
+                                    <span>環境制御</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="interests" value="有機栽培">
+                                    <span>有機栽培</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="interests" value="補助金・支援制度">
+                                    <span>補助金・支援制度</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                情報配信の希望<span class="optional">（任意・複数選択可）</span>
+                            </label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="newsletter" value="週刊ニュースレター" checked>
+                                    <span>週刊ニュースレター</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="newsletter" value="新製品・サービス情報" checked>
+                                    <span>新製品・サービス情報</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="newsletter" value="セミナー・イベント案内" checked>
+                                    <span>セミナー・イベント案内</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="newsletter" value="市況速報">
+                                    <span>市況速報</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ステップ4: 確認 -->
+                    <div class="form-step" id="form-step-4">
+                        <h2 class="step-title">個人情報の取扱いについて</h2>
+                        <p class="step-subtitle">以下の内容をご確認の上、同意いただける場合はチェックをお願いします</p>
+
+                        <div class="terms-box">
+                            <p>この入力フォームで取得する個人情報の取り扱いは下記の利用目的のためであり、この目的の範囲を超えて利用することはございません。</p>
+
+                            <h4>事業者名</h4>
+                            <p>株式会社日本農業新聞</p>
+
+                            <h4>個人情報に関する管理者の職名及び連絡先</h4>
+                            <p>個人情報保護統括管理者 代表取締役社長<br>
+                            TEL：03-6281-5801　FAX：03-6281-5851</p>
+
+                            <h4>個人情報の利用目的</h4>
+                            <p>入力された個人情報は、お問い合わせにお答えするために利用します。</p>
+
+                            <h4>個人情報の第三者提供</h4>
+                            <p>当社は、ご提供いただいた個人情報を次の場合を除き第三者に開示・提供いたしません。</p>
+                            <ul style="margin-left: 20px; margin-top: 10px;">
+                                <li>ご本人の同意がある場合</li>
+                                <li>法令に基づく場合</li>
+                                <li>人の生命、身体又は財産の保護のために必要がある場合であって、本人の同意を得ることが困難であるとき</li>
+                                <li>公衆衛生の向上又は児童の健全な育成の推進のために特に必要がある場合であって、本人の同意を得ることが困難であるとき</li>
+                                <li>国の機関若しくは地方公共団体又はその委託を受けた者が法令の定める事務を遂行することに対して協力する必要がある場合であって、本人の同意を得ることによって当該事務の遂行に支障を及ぼす恐れがあるとき</li>
+                            </ul>
+
+                            <h4>個人情報取り扱いの委託</h4>
+                            <p>当社は、事業運営上、お客様により良いサービスを提供するために業務の一部を外部に委託しています。業務委託先に対しては、個人情報を預けることがあります。この場合、個人情報を適切に取り扱っていると認められる委託先を選定し、契約等において個人情報の適正管理・機密保持などによりお客様の個人情報の漏洩防止に必要な事項を取り決め、適切な管理を実施させます。</p>
+
+                            <h4>個人情報の開示等の請求</h4>
+                            <p>お客様が当社に対してご自身の個人情報の開示等（利用目的の通知、開示、内容の訂正・追加・削除、利用の停止または消去、第三者への提供の停止）に関して、当社「個人情報に関するお問い合わせ窓口」に申し出ることができます。その際、当社はご本人を確認させていただいたうえで、合理的な期間内に対応いたします。</p>
+                            <p style="margin-top: 10px;">開示等の申し出の詳細につきましては、下記の「個人情報に関するお問い合わせ窓口」までお問い合わせください。</p>
+                            <p style="margin-top: 10px;">〒110-8722 東京都台東区秋葉原2-3<br>
+                            株式会社日本農業新聞 総務人事部<br>
+                            TEL：03-6281-5801　FAX：03-6281-5851</p>
+
+                            <h4>個人情報を提供されることの任意性について</h4>
+                            <p>お客様が当社に個人情報を提供されるかどうかは、お客様の任意によるものです。ただし、必要な項目をいただけない場合、各サービス等が適切な状態で提供できない場合があります。</p>
+
+                            <h4>本Webサイトへアクセスしたことを契機として機械的に取得される情報</h4>
+                            <p>当社は、閲覧されたWebサイトのセキュリティ確保・ユーザーサービス向上のため、Cookie等により閲覧された方の情報を取得することがあります。</p>
+                        </div>
+
+                        <label class="terms-agree">
+                            <input type="checkbox" name="agree" required>
+                            <span>上記の個人情報の取扱いについて同意します</span>
+                        </label>
+
+                        <div id="form-summary" style="margin-top: 30px; display: none;">
+                            <!-- 入力内容のサマリーをJavaScriptで表示 -->
+                        </div>
+                    </div>
+
+                    <!-- ナビゲーションボタン -->
+                    <div class="form-navigation">
+                        <button type="button" class="btn btn-prev" id="prevBtn" onclick="previousStep()" style="display: none;">
+                            ← 戻る
+                        </button>
+                        <button type="button" class="btn btn-next" id="nextBtn" onclick="nextStep()">
+                            次へ →
+                        </button>
+                        <button type="submit" class="btn btn-submit" id="submitBtn" style="display: none;">
+                            登録を完了する
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 完了メッセージ -->
+                <div id="completionMessage" class="completion-message" style="display: none;">
+                    <div class="success-icon">✓</div>
+                    <h2 class="completion-title">登録が完了しました！</h2>
+                    <p class="completion-text">
+                        ご登録ありがとうございます。<br>
+                        まもなく確認メールをお送りいたします。
+                    </p>
+                    <button class="btn btn-next" onclick="window.location.href=window.__paperTop()">
+                        トマト新聞を読む →
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Footer will be loaded here by JavaScript -->
+<div id="footer-container"></div>
+
+  <!-- 全paper共通 -->
+  <script src="/static/auth.js"></script>
+  <script src="/static/app.js"></script>
+  <!-- Common component loader (header/footer) -->
+  <script src="/static/common/js/components.js"></script>
+</body>
+</html>
