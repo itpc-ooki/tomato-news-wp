@@ -184,10 +184,17 @@ private static function rrmdir(string $dir): void {
 }
 
 if (defined('WP_CLI') && WP_CLI) {
-  \WP_CLI::add_command('tomato auto-static-run', [Tomato_Auto_Static_Build_Runner::class, 'cli_run'], [
+  // Debounced runner (for cron): runs only when due.
+  WP_CLI::add_command('tomato auto-static-run', [Tomato_Auto_Static_Build_Runner::class, 'cli_run'], [
     'shortdesc' => 'Run queued static-build and S3 sync (if due).',
-    'synopsis' => [
-      ['type' => 'flag', 'name' => 'force', 'description' => 'Run immediately, ignore debounce timer'],
-    ],
+  ]);
+
+  // Immediate runner (for manual debug): always runs now, ignoring debounce timer.
+  WP_CLI::add_command('tomato auto-static-run-now', function ($args, $assoc_args) {
+    $assoc_args = is_array($assoc_args) ? $assoc_args : [];
+    $assoc_args['force'] = true;
+    Tomato_Auto_Static_Build_Runner::cli_run($args, $assoc_args);
+  }, [
+    'shortdesc' => 'Run queued static-build and S3 sync immediately (ignore debounce).',
   ]);
 }
