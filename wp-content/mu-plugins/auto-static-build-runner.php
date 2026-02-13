@@ -1,165 +1,238 @@
 <?php
 /**
- * MU Plugin: Auto Static Build Runner
- * - Reads wp-content/uploads/static-build-queue/requested.json
- * - Runs: wp static-build <paper>  (or wp static-build --all)
- * - Syncs static output to S3
+ * Tomato Auto Static Build Runner (MU plugin)
+ *
+ * - Reads queued requests from wp-content/uploads/static-build-queue/requested.json
+ * - Runs static build (wp static-build ...)
+ * - Syncs to S3 if TOMATO_STATIC_S3_TARGET is set
  */
 
 if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
+  class Tomato_Auto_Static_Build_Runner {
 
-class Tomato_Auto_Static_Build_Runner {
+    private const LOCK_FILE = 'wp-content/uploads/static-build-queue/.lock';
+    private const QUEUE_DIR = 'wp-content/uploads/static-build-queue';
+    private const REQUESTED_JSON = 'wp-content/uploads/static-build-queue/requested.json';
+    private const BUILD_LOG = 'wp-content/uploads/static-build-queue/build.log';
 
-  private static function queue_dir(): string {
-    return WP_CONTENT_DIR . '/uploads/static-build-queue';
-  }
-
-  private static function request_file(): string {
-    // ✅ FIX: correct filename
-    return self::queue_dir() . '/requested.json';
-  }
-
-  private static function log_file(): string {
-    return self::queue_dir() . '/build.log';
-  }
-
-  private static function lock_file(): string {
-    return self::queue_dir() . '/running.lock';
-  }
-
-  private static function log(string $msg): void {
-    $ts = date('Y-m-d\TH:i:sP');
-    @file_put_contents(self::log_file(), "[{$ts}] {$msg}\n", FILE_APPEND);
-  }
-
-  private static function lock(): bool {
-    if (file_exists(self::lock_file())) return false;
-    return @file_put_contents(self::lock_file(), (string)time()) !== false;
-  }
-
-  private static function unlock(): void {
-    @unlink(self::lock_file());
-  }
-
-  private static function read_request(): ?array {
-    $file = self::request_file();
-    if (!file_exists($file)) return null;
-
-    $raw = @file_get_contents($file);
-    if ($raw === false) return null;
-
-    $data = json_decode($raw, true);
-    if (!is_array($data)) return null;
-
-    return $data;
-  }
-
-  private static function clear_request(): void {
-    @unlink(self::request_file());
-  }
-
-  private static function run_cmd(string $cmd, ?int &$exit_code = null): void {
-    self::log("CMD: {$cmd}");
-    \WP_CLI::log($cmd);
-    passthru($cmd, $code);
-    $exit_code = $code;
-  }
-
-  /**
-   * wp tomato auto-static-run [--force]
-   */
-  public static function cli_run(array $args, array $assoc_args): void {
-    $force = !empty($assoc_args['force']);
-
-    @mkdir(self::queue_dir(), 0775, true);
-
-    if (!self::lock()) {
-      \WP_CLI::warning('Already running (lock exists).');
-      self::log('SKIP: already running');
-      return;
+    private static function lock_path(): string {
+      return ABSPATH . ltrim(self::LOCK_FILE, '/');
     }
 
-    try {
-      $req = self::read_request();
+    private static function queue_dir_path(): string {
+      return ABSPATH . ltrim(self::QUEUE_DIR, '/');
+    }
+
+    private static function requested_json_path(): string {
+      return ABSPATH . ltrim(self::REQUESTED_JSON, '/');
+    }
+
+    private static function build_log_path(): string {
+      return ABSPATH . ltrim(self::BUILD_LOG, '/');
+    }
+
+    private static function ensure_queue_dir(): void {
+      $dir = self::queue_dir_path();
+      if (!is_dir($dir)) {
+        wp_mkdir_p($dir);
+      }
+    }
+
+    private static function is_locked(): bool {
+      return file_exists(self::lock_path());
+    }
+
+    private static function lock(): void {
+      self::ensure_queue_dir();
+      @file_put_contents(self::lock_path(), (string) time());
+    }
+
+    private static function unlock(): void {
+      @unlink(self::lock_path());
+    }
+
+    private static function read_requested(): ?array {
+      $path = self::requested_json_path();
+      if (!file_exists($path)) return null;
+      $raw = @file_get_contents($path);
+      if ($raw === false) return null;
+      $data = json_decode($raw, true);
+      if (!is_array($data)) return null;
+      return $data;
+    }
+
+    private static function append_log(string $line): void {
+      self::ensure_queue_dir();
+      $path = self::build_log_path();
+      $ts = gmdate('Y-m-d\\TH:i:s\\Z');
+      @file_put_contents($path, sprintf("[%s] %s\n", $ts, $line), FILE_APPEND);
+    }
+
+    /**
+     * Run build+sync if due.
+     *
+     * @param bool $force Run immediately (ignore debounce timer)
+     */
+    public static function run(bool $force = false): void {
+      self::ensure_queue_dir();
+
+      if (self::is_locked()) {
+        self::append_log('Skip: locked');
+        return;
+      }
+
+      $req = self::read_requested();
       if (!$req) {
-        \WP_CLI::warning('No requested.json');
-        self::log('SKIP: no requested.json');
+        self::append_log('Skip: no requested.json');
         return;
       }
 
-      $run_after = isset($req['run_after']) ? (int)$req['run_after'] : 0;
-      $papers    = isset($req['papers']) && is_array($req['papers']) ? $req['papers'] : [];
+      $run_after = isset($req['run_after']) ? (int) $req['run_after'] : 0;
+      $papers = isset($req['papers']) && is_array($req['papers']) ? $req['papers'] : [];
 
-      if (!$force && $run_after > 0 && time() < $run_after) {
-        \WP_CLI::warning('Not due yet (run_after in future).');
-        self::log('SKIP: not due yet');
+      if (!$papers) {
+        self::append_log('Skip: no papers');
         return;
       }
 
-      // consume the request so it won't re-run forever
-      self::clear_request();
-
-      $wp_path    = '/var/www/html';
-      $static_dir = getenv('TOMATO_STATIC_DIR') ?: ($wp_path . '/static');
-      $s3_target  = getenv('TOMATO_STATIC_S3_TARGET') ?: '';
-
-      if ($s3_target === '') {
-        \WP_CLI::error('Missing env TOMATO_STATIC_S3_TARGET');
+      $now = time();
+      if (!$force && $run_after > $now) {
+        self::append_log('Debounce waiting until ' . gmdate('c', $run_after));
+        return;
       }
 
-      self::log('RUN START papers=' . json_encode($papers));
+      self::lock();
+      try {
+        self::append_log('Start build: papers=' . implode(',', $papers));
 
-      // ✅ FIX: wp static-build expects positional args:
-      //   wp static-build tomato
+        // Run static build
+        self::run_static_build($papers);
+
+        // Sync to S3 if configured
+        self::run_s3_sync();
+
+        self::append_log('Done build');
+      } catch (\Throwable $e) {
+        self::append_log('ERROR: ' . $e->getMessage());
+        throw $e;
+      } finally {
+        self::unlock();
+      }
+    }
+
+    private static function run_static_build(array $papers): void {
+      if (!defined('WP_CLI') || !WP_CLI) {
+        // Not running under WP-CLI; just skip.
+        self::append_log('Skip: not WP_CLI');
+        return;
+      }
+
+      $wp_path = ABSPATH;
+
+      // NOTE:
+      // cli-static-build.php expects:
+      //   wp static-build <paper>
       //   wp static-build --all
-      $exit = 0;
+      // NOT:
+      //   wp static-build --paper=<paper>
+      $is_all = in_array('all', $papers, true);
 
-      if (in_array('all', $papers, true) || count($papers) === 0) {
-        $cmd_build = 'wp --path=' . escapeshellarg($wp_path) . ' static-build --all --debug';
-        self::log('Build(all): ' . $cmd_build);
-        self::run_cmd($cmd_build, $exit);
-        if ($exit !== 0) {
-          self::log('Build failed code=' . $exit);
-          \WP_CLI::error('static-build failed with code ' . $exit);
-        }
+      // 1) Build static
+      // - If --all was requested, run once: wp static-build --all
+      // - Otherwise, run once per paper: wp static-build tomato / leek / strawberry ...
+      if ($is_all) {
+      $cmd_build = sprintf(
+          'wp --path=%s static-build --all --debug',
+          escapeshellarg($wp_path)
+      );
+      \WP_CLI::log('Build: ' . $cmd_build);
+      $code = 0;
+      \WP_CLI::runcommand($cmd_build, ['exit_error' => false, 'return' => 'all', 'launch' => true], $code);
+      if ($code !== 0) {
+          \WP_CLI::error('static-build failed with code ' . $code);
+      }
       } else {
-        foreach ($papers as $paper) {
-          if (!is_string($paper) || $paper === '') continue;
-
-          $cmd_build = 'wp --path=' . escapeshellarg($wp_path) . ' static-build ' . escapeshellarg($paper) . ' --debug';
-          self::log('Build(' . $paper . '): ' . $cmd_build);
-          self::run_cmd($cmd_build, $exit);
-          if ($exit !== 0) {
-            self::log('Build failed code=' . $exit . ' paper=' . $paper);
-            \WP_CLI::error('static-build failed with code ' . $exit . ' (paper=' . $paper . ')');
+      $papers = array_values(array_unique($papers));
+      foreach ($papers as $paper) {
+          $cmd_build = sprintf(
+          'wp --path=%s static-build %s --debug',
+          escapeshellarg($wp_path),
+          escapeshellarg($paper)
+          );
+          \WP_CLI::log('Build: ' . $cmd_build);
+          $code = 0;
+          \WP_CLI::runcommand($cmd_build, ['exit_error' => false, 'return' => 'all', 'launch' => true], $code);
+          if ($code !== 0) {
+          \WP_CLI::error('static-build failed for ' . $paper . ' with code ' . $code);
           }
         }
       }
+    }
 
-      // Sync to S3 (same as before)
-      $cmd_sync = 'aws s3 sync ' . escapeshellarg($static_dir) . ' ' . escapeshellarg($s3_target) . ' --delete';
-      self::log('Sync: ' . $cmd_sync);
-      self::run_cmd($cmd_sync, $exit);
-      if ($exit !== 0) {
-        self::log('S3 sync failed code=' . $exit);
-        \WP_CLI::error('aws s3 sync failed with code ' . $exit);
+    private static function run_s3_sync(): void {
+      if (!defined('WP_CLI') || !WP_CLI) {
+        self::append_log('Skip sync: not WP_CLI');
+        return;
       }
 
-      self::log('RUN OK');
+      $s3_target = getenv('TOMATO_STATIC_S3_TARGET');
+      if (!$s3_target) {
+        \WP_CLI::warning('Missing env TOMATO_STATIC_S3_TARGET (e.g. s3://tomatonews-static-stg/static)');
+        self::append_log('Skip sync: TOMATO_STATIC_S3_TARGET not set');
+        return;
+      }
+
+      // Your static output dir (adjust if your project differs)
+      $static_dir = ABSPATH . 'static';
+
+      if (!is_dir($static_dir)) {
+        \WP_CLI::warning('static dir missing: ' . $static_dir);
+        self::append_log('Skip sync: static dir missing');
+        return;
+      }
+
+      $cmd_sync = sprintf(
+        'aws s3 sync %s %s --delete',
+        escapeshellarg($static_dir . '/'),
+        escapeshellarg(rtrim($s3_target, '/') . '/')
+      );
+
+      \WP_CLI::log('Sync: ' . $cmd_sync);
+      $code2 = 0;
+      \WP_CLI::runcommand($cmd_sync, ['exit_error' => false, 'return' => 'all', 'launch' => true], $code2);
+      if ($code2 !== 0) {
+        \WP_CLI::error('aws s3 sync failed with code ' . $code2);
+      }
+
       \WP_CLI::success('Build + sync complete.');
-    } finally {
-      self::unlock();
+    }
+
+    /**
+     * WP-CLI command handler
+     */
+    public static function cli_run($args, $assoc_args): void {
+      $force = !empty($assoc_args['force']);
+      self::run($force);
+    }
+
+    public static function cli_run_now($args, $assoc_args): void {
+      // Always run immediately (ignore debounce)
+      self::run(true);
     }
   }
 }
 
-} // end class_exists
-
 if (defined('WP_CLI') && WP_CLI) {
+  // Debounced runner (for cron): runs only when due.
   \WP_CLI::add_command('tomato auto-static-run', [Tomato_Auto_Static_Build_Runner::class, 'cli_run'], [
     'shortdesc' => 'Run queued static-build and S3 sync (if due).',
-    'synopsis' => [
+    'synopsis'  => [
       ['type' => 'flag', 'name' => 'force', 'description' => 'Run immediately, ignore debounce timer'],
     ],
+  ]);
+
+  // Run immediately, ignoring debounce
+  \WP_CLI::add_command('tomato auto-static-run-now', [Tomato_Auto_Static_Build_Runner::class, 'cli_run_now'], [
+    'shortdesc' => 'Run queued static-build and S3 sync immediately (ignore debounce).',
   ]);
 }
