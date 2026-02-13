@@ -3,14 +3,14 @@ services:
     image: mariadb:10.6
     restart: always
     environment:
-      MYSQL_DATABASE: wordpress
-      MYSQL_USER: wp
-      MYSQL_PASSWORD: wp
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: "${MYSQL_DATABASE}"
+      MYSQL_USER: "${MYSQL_USER}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -46,12 +46,12 @@ services:
       wp_fix_permissions:
         condition: service_completed_successfully
     ports:
-      - "8080:80"
+      - "${WP_PORT:-8080}:80"
     environment:
       WORDPRESS_DB_HOST: db
-      WORDPRESS_DB_NAME: wordpress
-      WORDPRESS_DB_USER: wp
-      WORDPRESS_DB_PASSWORD: wp
+      WORDPRESS_DB_NAME: "${MYSQL_DATABASE}"
+      WORDPRESS_DB_USER: "${MYSQL_USER}"
+      WORDPRESS_DB_PASSWORD: "${MYSQL_PASSWORD}"
     volumes:
       - wp_html:/var/www/html
       - ./wp-content:/var/www/html/wp-content
@@ -76,11 +76,11 @@ services:
       - .env
     environment:
       WORDPRESS_DB_HOST: db
-      WORDPRESS_DB_NAME: wordpress
-      WORDPRESS_DB_USER: wp
-      WORDPRESS_DB_PASSWORD: wp
+      WORDPRESS_DB_NAME: "${MYSQL_DATABASE}"
+      WORDPRESS_DB_USER: "${MYSQL_USER}"
+      WORDPRESS_DB_PASSWORD: "${MYSQL_PASSWORD}"
       BUILD_INTERVAL_SECONDS: "${BUILD_INTERVAL_SECONDS:-30}"
-      TOMATO_STATIC_S3_TARGET: "${TOMATO_STATIC_S3_TARGET:-s3://tomatonews-static-stg}"
+      TOMATO_STATIC_S3_TARGET: "${TOMATO_STATIC_S3_TARGET:-s3://${S3_BUCKET}/${S3_PREFIX}}"
     volumes:
       - wp_html:/var/www/html
       - ./wp-content:/var/www/html/wp-content
