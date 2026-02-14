@@ -62,7 +62,7 @@ services:
   static_builder:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/static-builder/Dockerfile
     container_name: wp-cms-static_builder-1
     depends_on:
       wordpress:
@@ -75,8 +75,6 @@ services:
       WORDPRESS_DB_USER: "${MYSQL_USER}"
       WORDPRESS_DB_PASSWORD: "${MYSQL_PASSWORD}"
       AWS_REGION: "${AWS_REGION}"
-      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
-      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
       S3_BUCKET: "${S3_BUCKET}"
       S3_PREFIX: "${S3_PREFIX}"
       BUILD_INTERVAL_SECONDS: "${BUILD_INTERVAL_SECONDS:-30}"
