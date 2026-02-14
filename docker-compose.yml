@@ -45,12 +45,10 @@ services:
     depends_on:
       wordpress:
         condition: service_started
-    command: >
-      bash -lc "
-        chown -R www-data:www-data /var/www/html/wp-content /var/www/html/static-src /var/www/html/static
-        && chmod -R 775 /var/www/html/wp-content /var/www/html/static-src /var/www/html/static
-        && echo '[wp_fix_permissions] done.'
-      "
+    command: >-
+      bash -lc 'chown -R www-data:www-data /var/www/html/wp-content /var/www/html/static-src /var/www/html/static
+      && chmod -R 775 /var/www/html/wp-content /var/www/html/static-src /var/www/html/static
+      && echo "[wp_fix_permissions] done."'
     volumes:
       - ./wp-content:/var/www/html/wp-content
       - ./static-src:/var/www/html/static-src
