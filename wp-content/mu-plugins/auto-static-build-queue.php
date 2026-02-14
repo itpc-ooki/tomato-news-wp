@@ -98,43 +98,86 @@ class Tomato_Auto_Static_Build_Queue
     self::request_build($papers, 60);
   }
 
+  public static function on_save_newspaper($post_id, $post, $update): void
+  {
+    if (wp_is_post_revision($post_id) || (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE)) {
+      return;
+    }
+
+    $status = get_post_status($post_id);
+    if (!in_array($status, ['publish', 'future'], true)) {
+      return;
+    }
+
+    $papers = self::get_papers_from_newspaper_master();
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers);
+  }
+
+
   public static function on_terms_edited($term_id, $tt_id, $taxonomy): void
   {
     // Taxonomy changes can affect listing pages/menus -> safer to rebuild all papers
     self::request_build(['all'], 60);
   }
 
-
-  public static function on_acf_save_post($post_id): void
+  public static function on_option_updated($option, $old, $new): void
   {
-    // ACF Options Page saves as post_id = 'options'
-    if ($post_id === 'options') {
-      self::request_build(['all'], 60);
-      return;
-    }
+    // If ACF options or settings affect placements/menus, rebuild all
+    // You can narrow this by checking option names you actually use.
+    self::request_build(['all'], 60);
   }
 
-  public static function on_nav_menu_updated($menu_id = null, $menu_data = null): void
+
+  private static function get_papers_from_newspaper_master(): array
   {
-    // Menu updates can affect header/footer across all papers
-    self::request_build(['all'], 60);
+    // Option A: Auto-read papers from 「新聞マスター」 (CPT: newspaper)
+    // ACF field key: newspaper_slug (required)
+    $post_type = 'newspaper';
+    if (!post_type_exists($post_type)) {
+      return [];
+    }
+
+    $q = new WP_Query([
+      'post_type'      => $post_type,
+      'post_status'    => ['publish'],
+      'posts_per_page' => -1,
+      'fields'         => 'ids',
+      'no_found_rows'  => true,
+    ]);
+
+    $papers = [];
+    foreach ($q->posts as $pid) {
+      $slug = '';
+      if (function_exists('get_field')) {
+        $slug = (string) get_field('newspaper_slug', $pid);
+      }
+      if ($slug === '') {
+        $slug = (string) get_post_meta($pid, 'newspaper_slug', true);
+      }
+
+      $slug = strtolower(trim($slug));
+      if ($slug !== '') {
+        $papers[] = $slug;
+      }
+    }
+
+    return array_values(array_unique($papers));
   }
 
   private static function detect_papers_from_post(int $post_id): array
   {
-    // Adjust taxonomy name if you’re using a custom one.
-    // If you use categories: slug "tomato"/"leek"/"strawberry"
-    $terms = get_the_terms($post_id, 'category');
-    if (!is_array($terms)) return [];
-
-    $papers = [];
-    foreach ($terms as $t) {
-      $slug = $t->slug ?? '';
-      if (in_array($slug, ['tomato','leek','strawberry'], true)) {
-        $papers[] = $slug;
-      }
+    // Option A: Rebuild all papers from 新聞マスター.
+    $papers = self::get_papers_from_newspaper_master();
+    if (!empty($papers)) {
+      return $papers;
     }
-    return array_values(array_unique($papers));
+
+    // Fallback (for local/dev before 新聞マスター is configured)
+    return self::get_default_papers();
   }
 }
 
@@ -142,5 +185,7 @@ class Tomato_Auto_Static_Build_Queue
 add_action('save_post', [Tomato_Auto_Static_Build_Queue::class, 'on_save_post'], 10, 3);
 add_action('edited_terms', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
 add_action('created_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
-add_action('acf/save_post', [Tomato_Auto_Static_Build_Queue::class, 'on_acf_save_post'], 20, 1);
-add_action('wp_update_nav_menu', [Tomato_Auto_Static_Build_Queue::class, 'on_nav_menu_updated'], 10, 2);
+add_action('updated_option', [Tomato_Auto_Static_Build_Queue::class, 'on_option_updated'], 10, 3);
+
+// When client adds/edits a paper in 「新聞マスター」, rebuild all papers.
+add_action('save_post_newspaper', [Tomato_Auto_Static_Build_Queue::class, 'on_save_newspaper'], 10, 3);

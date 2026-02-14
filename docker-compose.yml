@@ -1,7 +1,8 @@
 services:
   db:
-    image: mariadb:10.6
-    restart: always
+    image: mysql:8.0
+    container_name: wp-cms-db-1
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: "${MYSQL_DATABASE}"
       MYSQL_USER: "${MYSQL_USER}"
@@ -10,101 +11,101 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${MYSQL_ROOT_PASSWORD} --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 5s
       timeout: 5s
-      retries: 30
-
-  # ★追加：wp-content/uploads の作成＆権限調整（毎回自動で治す）
-  wp_fix_permissions:
-    image: wordpress:6.4-php8.2-apache
-    user: "0:0"
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - wp_html:/var/www/html
-      - ./wp-content:/var/www/html/wp-content
-      - ./static:/var/www/html/static
-      - ./static-src:/var/www/html/static-src
-    entrypoint: ["/bin/bash", "-lc"]
-    command: >
-      set -eu;
-      echo "[wp_fix_permissions] start";
-      mkdir -p /var/www/html/wp-content/uploads;
-      chown -R 33:33 /var/www/html/wp-content;
-      chmod -R 775 /var/www/html/wp-content/uploads;
-      echo "[wp_fix_permissions] done";
-    restart: "no"
+      retries: 20
+    networks:
+      - wp-cms_default
 
   wordpress:
-    image: wordpress:6.4-php8.2-apache
-    restart: always
-    depends_on:
-      db:
-        condition: service_healthy
-      wp_fix_permissions:
-        condition: service_completed_successfully
-    ports:
-      - "${WP_PORT:-8080}:80"
-    environment:
-      WORDPRESS_DB_HOST: db
-      WORDPRESS_DB_NAME: "${MYSQL_DATABASE}"
-      WORDPRESS_DB_USER: "${MYSQL_USER}"
-      WORDPRESS_DB_PASSWORD: "${MYSQL_PASSWORD}"
-    volumes:
-      - wp_html:/var/www/html
-      - ./wp-content:/var/www/html/wp-content
-      - ./static:/var/www/html/static
-      - ./static-src:/var/www/html/static-src
-    working_dir: /var/www/html
-    user: "33:33"
-
-  static_builder:
-    build:
-      context: .
-      dockerfile: docker/static-builder/Dockerfile
+    image: wordpress:php8.2-apache
+    container_name: wp-cms-wordpress-1
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-      wp_fix_permissions:
-        condition: service_completed_successfully
-      wordpress:
-        condition: service_started
-    env_file:
-      - .env
+    ports:
+      - "${WP_PORT:-8080}:80"
     environment:
-      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_HOST: db:3306
       WORDPRESS_DB_NAME: "${MYSQL_DATABASE}"
       WORDPRESS_DB_USER: "${MYSQL_USER}"
       WORDPRESS_DB_PASSWORD: "${MYSQL_PASSWORD}"
-      BUILD_INTERVAL_SECONDS: "${BUILD_INTERVAL_SECONDS:-30}"
-      TOMATO_STATIC_S3_TARGET: "${TOMATO_STATIC_S3_TARGET:-s3://${S3_BUCKET}/${S3_PREFIX}}"
     volumes:
-      - wp_html:/var/www/html
       - ./wp-content:/var/www/html/wp-content
-      - ./static:/var/www/html/static
       - ./static-src:/var/www/html/static-src
-    working_dir: /var/www/html
-    user: "33:33"
+      - ./static:/var/www/html/static
+    networks:
+      - wp-cms_default
+
+  wp_fix_permissions:
+    image: wordpress:php8.2-apache
+    container_name: wp-cms-wp_fix_permissions-1
+    depends_on:
+      wordpress:
+        condition: service_started
+    command: >
+      bash -lc "
+        chown -R www-data:www-data /var/www/html/wp-content /var/www/html/static-src /var/www/html/static
+        && chmod -R 775 /var/www/html/wp-content /var/www/html/static-src /var/www/html/static
+        && echo '[wp_fix_permissions] done.'
+      "
+    volumes:
+      - ./wp-content:/var/www/html/wp-content
+      - ./static-src:/var/www/html/static-src
+      - ./static:/var/www/html/static
+    networks:
+      - wp-cms_default
+    restart: "no"
+
+  static_builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wp-cms-static_builder-1
+    depends_on:
+      wordpress:
+        condition: service_started
+      wp_fix_permissions:
+        condition: service_completed_successfully
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: "${MYSQL_DATABASE}"
+      WORDPRESS_DB_USER: "${MYSQL_USER}"
+      WORDPRESS_DB_PASSWORD: "${MYSQL_PASSWORD}"
+      AWS_REGION: "${AWS_REGION}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      S3_BUCKET: "${S3_BUCKET}"
+      S3_PREFIX: "${S3_PREFIX}"
+      BUILD_INTERVAL_SECONDS: "${BUILD_INTERVAL_SECONDS:-30}"
+      TOMATO_STATIC_S3_TARGET: "s3://${S3_BUCKET}/${S3_PREFIX}"
+    volumes:
+      - ./wp-content:/var/www/html/wp-content
+      - ./static-src:/var/www/html/static-src
+      - ./static:/var/www/html/static
+    networks:
+      - wp-cms_default
     command: >
       sh -lc '
       set -eu;
+
       echo "[static_builder] start. interval=${BUILD_INTERVAL_SECONDS}s";
       until wp core is-installed --path=/var/www/html >/dev/null 2>&1; do
         echo "[static_builder] waiting wordpress...";
         sleep 3;
       done;
-      echo "[static_builder] wordpress ready. start loop.";
+
+      echo "[static_builder] wordpress ready.";
       while true; do
-        echo "[static_builder] build start: $(date)";
-        wp static-build --all --path=/var/www/html || true;
-        echo "[static_builder] build end: $(date). sleep ${BUILD_INTERVAL_SECONDS}s";
+        wp --allow-root tomato-auto-static-run-now --debug || true;
         sleep "${BUILD_INTERVAL_SECONDS}";
       done
       '
 
+networks:
+  wp-cms_default:
+
 volumes:
   db_data:
-  wp_html:
