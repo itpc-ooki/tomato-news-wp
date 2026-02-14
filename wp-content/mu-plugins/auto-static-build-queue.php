@@ -4,108 +4,110 @@
  * Description: Queue static-build + S3 sync when content changes. Cron/CLI runner executes the job.
  */
 
-if (!defined('ABSPATH')) exit;
+if (!defined('ABSPATH')) {
+  exit;
+}
 
 class Tomato_Auto_Static_Build_Queue
 {
-  // Where we store a small queue/lock (must be writable by www-data)
-  private static function queue_dir() {
-    return WP_CONTENT_DIR . '/uploads/static-build-queue';
+  private const OPTION_KEY = 'tomato_static_build_queue';
+  private const LOG_DIR_REL = 'static-build-queue';
+  private const LOG_FILE = 'build.log';
+
+  private static function get_log_dir(): string
+  {
+    $upload_dir = wp_upload_dir();
+    return trailingslashit($upload_dir['basedir']) . self::LOG_DIR_REL;
   }
 
-  private static function ensure_dir() {
-    $dir = self::queue_dir();
+  private static function get_log_file(): string
+  {
+    return trailingslashit(self::get_log_dir()) . self::LOG_FILE;
+  }
+
+  private static function ensure_log_dir(): void
+  {
+    $dir = self::get_log_dir();
     if (!is_dir($dir)) {
       wp_mkdir_p($dir);
     }
-    return $dir;
   }
 
-  private static function request_file() {
-    return self::ensure_dir() . '/requested.json';
-  }
-
-  private static function lock_file() {
-    return self::ensure_dir() . '/running.lock';
-  }
-
-  private static function log_file() {
-    return self::ensure_dir() . '/build.log';
-  }
-
-  private static function write_log($msg) {
-    $line = '[' . gmdate('c') . '] ' . $msg . "\n";
-    @file_put_contents(self::log_file(), $line, FILE_APPEND);
-  }
-
-  /**
-   * Queue build request:
-   * - $papers: array like ['tomato'] or ['all']
-   * - debounce_seconds: run after last change
-   */
-  public static function request_build(array $papers, int $debounce_seconds = 60): void
+  private static function log(string $message): void
   {
-    $file = self::request_file();
-    $now = time();
+    self::ensure_log_dir();
+    $line = '[' . gmdate('Y-m-d H:i:s') . ' UTC] ' . $message . "\n";
+    @file_put_contents(self::get_log_file(), $line, FILE_APPEND);
+  }
 
-    $payload = [
-      'requested_at' => $now,
-      'run_after'    => $now + $debounce_seconds,
-      'papers'       => array_values(array_unique($papers)),
-    ];
+  public static function queue_build(array $papers, string $reason = ''): void
+  {
+    $papers = array_values(array_filter(array_map('sanitize_title', $papers)));
+    if (empty($papers)) {
+      return;
+    }
 
-    // Merge with existing request if present
-    if (file_exists($file)) {
-      $existing = json_decode((string)@file_get_contents($file), true);
-      if (is_array($existing)) {
-        $existing_papers = isset($existing['papers']) && is_array($existing['papers']) ? $existing['papers'] : [];
-        $merged = array_values(array_unique(array_merge($existing_papers, $payload['papers'])));
+    $queue = get_option(self::OPTION_KEY, []);
+    if (!is_array($queue)) {
+      $queue = [];
+    }
 
-        // If either includes "all", keep only all
-        if (in_array('all', $merged, true)) {
-          $merged = ['all'];
-        }
+    foreach ($papers as $paper) {
+      if (!isset($queue[$paper])) {
+        $queue[$paper] = [
+          'paper' => $paper,
+          'requested_at' => time(),
+          'reasons' => [],
+        ];
+      }
 
-        $payload['papers'] = $merged;
+      if ($reason !== '') {
+        $queue[$paper]['reasons'][] = $reason;
       }
     }
 
-    @file_put_contents($file, json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-    self::write_log('Queued build: ' . implode(',', $payload['papers']) . ' run_after=' . gmdate('c', $payload['run_after']));
+    update_option(self::OPTION_KEY, $queue, false);
+
+    self::log('Queued build: ' . implode(', ', $papers) . ($reason ? ' | reason: ' . $reason : ''));
   }
 
-  // === Hooks that should trigger builds ===
-
-  public static function on_save_post($post_id, $post, $update): void
+  public static function dequeue_build(string $paper): void
   {
-    if (wp_is_post_revision($post_id)) return;
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    $paper = sanitize_title($paper);
+    $queue = get_option(self::OPTION_KEY, []);
+    if (!is_array($queue) || empty($queue[$paper])) {
+      return;
+    }
 
-    // Only trigger for your content types (adjust as needed)
-    $pt = get_post_type($post_id);
-    $allowed = ['post']; // add your CPTs if you have any
-    if (!in_array($pt, $allowed, true)) return;
+    unset($queue[$paper]);
+    update_option(self::OPTION_KEY, $queue, false);
 
-    // Only when status is publish (or scheduled publish becomes publish)
-    $status = get_post_status($post_id);
-    if (!in_array($status, ['publish'], true)) return;
+    self::log('Dequeued build: ' . $paper);
+  }
 
-    // Determine paper(s). If you have a taxonomy/category like tomato/leek/strawberry, detect it.
-    // For now, assume category slug represents paper.
-    $papers = self::detect_papers_from_post($post_id);
-    if (empty($papers)) $papers = ['all'];
+  public static function get_queue(): array
+  {
+    $queue = get_option(self::OPTION_KEY, []);
+    return is_array($queue) ? $queue : [];
+  }
 
-    self::request_build($papers, 60);
+  public static function request_build(array $papers, string $reason = ''): void
+  {
+    self::queue_build($papers, $reason);
+
+    // Kick a single WP-Cron event quickly (runner will pick up the queue).
+    if (!wp_next_scheduled('tomato_static_build_queue_run')) {
+      wp_schedule_single_event(time() + 10, 'tomato_static_build_queue_run');
+      self::log('Scheduled WP-Cron tomato_static_build_queue_run');
+    }
   }
 
   public static function on_save_newspaper($post_id, $post, $update): void
   {
-    if (wp_is_post_revision($post_id) || (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE)) {
+    if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
       return;
     }
-
-    $status = get_post_status($post_id);
-    if (!in_array($status, ['publish', 'future'], true)) {
+    if (defined('DOING_CRON') && DOING_CRON) {
       return;
     }
 
@@ -114,58 +116,66 @@ class Tomato_Auto_Static_Build_Queue
       $papers = self::get_default_papers();
     }
 
-    self::request_build($papers);
+    self::request_build($papers, 'save_post_newspaper');
   }
 
-
-  public static function on_terms_edited($term_id, $tt_id, $taxonomy): void
+  public static function on_terms_edited($term_id, $tt_id = null, $taxonomy = null): void
   {
-    // Taxonomy changes can affect listing pages/menus -> safer to rebuild all papers
-    self::request_build(['all'], 60);
+    // Any taxonomy change may affect list/detail filtering; rebuild all papers.
+    $papers = self::get_papers_from_newspaper_master();
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+    self::request_build($papers, 'term_edited:' . (string)$taxonomy);
   }
 
-  public static function on_option_updated($option, $old, $new): void
+  public static function on_save_post($post_id, $post, $update): void
   {
-    // If ACF options or settings affect placements/menus, rebuild all
-    // You can narrow this by checking option names you actually use.
-    self::request_build(['all'], 60);
-  }
-
-
-  private static function get_papers_from_newspaper_master(): array
-  {
-    // Option A: Auto-read papers from 「新聞マスター」 (CPT: newspaper)
-    // ACF field key: newspaper_slug (required)
-    $post_type = 'newspaper';
-    if (!post_type_exists($post_type)) {
-      return [];
+    if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+      return;
+    }
+    if (defined('DOING_CRON') && DOING_CRON) {
+      return;
     }
 
-    $q = new WP_Query([
-      'post_type'      => $post_type,
-      'post_status'    => ['publish'],
+    // Only queue for standard posts (your static site content)
+    if (!is_object($post) || ($post->post_type ?? '') !== 'post') {
+      return;
+    }
+
+    $papers = self::detect_papers_from_post((int)$post_id);
+    if (empty($papers)) {
+      $papers = self::get_papers_from_newspaper_master();
+    }
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers, 'save_post');
+  }
+
+  public static function get_papers_from_newspaper_master(): array
+  {
+    $args = [
+      'post_type' => 'newspaper',
+      'post_status' => 'publish',
       'posts_per_page' => -1,
-      'fields'         => 'ids',
-      'no_found_rows'  => true,
-    ]);
-
+      'fields' => 'ids',
+      'no_found_rows' => true,
+    ];
+    $ids = get_posts($args);
     $papers = [];
-    foreach ($q->posts as $pid) {
-      $slug = '';
-      if (function_exists('get_field')) {
-        $slug = (string) get_field('newspaper_slug', $pid);
-      }
-      if ($slug === '') {
-        $slug = (string) get_post_meta($pid, 'newspaper_slug', true);
-      }
 
-      $slug = strtolower(trim($slug));
-      if ($slug !== '') {
-        $papers[] = $slug;
+    foreach ($ids as $id) {
+      $slug = get_post_field('post_name', $id);
+      if ($slug) {
+        $papers[] = sanitize_title($slug);
       }
     }
 
-    return array_values(array_unique($papers));
+    $papers = array_values(array_unique(array_filter($papers)));
+
+    return $papers;
   }
 
   private static function detect_papers_from_post(int $post_id): array
@@ -179,13 +189,19 @@ class Tomato_Auto_Static_Build_Queue
     // Fallback (for local/dev before 新聞マスター is configured)
     return self::get_default_papers();
   }
+
+  private static function get_default_papers(): array
+  {
+    // Default paper(s) when 新聞マスター is not configured yet.
+    return ['tomato'];
+  }
 }
 
 // Hook it up
 add_action('save_post', [Tomato_Auto_Static_Build_Queue::class, 'on_save_post'], 10, 3);
-add_action('edited_terms', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
-add_action('created_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
-add_action('updated_option', [Tomato_Auto_Static_Build_Queue::class, 'on_option_updated'], 10, 3);
-
-// When client adds/edits a paper in 「新聞マスター」, rebuild all papers.
 add_action('save_post_newspaper', [Tomato_Auto_Static_Build_Queue::class, 'on_save_newspaper'], 10, 3);
+
+add_action('edited_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
+add_action('created_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
+
+// The runner will hook this event and process the queue.
