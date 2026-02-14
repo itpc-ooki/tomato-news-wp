@@ -97,7 +97,7 @@ services:
 
       echo "[static_builder] wordpress ready.";
       while true; do
-        wp --allow-root tomato-auto-static-run-now --debug || true;
+        wp --allow-root tomato auto-static-run-now --debug || true;
         sleep "${BUILD_INTERVAL_SECONDS}";
       done
       '
