@@ -14,6 +14,81 @@
   "use strict";
 
   /* =====================================================================
+   * WEBセミナー: Video modal globals (must be defined early)
+   * - Some pages don't have certain DOM nodes used elsewhere in app.js.
+   * - If any earlier logic throws, inline onclick="openVideoModal(...)" would break.
+   * - So we define these globals first (no side effects unless modal elements exist).
+   * ===================================================================== */
+  (function ensureWebSeminarModalGlobals(){
+    let __currentVideoId = "";
+
+    function getEls(){
+      return {
+        modal: document.getElementById("videoModal"),
+        player: document.getElementById("videoPlayer"),
+      };
+    }
+
+    if (typeof window.openVideoModal !== "function") {
+      window.openVideoModal = function openVideoModal(videoId){
+        const els = getEls();
+        if (!els.modal || !els.player) return;
+
+        __currentVideoId = String(videoId || "");
+        const embedUrl =
+          "https://www.youtube.com/embed/" +
+          encodeURIComponent(__currentVideoId) +
+          "?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1";
+
+        els.player.src = embedUrl;
+        els.modal.classList.add("active");
+        document.body.style.overflow = "hidden";
+      };
+    }
+
+    if (typeof window.closeVideoModal !== "function") {
+      window.closeVideoModal = function closeVideoModal(){
+        const els = getEls();
+        if (!els.modal || !els.player) return;
+        els.modal.classList.remove("active");
+        els.player.src = "";
+        document.body.style.overflow = "";
+      };
+    }
+
+    if (typeof window.openCurrentVideoInYouTube !== "function") {
+      window.openCurrentVideoInYouTube = function openCurrentVideoInYouTube(){
+        const vid = __currentVideoId;
+        if (!vid) return;
+        window.open("https://www.youtube.com/watch?v=" + encodeURIComponent(vid), "_blank", "noopener");
+      };
+    }
+
+    // Close on overlay click / ESC (safe even if modal doesn't exist)
+    function bindCloseHandlers(){
+      const els = getEls();
+      if (!els.modal) return;
+
+      const closeBtn = els.modal.querySelector(".modal-close");
+      if (closeBtn) closeBtn.addEventListener("click", window.closeVideoModal);
+
+      els.modal.addEventListener("click", function(e){
+        if (e.target === els.modal) window.closeVideoModal();
+      });
+
+      document.addEventListener("keydown", function(e){
+        if (e.key === "Escape") window.closeVideoModal();
+      });
+
+      const ytBtn = els.modal.querySelector(".youtube-open-btn");
+      if (ytBtn) ytBtn.addEventListener("click", window.openCurrentVideoInYouTube);
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindCloseHandlers);
+    else bindCloseHandlers();
+  })();
+
+  /* =====================================================================
    * Common component loader (header/footer) + sticky offsets
    * (merged from /static/common/js/components.js)
    * ===================================================================== */
@@ -1575,10 +1650,12 @@ function boot(){
   }
   // mobile sticky ad: show after delay if viewport <= 900px
   const sticky = document.getElementById('stickyAd');
-  if(window.matchMedia('(max-width:900px)').matches){
-    setTimeout(()=>sticky.classList.add('active'), 1200);
-  }else{
-    sticky.classList.remove('active');
+  if (sticky) {
+    if (window.matchMedia('(max-width:900px)').matches) {
+      setTimeout(() => sticky.classList.add('active'), 1200);
+    } else {
+      sticky.classList.remove('active');
+    }
   }
 }
 
@@ -2192,5 +2269,255 @@ function resetAutoSlide() {
     initMarketData();
   }
 })();
-})();
 
+  /* =====================================================================
+   * Common UI helpers (mobile menu / footer accordion)
+   * + WEBセミナー page behaviors (video modal / countdown / thumbnails)
+   * ===================================================================== */
+
+  // Mobile menu toggle (used by header.html)
+  if (typeof window.toggleMobileMenu !== "function") {
+    window.toggleMobileMenu = function toggleMobileMenu() {
+      const menu = document.getElementById("mobileMenu");
+      const overlay = document.getElementById("mobileMenuOverlay");
+      if (!menu || !overlay) return;
+      menu.classList.toggle("active");
+      overlay.classList.toggle("active");
+    };
+  }
+
+  // Footer accordion (used by footer.html)
+  if (typeof window.toggleFooterMenu !== "function") {
+    window.toggleFooterMenu = function toggleFooterMenu(col) {
+      if (window.innerWidth <= 768 && col && col.classList) col.classList.toggle("active");
+    };
+  }
+
+  // Dummy modal opener (kept for mockup compatibility)
+  if (typeof window.openModal !== "function") {
+    window.openModal = function openModal(type) {
+      alert(String(type || "") + "モーダル（ダミー）");
+    };
+  }
+
+  // ==========================
+  // WEBセミナー: Video modal
+  // ==========================
+  (function initWebSeminarVideoModal() {
+    let currentVideoId = "";
+
+    function getModalEls() {
+      return {
+        modal: document.getElementById("videoModal"),
+        player: document.getElementById("videoPlayer"),
+      };
+    }
+
+    if (typeof window.openVideoModal !== "function") {
+      window.openVideoModal = function openVideoModal(videoId) {
+        const { modal, player } = getModalEls();
+        if (!modal || !player) return;
+
+        currentVideoId = String(videoId || "");
+        const embedUrl =
+          "https://www.youtube.com/embed/" +
+          encodeURIComponent(currentVideoId) +
+          "?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1";
+
+        player.src = embedUrl;
+        modal.classList.add("active");
+        document.body.style.overflow = "hidden";
+      };
+    }
+
+    if (typeof window.openCurrentVideoInYouTube !== "function") {
+      window.openCurrentVideoInYouTube = function openCurrentVideoInYouTube(evt) {
+        if (evt && typeof evt.stopPropagation === "function") evt.stopPropagation();
+        const vid = currentVideoId;
+        if (!vid) return;
+        const youtubeUrl = "https://www.youtube.com/watch?v=" + encodeURIComponent(vid);
+        window.open(youtubeUrl, "_blank", "noopener,noreferrer");
+      };
+    }
+
+    if (typeof window.closeVideoModal !== "function") {
+      window.closeVideoModal = function closeVideoModal(evt) {
+        const { modal, player } = getModalEls();
+        if (!modal || !player) return;
+
+        const target = evt && evt.target ? evt.target : null;
+        const isOverlayClick = target && target.id === "videoModal";
+        const isCloseBtnClick =
+          target && target.classList && target.classList.contains("modal-close");
+
+        // Allow calling without event (fails safe: close)
+        if (!evt || isOverlayClick || isCloseBtnClick) {
+          player.src = "";
+          modal.classList.remove("active");
+          document.body.style.overflow = "";
+          currentVideoId = "";
+          if (evt && typeof evt.stopPropagation === "function") evt.stopPropagation();
+        }
+      };
+    }
+  })();
+
+  // ==========================
+  // WEBセミナー: Countdown
+  // ==========================
+  (function initWebSeminarCountdown() {
+    const daysEl = document.getElementById("days");
+    const hoursEl = document.getElementById("hours");
+    const minutesEl = document.getElementById("minutes");
+    const secondsEl = document.getElementById("seconds");
+    if (!daysEl && !hoursEl && !minutesEl && !secondsEl) return;
+
+    // 配信開始日時（モック：2026-06-22 14:00 JST）
+    const targetDate = new Date("2026-06-22T14:00:00+09:00").getTime();
+
+    function update() {
+      const now = Date.now();
+      const distance = targetDate - now;
+
+      const clamp = (n) => (Number.isFinite(n) && n > 0 ? n : 0);
+
+      const days = Math.floor(clamp(distance) / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((clamp(distance) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((clamp(distance) % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((clamp(distance) % (1000 * 60)) / 1000);
+
+      if (daysEl) daysEl.textContent = String(days).padStart(2, "0");
+      if (hoursEl) hoursEl.textContent = String(hours).padStart(2, "0");
+      if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, "0");
+      if (secondsEl) secondsEl.textContent = String(seconds).padStart(2, "0");
+
+      if (distance < 0) {
+        if (window.__webSeminarCountdownInterval) {
+          clearInterval(window.__webSeminarCountdownInterval);
+          window.__webSeminarCountdownInterval = null;
+        }
+      }
+    }
+
+    update();
+    if (window.__webSeminarCountdownInterval) clearInterval(window.__webSeminarCountdownInterval);
+    window.__webSeminarCountdownInterval = setInterval(update, 1000);
+  })();
+
+  // ==========================
+  // WEBセミナー: Notification (mock)
+  // ==========================
+  if (typeof window.subscribeNotification !== "function") {
+    window.subscribeNotification = function subscribeNotification(evt) {
+      const e = evt || window.event;
+      const button = e && e.target ? e.target.closest ? e.target.closest("button") : e.target : null;
+      if (!button) return;
+
+      const originalText = button.innerHTML;
+
+      button.disabled = true;
+      button.innerHTML =
+        '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="animation: spin 1s linear infinite;"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-dasharray="50" stroke-dashoffset="25" fill="none"/></svg> 登録中...';
+
+      // Ensure spin keyframes exist once
+      if (!document.getElementById("countdown-styles")) {
+        const style = document.createElement("style");
+        style.id = "countdown-styles";
+        style.textContent = "@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}";
+        document.head.appendChild(style);
+      }
+
+      setTimeout(function () {
+        button.innerHTML =
+          '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.25 6.25L7.5 15L3.75 11.25" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 通知を設定しました';
+        button.style.background = "#10b981";
+
+        setTimeout(function () {
+          button.disabled = false;
+          button.innerHTML = originalText;
+          button.style.background = "";
+        }, 3000);
+      }, 1000);
+    };
+  }
+
+  // ==========================
+  // WEBセミナー: YouTube thumbnail fallback
+  // ==========================
+  (function initThumbnailFallback() {
+    function extractVideoId(url) {
+      const m = String(url || "").match(/\/vi\/([^\/]+)\//);
+      return m ? m[1] : null;
+    }
+    function getCurrentQuality(url) {
+      const s = String(url || "");
+      if (s.includes("maxresdefault")) return "maxresdefault";
+      if (s.includes("sddefault")) return "sddefault";
+      if (s.includes("hqdefault")) return "hqdefault";
+      if (s.includes("mqdefault")) return "mqdefault";
+      if (s.includes("default")) return "default";
+      return null;
+    }
+    function getNextQuality(current) {
+      const fallbackOrder = {
+        maxresdefault: "sddefault",
+        sddefault: "hqdefault",
+        hqdefault: "mqdefault",
+        mqdefault: "default",
+        default: null,
+      };
+      return fallbackOrder[current] || "hqdefault";
+    }
+
+    function setup() {
+      const thumbnails = document.querySelectorAll(".tile-img img, .seminar-video-wrapper img");
+      if (!thumbnails || thumbnails.length === 0) return;
+
+      thumbnails.forEach(function (img) {
+        const originalSrc = img.src;
+
+        img.addEventListener("error", function () {
+          const videoId = extractVideoId(originalSrc) || extractVideoId(img.src);
+          if (!videoId) return;
+
+          const currentQuality = getCurrentQuality(img.src) || "maxresdefault";
+          const nextQuality = getNextQuality(currentQuality);
+
+          if (nextQuality) {
+            img.src = "https://i.ytimg.com/vi/" + videoId + "/" + nextQuality + ".jpg";
+          } else {
+            img.style.display = "none";
+            if (img.parentElement) {
+              img.parentElement.style.background =
+                "linear-gradient(135deg, #374151 0%, #1f2937 100%)";
+
+              const placeholder = document.createElement("div");
+              placeholder.style.cssText =
+                "position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:rgba(255,255,255,0.3); font-size:48px;";
+              placeholder.textContent = "▶";
+              img.parentElement.appendChild(placeholder);
+            }
+          }
+        });
+
+        img.addEventListener("load", function () {
+          const currentQuality = getCurrentQuality(img.src);
+          if (currentQuality && currentQuality !== "maxresdefault" && currentQuality !== "sddefault") {
+            const videoId = extractVideoId(img.src);
+            if (!videoId) return;
+
+            const testImg = new Image();
+            testImg.onload = function () {
+              img.src = testImg.src;
+            };
+            testImg.src = "https://i.ytimg.com/vi/" + videoId + "/sddefault.jpg";
+          }
+        });
+      });
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setup);
+    else setup();
+  })();
+
+})();
