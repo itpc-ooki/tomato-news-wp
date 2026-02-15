@@ -178,21 +178,21 @@ class Tomato_Static_Builder_ModeB {
     // Ensure /static exists
     self::ensure_dir($dst);
 
-    // Optional root index.html (e.g. landing / redirect)
-    if (is_file($src . '/index.html')) {
-      @copy($src . '/index.html', $dst . '/index.html');
-    }
 
-    // Shared JS/CSS
-    if (is_file($src . '/app.js')) {
-      @copy($src . '/app.js', $dst . '/app.js');
-    }
-    // Auth helper (Login/Registration/Mypage)
-    if (is_file($src . '/auth.js')) {
-      @copy($src . '/auth.js', $dst . '/auth.js');
-    }
-    if (is_file($src . '/style.css')) {
-      @copy($src . '/style.css', $dst . '/style.css');
+    // Root-level files (app.js, auth.js, style.css, variety.js, etc.)
+    // Copy ALL non-hidden files directly under /static-src into /static.
+    // This avoids having to maintain a manual allow-list as files increase.
+    $items = scandir($src);
+    if ($items !== false) {
+      foreach ($items as $item) {
+        if ($item === '.' || $item === '..') continue;
+        if (strpos($item, '.') === 0) continue; // ignore dotfiles like .DS_Store
+        $from = $src . '/' . $item;
+        $to   = $dst . '/' . $item;
+        if (is_file($from)) {
+          @copy($from, $to);
+        }
+      }
     }
 
     // Shared directories (header/footer components, shared css/js/img)
@@ -498,6 +498,11 @@ private static function sync_uploads_assets(): void {
       // backward compatible: use list.html as index.html
       @copy($src . '/list.html', $dst . '/index.html');
     }
+
+    // Copy any other per-paper static files (e.g. variety.html, varieties.json, assets)
+    // so new files under /static-src/{paper}/ are automatically published without code changes.
+    self::rcopy($src, $dst);
+
   }
 
   /** Build list + detail json for a paper */

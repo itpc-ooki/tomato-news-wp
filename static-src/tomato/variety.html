@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>品種情報｜トマト新聞</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body class="page-variety">
+
+  <!-- Common header (injected by app.js) -->
+  <div id="header-container"></div>
+
+  <main class="article-container">
+    <div class="article-header">
+      <div class="article-category">品種情報</div>
+      <h1 class="article-title">トマト品種検索</h1>
+      <p class="article-subtitle">夏秋作型向け主要品種の特徴を、カテゴリ／メーカー／病害抵抗性で絞り込めます</p>
+    </div>
+
+    <!-- Tabs -->
+    <section class="content-section">
+      <div class="variety-tabs">
+        <ul class="tab-list" role="tablist" aria-label="品種カテゴリ">
+          <li><button class="tab-button active" type="button" data-tab="all" role="tab" aria-selected="true">全品種検索</button></li>
+          <li><button class="tab-button" type="button" data-tab="large" role="tab" aria-selected="false">大玉トマト</button></li>
+          <li><button class="tab-button" type="button" data-tab="midi" role="tab" aria-selected="false">ミディトマト</button></li>
+          <li><button class="tab-button" type="button" data-tab="mini" role="tab" aria-selected="false">ミニトマト</button></li>
+          <li><button class="tab-button" type="button" data-tab="rootstock" role="tab" aria-selected="false">台木用トマト</button></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Search & Filter -->
+    <section class="search-section" aria-label="検索フィルター">
+      <div class="search-controls">
+        <div class="search-bar">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input
+            type="text"
+            class="search-input"
+            id="searchInput"
+            placeholder="品種名、特徴、病害名などで検索..."
+            autocomplete="off"
+          />
+        </div>
+
+        <button class="filter-toggle" type="button" id="filterToggle" aria-expanded="false">
+          <span>フィルター</span>
+          <span class="filter-toggle-icon" aria-hidden="true">▼</span>
+        </button>
+
+        <div class="filter-row" id="filterRow">
+          <div class="filter-group">
+            <label class="filter-label" for="categoryFilter">カテゴリ</label>
+            <select class="filter-select" id="categoryFilter">
+              <!-- populated by variety.js -->
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="companyFilter">メーカー</label>
+            <select class="filter-select" id="companyFilter">
+              <!-- populated by variety.js -->
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="diseaseFilter">病害抵抗性</label>
+            <select class="filter-select" id="diseaseFilter">
+              <!-- populated by variety.js -->
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="clearFilters">　</label>
+            <button class="clear-filters" id="clearFilters" type="button">フィルターをクリア</button>
+          </div>
+        </div>
+
+        <div class="filter-pills" id="activePills" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section class="content-section">
+      <div class="results-header">
+        <div class="results-count">
+          <span id="resultsCount">検索結果: <strong>0</strong> 品種</span>
+        </div>
+        <div class="view-toggle" aria-label="表示切替">
+          <button class="view-btn" id="gridViewBtn" type="button">カード表示</button>
+          <button class="view-btn active" id="listViewBtn" type="button">リスト表示</button>
+        </div>
+      </div>
+
+      <div class="table-legend" id="tableLegend">
+        <span class="legend-title">凡例：</span>
+        <span class="legend-item"><span class="legend-symbol high">○</span> 抵抗性あり</span>
+        <span class="legend-item"><span class="legend-symbol high">◎</span> 極めて強い</span>
+        <span class="legend-item"><span class="legend-symbol filled">●</span> 複合抵抗性</span>
+        <span class="legend-item"><span class="legend-symbol medium">△</span> 中程度</span>
+      </div>
+
+      <div id="varietyGrid" class="variety-grid" aria-live="polite"></div>
+      <div id="varietyList" class="variety-list" aria-live="polite"></div>
+
+      <div id="emptyState" class="empty-state" style="display:none;">
+        <div class="empty-icon" aria-hidden="true">🍅</div>
+        <div class="empty-title">該当する品種がありません</div>
+        <div class="empty-text">検索条件を変更して再度お試しください</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Common footer (injected by app.js) -->
+  <div id="footer-container"></div>
+
+  <!-- Common scripts (same order as index.html) -->
+  <script src="../auth.js"></script>
+  <script src="../app.js"></script>
+
+  <!-- Variety page logic -->
+  <script src="../variety.js"></script>
+</body>
+</html>

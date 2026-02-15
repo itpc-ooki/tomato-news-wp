@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>品種情報（全品種検索）｜トマト新聞</title>
+
+  <!-- NOTE:
+    - This page is intended to be placed under: static-src/tomato/variety.html
+    - It expects your existing common assets:
+        /static/common/css/styles.css  (or your merged style.css)
+        /static/common/js/app.js       (or your merged app.js)
+    - This page adds one extra script: variety.js
+  -->
+
+  <link rel="stylesheet" href="../common/css/styles.css" />
+</head>
+
+<body class="paper-tomato">
+  <!-- Common header include (match your existing pattern) -->
+  <div id="siteHeader"></div>
+
+  <main class="article-container">
+    <header class="article-header">
+      <div class="article-category">品種情報</div>
+      <h1 class="article-title">トマト品種検索</h1>
+      <p class="article-subtitle">全品種／カテゴリ別で絞り込み検索できます</p>
+    </header>
+
+    <!-- Tabs -->
+    <section class="content-section">
+      <div class="variety-tabs">
+        <ul class="tab-list" role="tablist" aria-label="品種カテゴリ">
+          <li><button class="tab-button active" type="button" data-tab="all" role="tab" aria-selected="true">全品種検索</button></li>
+          <li><button class="tab-button" type="button" data-tab="large" role="tab" aria-selected="false">大玉トマト</button></li>
+          <li><button class="tab-button" type="button" data-tab="midi" role="tab" aria-selected="false">ミディトマト</button></li>
+          <li><button class="tab-button" type="button" data-tab="mini" role="tab" aria-selected="false">ミニトマト</button></li>
+          <li><button class="tab-button" type="button" data-tab="rootstock" role="tab" aria-selected="false">台木用トマト</button></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Search & Filter (shared across tabs) -->
+    <section class="search-section" aria-label="検索フィルター">
+      <div class="search-controls">
+        <div class="search-bar">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input id="varietySearchInput" class="search-input" type="search" placeholder="品種名・特徴・会社名で検索" autocomplete="off" />
+        </div>
+
+        <!-- Keep it simple first: add more select filters later if needed -->
+        <div class="filter-row" id="varietyFilterRow">
+          <div class="filter-group">
+            <label class="filter-label" for="companySelect">会社</label>
+            <select id="companySelect" class="filter-select">
+              <option value="">すべて</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="resistanceSelect">主な耐病性</label>
+            <select id="resistanceSelect" class="filter-select">
+              <option value="">すべて</option>
+              <option value="tomv">ToMV</option>
+              <option value="tylcv">TYLCV</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="clearBtn">　</label>
+            <button id="clearBtn" class="clear-filters" type="button">条件をクリア</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section class="content-section">
+      <div class="results-header">
+        <div class="results-count">該当 <strong id="resultsCount">0</strong> 件</div>
+      </div>
+
+      <div id="varietyResults" class="variety-grid" aria-live="polite"></div>
+
+      <div id="emptyState" class="empty-state" style="display:none;">
+        <div class="empty-icon" aria-hidden="true">🍅</div>
+        <div class="empty-title">該当する品種がありません</div>
+        <div class="empty-text">検索条件を変更して再度お試しください</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Common footer include (match your existing pattern) -->
+  <div id="siteFooter"></div>
+
+  <!-- Your existing common JS (adjust to your real file path) -->
+  <script src="../common/js/app.js"></script>
+
+  <!-- Variety page logic -->
+  <script src="../common/js/variety.js"></script>
+</body>
+</html>
