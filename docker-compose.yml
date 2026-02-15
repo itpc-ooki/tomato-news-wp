@@ -77,6 +77,7 @@ services:
       S3_BUCKET: "${S3_BUCKET}"
       BUILD_INTERVAL_SECONDS: "${BUILD_INTERVAL_SECONDS:-30}"
       TOMATO_STATIC_S3_TARGET: "s3://${S3_BUCKET}/static"
+      ENABLE_S3_SYNC: "${ENABLE_S3_SYNC:-0}"
     volumes:
       - wp_html:/var/www/html
       - ./wp-content:/var/www/html/wp-content
@@ -88,7 +89,7 @@ services:
       sh -lc '
       set -eu;
 
-      echo "[static_builder] start. interval=${BUILD_INTERVAL_SECONDS}s";
+      echo "[static_builder] start. interval=${BUILD_INTERVAL_SECONDS:-30}s";
       until wp core is-installed --path=/var/www/html >/dev/null 2>&1; do
         echo "[static_builder] waiting wordpress...";
         sleep 3;
@@ -96,8 +97,19 @@ services:
 
       echo "[static_builder] wordpress ready.";
       while true; do
+        echo "[static_builder] build start: $(date -u +%F\ %T) UTC";
         wp --allow-root tomato auto-static-run-now --debug || true;
-        sleep "${BUILD_INTERVAL_SECONDS}";
+
+        # S3 sync (safe for local dev: it will skip if AWS credentials are not available)
+        if [ "${ENABLE_S3_SYNC:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "${TOMATO_STATIC_S3_TARGET:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
+          echo "[static_builder] s3 sync start: $(date -u +%F\ %T) UTC -> ${TOMATO_STATIC_S3_TARGET}";
+          aws s3 sync /var/www/html/static "${TOMATO_STATIC_S3_TARGET}" --delete || true;
+        else
+          echo "[static_builder] s3 sync skipped (aws cli not available or no AWS credentials).";
+        fi
+
+        echo "[static_builder] cycle done. sleep ${BUILD_INTERVAL_SECONDS:-30}s";
+        sleep "${BUILD_INTERVAL_SECONDS:-30}";
       done
       '
 
