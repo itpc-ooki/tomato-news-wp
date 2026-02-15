@@ -76,7 +76,7 @@ services:
       AWS_REGION: "${AWS_REGION}"
       S3_BUCKET: "${S3_BUCKET}"
       BUILD_INTERVAL_SECONDS: "${BUILD_INTERVAL_SECONDS:-30}"
-      TOMATO_STATIC_S3_TARGET: "s3://${S3_BUCKET}"
+      TOMATO_STATIC_S3_TARGET: "s3://${S3_BUCKET}/static"
     volumes:
       - wp_html:/var/www/html
       - ./wp-content:/var/www/html/wp-content
