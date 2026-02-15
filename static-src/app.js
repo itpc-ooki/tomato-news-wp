@@ -2521,3 +2521,103 @@ function resetAutoSlide() {
   })();
 
 })();
+
+
+/* =====================================================================
+ * Pest Control page scripts
+ * - moved from TOMATO_PESTDISEASE_20260122.html
+ * - exposed as globals because the page uses inline onclick handlers
+ * ===================================================================== */
+(function ensurePestControlGlobals(){
+  // Tab switcher for the search section
+  if (typeof window.switchTab !== "function") {
+    window.switchTab = function switchTab(tab){
+      const e = window.event;
+      document.querySelectorAll(".search-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+      // Activate clicked tab button if we can detect it
+      if (e && e.target) {
+        e.target.classList.add("active");
+      } else {
+        // Fallback: activate by order
+        const btn = document.querySelector(`.search-tab[onclick*="'${tab}'"]`);
+        if (btn) btn.classList.add("active");
+      }
+
+      const pane = document.getElementById(String(tab) + "-tab");
+      if (pane) pane.classList.add("active");
+    };
+  }
+
+  function openBoujoSearch(query){
+    alert("「" + query + "」を検索しています...\n\n「みんなの防除」サイトで詳細な情報をご覧いただけます。");
+    window.open("https://boujo.agrinews.co.jp/", "_blank", "noopener");
+  }
+
+  if (typeof window.searchPest !== "function") {
+    window.searchPest = function searchPest(){
+      const el = document.getElementById("pestSearch");
+      openBoujoSearch(el ? el.value : "");
+    };
+  }
+
+  if (typeof window.searchDisease !== "function") {
+    window.searchDisease = function searchDisease(){
+      const el = document.getElementById("diseaseSearch");
+      openBoujoSearch(el ? el.value : "");
+    };
+  }
+
+  if (typeof window.searchSymptom !== "function") {
+    window.searchSymptom = function searchSymptom(){
+      const el = document.getElementById("symptomSearch");
+      openBoujoSearch(el ? el.value : "");
+    };
+  }
+
+  function openBoujoDetail(name, message){
+    alert("「" + name + "」" + message + "\n\n「みんなの防除」サイトで詳細な対策方法をご確認ください。");
+    window.open("https://boujo.agrinews.co.jp/", "_blank", "noopener");
+  }
+
+  if (typeof window.filterPest !== "function") {
+    window.filterPest = function filterPest(name){
+      openBoujoDetail(name, "の情報を表示します。");
+    };
+  }
+
+  if (typeof window.filterDisease !== "function") {
+    window.filterDisease = function filterDisease(name){
+      openBoujoDetail(name, "の情報を表示します。");
+    };
+  }
+
+  if (typeof window.filterSymptom !== "function") {
+    window.filterSymptom = function filterSymptom(name){
+      alert("「" + name + "」に関連する病害虫を表示します。\n\n「みんなの防除」サイトで詳細な診断をご確認ください。");
+      window.open("https://boujo.agrinews.co.jp/", "_blank", "noopener");
+    };
+  }
+
+  if (typeof window.switchDetectionTab !== "function") {
+    window.switchDetectionTab = function switchDetectionTab(tab){
+      const e = window.event;
+
+      document.querySelectorAll(".detection-tab").forEach(t => t.classList.remove("active"));
+
+      if (e && e.target) {
+        const btn = e.target.closest(".detection-tab");
+        if (btn) btn.classList.add("active");
+      } else {
+        const btn = document.querySelector(`.detection-tab[onclick*="'${tab}'"]`);
+        if (btn) btn.classList.add("active");
+      }
+
+      document.querySelectorAll(".detection-content").forEach(c => c.classList.remove("active"));
+      const pane = document.getElementById(String(tab) + "-detection");
+      if (pane) pane.classList.add("active");
+    };
+  }
+})();
+

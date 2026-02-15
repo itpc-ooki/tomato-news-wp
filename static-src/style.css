@@ -6746,3 +6746,802 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
   .footer-column.active h4::after { transform:rotate(45deg); }
 
 }
+
+
+/* ===============================
+   Pest-control page styles (from TOMATO_PESTDISEASE_20260122.html)
+   - Scoped to .page-pest-control so other pages are unaffected
+   =============================== */
+
+body.page-pest-control{
+  /* Match mockup variables (page-local) */
+  --radius:16px;
+  --shadow:0 20px 50px rgba(16,24,40,.10);
+  --danger:#dc2626;
+  --warning:#f59e0b;
+  --success:#10b981;
+
+  /* This project uses fixed header + body padding-top globally.
+     Mockup uses sticky header, so reset on this page only. */
+  padding-top:0 !important;
+}
+body.page-pest-control.has-kw{
+  padding-top:0 !important;
+}
+
+/* Header / Keyword bar behave like mockup */
+body.page-pest-control header{
+  position:sticky !important;
+  top:0 !important;
+  z-index:60 !important;
+  width:auto !important;
+}
+body.page-pest-control .kw-bar{
+  position:relative !important;
+  top:auto !important;
+  left:auto !important;
+  right:auto !important;
+  z-index:90 !important;
+  height:auto !important;
+  min-height:48px;
+}
+
+/* Main wrapper: match mockup (max-width centered, no extra vertical padding) */
+body.page-pest-control .main-wrapper{
+  width:auto !important;
+  max-width:1400px !important;
+  margin:0 auto !important;
+  padding:0 !important;
+}
+@media (max-width:768px){
+  body.page-pest-control .main-wrapper{
+    max-width:100% !important;
+  }
+}
+
+/* Article header block (override global article/header styles on this page only) */
+body.page-pest-control .article-container{
+  max-width:1400px;
+  margin:0 auto;
+  padding:24px 20px 40px;
+}
+@media (max-width:768px){
+  body.page-pest-control .article-container{ padding:20px 16px 32px; }
+}
+body.page-pest-control .article-header{
+  text-align:center;
+  margin:0 0 40px;
+  padding:20px 0 16px;
+  border-bottom:2px solid var(--border);
+  background:#fff;
+  max-width:none;
+}
+body.page-pest-control .article-category{
+  display:inline-block;
+  background:linear-gradient(135deg, var(--accent), var(--accent-2));
+  color:#fff;
+  padding:4px 16px;
+  border-radius:20px;
+  font-size:0.75rem;
+  font-weight:600;
+  margin-bottom:12px;
+  letter-spacing:0.05em;
+}
+body.page-pest-control .article-title{
+  font-size:24px;
+  font-weight:700;
+  line-height:1.3;
+  margin:0 0 8px;
+  color:var(--text);
+}
+body.page-pest-control .article-subtitle{
+  font-size:clamp(0.875rem, 2vw, 1rem);
+  color:var(--muted);
+  font-weight:500;
+  line-height:1.5;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* Search section */
+body.page-pest-control .search-section{
+  background:#fafafa;
+  padding:40px;
+  border-radius:16px;
+  margin-bottom:60px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+body.page-pest-control .search-title{ font-size:1.75rem; font-weight:700; margin-bottom:12px; }
+body.page-pest-control .search-subtitle{ font-size:1rem; color:var(--muted); margin-bottom:32px; }
+body.page-pest-control .search-tabs{
+  display:flex;
+  gap:12px;
+  margin-bottom:32px;
+  border-bottom:2px solid var(--border);
+}
+body.page-pest-control .search-tab{
+  padding:12px 24px;
+  background:transparent;
+  border:none;
+  border-bottom:3px solid transparent;
+  font-size:1rem;
+  font-weight:600;
+  color:var(--muted);
+  cursor:pointer;
+  transition:all 0.2s;
+  position:relative;
+  bottom:-2px;
+}
+body.page-pest-control .search-tab.active{
+  color:var(--accent);
+  border-bottom-color:var(--accent);
+}
+body.page-pest-control .tab-content{ display:none; }
+body.page-pest-control .tab-content.active{ display:block; }
+body.page-pest-control .search-input-group{
+  display:flex;
+  gap:12px;
+  margin-bottom:24px;
+}
+body.page-pest-control .search-input{
+  flex:1;
+  padding:14px;
+  border:2px solid var(--border);
+  border-radius:8px;
+  font-size:1rem;
+  transition:all 0.2s;
+  background:#fff;
+}
+body.page-pest-control .search-input:focus{ outline:none; border-color:var(--accent); }
+body.page-pest-control .search-btn{
+  padding:14px 32px;
+  background:linear-gradient(135deg, var(--accent), var(--accent-2));
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  font-weight:600;
+  cursor:pointer;
+  transition:transform 0.2s;
+}
+body.page-pest-control .search-btn:hover{ transform:translateY(-2px); }
+@media (max-width:768px){
+  body.page-pest-control .search-section{ padding:24px; }
+  body.page-pest-control .search-tabs{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  body.page-pest-control .search-input-group{ flex-direction:column; }
+}
+
+/* Quick access */
+body.page-pest-control .quick-access{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+  gap:12px;
+  margin-bottom:60px;
+}
+body.page-pest-control .quick-btn{
+  padding:16px;
+  background:#fff;
+  border:2px solid var(--border);
+  border-radius:8px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.2s;
+  font-size:0.938rem;
+  font-weight:600;
+}
+body.page-pest-control .quick-btn:hover{
+  border-color:var(--accent);
+  color:var(--accent);
+  transform:translateY(-2px);
+}
+
+/* Results titles */
+body.page-pest-control .results-section{ margin-bottom:60px; }
+body.page-pest-control .section-title{
+  font-size:1.75rem;
+  font-weight:700;
+  margin-bottom:32px;
+  padding-bottom:16px;
+  border-bottom:3px solid var(--accent);
+}
+
+/* Pest/Disease cards */
+body.page-pest-control .pest-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(350px, 1fr));
+  gap:24px;
+}
+body.page-pest-control .pest-card{
+  background:#fff;
+  border:2px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  transition:all 0.3s;
+}
+body.page-pest-control .pest-card:hover{
+  transform:translateY(-4px);
+  box-shadow:var(--shadow);
+  border-color:var(--accent);
+}
+body.page-pest-control .pest-card-header{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:20px;
+  background:linear-gradient(135deg, #fef3f2, #fff);
+  border-bottom:2px solid var(--border);
+}
+body.page-pest-control .pest-icon{
+  width:60px;
+  height:72px;
+  border-radius:50%;
+  background:linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:2rem;
+  flex-shrink:0;
+  border:2px solid #a5d6a7;
+}
+body.page-pest-control .pest-info{ flex:1; }
+body.page-pest-control .pest-name{ font-size:1.25rem; font-weight:700; margin-bottom:4px; }
+body.page-pest-control .pest-category{
+  display:inline-block;
+  padding:4px 12px;
+  background:#f1f5f9;
+  border-radius:12px;
+  font-size:0.75rem;
+  font-weight:600;
+}
+body.page-pest-control .pest-card-body{ padding:20px; }
+body.page-pest-control .pest-severity{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:16px;
+  padding:12px;
+  background:#fef3f2;
+  border-radius:8px;
+  border-left:4px solid var(--danger);
+}
+body.page-pest-control .severity-label{ font-size:0.875rem; font-weight:600; color:var(--danger); }
+body.page-pest-control .pest-description{
+  font-size:0.938rem;
+  line-height:1.6;
+  color:var(--muted);
+  margin-bottom:20px;
+}
+body.page-pest-control .pest-symptoms{ margin-bottom:20px; }
+body.page-pest-control .symptoms-title{
+  font-size:0.938rem;
+  font-weight:700;
+  margin-bottom:8px;
+  color:var(--text);
+}
+body.page-pest-control .symptoms-list{ list-style:none; padding:0; margin:0; }
+body.page-pest-control .symptoms-list li{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  margin-bottom:8px;
+  font-size:0.875rem;
+  color:var(--text);
+  line-height:1.5;
+}
+body.page-pest-control .symptoms-list li::before{
+  content:'';
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--accent);
+  flex-shrink:0;
+  margin-top:6px;
+}
+body.page-pest-control .pest-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:20px;
+}
+body.page-pest-control .action-tag{
+  padding:8px 16px;
+  background:#f0fdf4;
+  border-radius:999px;
+  font-size:0.813rem;
+  font-weight:600;
+  color:#059669;
+}
+body.page-pest-control .detail-btn{
+  display:block;
+  width:100%;
+  padding:14px;
+  background:linear-gradient(135deg, var(--accent), var(--accent-2));
+  color:#fff;
+  text-align:center;
+  border-radius:8px;
+  font-weight:600;
+  transition:transform 0.2s;
+}
+body.page-pest-control .detail-btn:hover{ transform:translateY(-1px); }
+
+@media (max-width:768px){
+  body.page-pest-control .pest-grid{ grid-template-columns:1fr; }
+}
+
+/* Table section (simple diagnosis) */
+body.page-pest-control .diagnosis-card{
+  background:#fff;
+  border:2px solid var(--border);
+  border-radius:16px;
+  padding:32px;
+}
+@media (max-width:768px){
+  body.page-pest-control .diagnosis-card{ padding:20px 16px; }
+}
+body.page-pest-control .diagnosis-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  overflow:hidden;
+  border-radius:12px;
+  border:2px solid var(--border);
+}
+body.page-pest-control .diagnosis-table thead th{
+  background:linear-gradient(135deg, var(--accent), var(--accent-2));
+  color:#fff;
+  padding:16px;
+  font-weight:700;
+  text-align:left;
+  font-size:0.875rem;
+}
+body.page-pest-control .diagnosis-table tbody td{
+  padding:16px;
+  border-top:1px solid var(--border);
+  font-size:0.875rem;
+  color:var(--text);
+  vertical-align:top;
+}
+body.page-pest-control .importance-high{ color:var(--danger); font-weight:700; }
+body.page-pest-control .importance-mid{ color:var(--warning); font-weight:700; }
+body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
+
+
+/* ===============================
+   Pest Control page - table & detection styles (from TOMATO_PESTDISEASE_20260122.html)
+   Scoped to .page-pest-control to avoid affecting other pages
+   =============================== */
+.page-pest-control .reference-table-section{
+    background:#fafafa;
+    padding:40px;
+    border-radius:16px;
+    margin-bottom:60px;
+  }.page-pest-control .table-container{
+    background:#fff;
+    border-radius:12px;
+    overflow-x:auto;
+    border:2px solid var(--border);
+  }.page-pest-control table{
+    width:100%;
+    border-collapse:collapse;
+  }.page-pest-control th{
+    background:linear-gradient(135deg, var(--accent), var(--accent-2)) !important;
+    color:#fff;
+    padding:16px;
+    text-align:left;
+    font-weight:600;
+    font-size:0.938rem;
+  }.page-pest-control .pest-table th, .page-pest-control .disease-table th, .page-pest-control .detection-table th{
+    background:linear-gradient(135deg, var(--accent), var(--accent-2)) !important;
+  }.page-pest-control td{
+    padding:14px 16px;
+    border-bottom:1px solid var(--border);
+    font-size:0.875rem;
+  }.page-pest-control tr:last-child td{ border-bottom:none }.page-pest-control tr:hover{ background:#fef3f2 }.page-pest-control .severity-high{ color:var(--danger); font-weight:600 }.page-pest-control .severity-medium{ color:var(--warning); font-weight:600 }.page-pest-control .severity-low{ color:var(--success); font-weight:600 }.page-pest-control .icon-inline{
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+    color: var(--accent);
+  }.page-pest-control .section-title .icon-inline{
+    margin-bottom: -4px;
+  }.page-pest-control .hero-title .icon-inline{
+    margin-bottom: -6px;
+    color: var(--accent);
+  }.page-pest-control .tab-icon svg{
+    display: block;
+  }.page-pest-control .detection-tab.active .tab-icon svg{
+    stroke: currentColor;
+  }.page-pest-control .pest-icon svg{
+    color: #2e7d32;
+  }.page-pest-control .detailed-detection-section{
+    margin-bottom: 80px;
+  }.page-pest-control .section-description{
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--muted);
+    margin-bottom: 40px;
+    text-align: center;
+  }.page-pest-control .detection-tabs{
+    display: flex;
+    justify-content: center;
+    border-radius: 999px !important;
+    gap: 16px;
+    margin-bottom: 40px;
+  }.page-pest-control .detection-tab{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 32px;
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-size: 1.125rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+  }.page-pest-control .detection-tab:hover{
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }.page-pest-control .detection-tab.active{
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    border-color: transparent;
+    box-shadow: var(--shadow);
+  }.page-pest-control .tab-icon{
+    font-size: 1.5rem;
+  }.page-pest-control .detection-content{
+    display: none;
+  }.page-pest-control .detection-content.active{
+    display: block;
+  }.page-pest-control .detection-note{
+    background: #fffbf0;
+    border-left: 4px solid var(--warning);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    border-radius: 8px;
+  }.page-pest-control .detection-note p{
+    margin: 0;
+    font-size: 0.875rem;
+    color: #856404;
+    line-height: 1.6;
+  }.page-pest-control .detection-note p + p{
+    margin-top: 8px;
+  }.page-pest-control .detailed-table{
+    margin-top: 24px;
+  }.page-pest-control .detailed-table table{
+    font-size: 0.875rem;
+  }.page-pest-control .detailed-table th, .page-pest-control .detailed-table td{
+    padding: 20px 16px;
+    vertical-align: top;
+    line-height: 1.7;
+  }.page-pest-control .pest-table .col-pest-name{ 
+    width: 15%; 
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    font-weight: 700;
+  }.page-pest-control .pest-table .col-characteristics{ width: 28%; }.page-pest-control .pest-table .col-trap{ width: 28%; background: #fafafa; }.page-pest-control .pest-table .col-chemicals{ width: 29%; }.page-pest-control .disease-table .col-disease-name{ 
+    width: 12%; 
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    font-weight: 700;
+  }.page-pest-control .disease-table .col-leaf{ width: 28%; }.page-pest-control .disease-table .col-fruit{ width: 18%; background: #fafafa; }.page-pest-control .disease-table .col-other{ width: 12%; background: #fafafa; }.page-pest-control .disease-table .col-chemicals{ width: 30%; }.page-pest-control .pest-name, .page-pest-control .disease-name{
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text);
+  }.page-pest-control .pest-table .pest-name{
+    color: #2e7d32;
+  }.page-pest-control .disease-table .disease-name{
+    color: #1565c0;
+  }.page-pest-control .characteristics, .page-pest-control .trap-info, .page-pest-control .leaf-symptom, .page-pest-control .fruit-symptom, .page-pest-control .other-info{
+    font-size: 0.875rem;
+    line-height: 1.8;
+  }.page-pest-control .chemicals{
+    font-size: 0.813rem;
+    line-height: 1.7;
+    color: #555;
+  }
+  
+  
+  @.page-pest-control media (max-width: 768px){.page-pest-control .detection-tabs{
+      flex-direction: column;
+      gap: 12px;
+    }.page-pest-control .detection-tab{
+      width: 100%;
+      justify-content: center;
+    border-radius: 999px !important;
+      padding: 14px 24px;
+      font-size: 1rem;
+    }.page-pest-control .tab-icon{
+      font-size: 1.25rem;
+    }.page-pest-control .section-description{
+      font-size: 0.938rem;
+      text-align: left;
+    }.page-pest-control .detailed-table table{
+      font-size: 0.75rem;
+    }.page-pest-control .detailed-table th, .page-pest-control .detailed-table td{
+      padding: 12px 8px;
+    }.page-pest-control .pest-name, .page-pest-control .disease-name{
+      font-size: 0.875rem;
+    }.page-pest-control .characteristics, .page-pest-control .trap-info, .page-pest-control .leaf-symptom, .page-pest-control .fruit-symptom, .page-pest-control .other-info{
+      font-size: 0.75rem;
+    }.page-pest-control .chemicals{
+      font-size: 0.688rem;
+    }
+  }
+  
+  
+  @.page-pest-control media print{.page-pest-control .detection-tabs{
+      display: none;
+    }.page-pest-control .detection-content{
+      display: block !important;
+      page-break-before: always;
+    }.page-pest-control .detection-content:first-child{
+      page-break-before: auto;
+    }.page-pest-control .detailed-table table{
+      font-size: 10pt;
+    }.page-pest-control .pest-table, .page-pest-control .disease-table{
+      page-break-inside: avoid;
+    }.page-pest-control .pest-table tbody tr, .page-pest-control .disease-table tbody tr{
+      page-break-inside: avoid;
+    }
+  }.page-pest-control .footer-grid{ display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1.5fr; gap:40px; margin-bottom:40px }.page-pest-control .footer-brand{ display:flex; flex-direction:column }.page-pest-control .social-icon{
+    width:36px; height:36px; border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--muted); transition:all 0.2s;
+  }.page-pest-control .social-icon:hover{ background:var(--accent); color:#fff; border-color:var(--accent) }.page-pest-control .footer-heading{ font-size:0.75rem; font-weight:700; margin:0 0 15px; text-transform:uppercase; letter-spacing:0.1em }.page-pest-control .footer-links{ list-style:none; padding:0; margin:0 }.page-pest-control .footer-links li{ margin-bottom:10px }.page-pest-control .footer-links a{ color:var(--muted); font-size:0.875rem; transition:color 0.2s }.page-pest-control .footer-links a:hover{ color:var(--accent) }.page-pest-control .newsletter-box{ background:#f8f9fa; padding:25px }.page-pest-control .newsletter-form{ display:flex; gap:8px }.page-pest-control .newsletter-input{ flex:1; padding:8px 12px; border:1px solid var(--border); background:#fff; font-size:0.875rem }.page-pest-control .newsletter-btn{ padding:8px 20px; background:var(--accent); color:#fff; border:none; font-weight:600; cursor:pointer; white-space:nowrap }.page-pest-control .footer-bottom{ padding-top:30px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:20px }.page-pest-control .footer-bottom-links{ display:flex; gap:25px }.page-pest-control .footer-bottom-links a{ color:var(--muted); font-size:0.813rem }
+  
+  @.page-pest-control media (max-width:768px){.page-pest-control .footer-wrapper{ padding:40px 15px 30px !important }.page-pest-control .footer-grid{ display:flex !important; flex-direction:column; gap:0; margin-bottom:0 }.page-pest-control .footer-brand{ padding-bottom:30px; border-bottom:1px solid var(--border); margin-bottom:20px }.page-pest-control .footer-column{ border-bottom:1px solid var(--border); padding-bottom:0; margin-bottom:0 }.page-pest-control .footer-heading{ margin:0; padding:15px 0; display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-size:0.875rem; text-transform:none; letter-spacing:normal }.page-pest-control .footer-heading::after{ content:'+'; font-size:1.25rem; color:var(--muted); transition:transform 0.3s }.page-pest-control .footer-column.active .footer-heading::after{ transform:rotate(45deg) }.page-pest-control .footer-links{ max-height:0; overflow:hidden; transition:max-height 0.3s ease-out }.page-pest-control .footer-column.active .footer-links{ max-height:300px; padding-bottom:15px }.page-pest-control .newsletter-box{ background:transparent; padding:30px 0; margin-bottom:20px }.page-pest-control .newsletter-form{ flex-direction:column; gap:12px }.page-pest-control .newsletter-input{ padding:12px; font-size:1rem }.page-pest-control .newsletter-btn{ padding:12px; font-size:1rem; width:100% }.page-pest-control .footer-bottom{ padding-top:20px; border-top:none; flex-direction:column; text-align:center }.page-pest-control .footer-bottom-links{ display:grid; grid-template-columns:1fr 1fr; gap:8px 4px; width:100%; text-align:center }.page-pest-control .footer-bottom-links span{ display:none }.page-pest-control .footer-bottom-links a{ padding:6px 4px; font-size:0.65rem; white-space:nowrap; line-height:1.2 }.page-pest-control .copyright{ font-size:0.75rem !important }
+  }.page-pest-control .mobile-menu{
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 280px;
+    height: 100vh;
+    background: #fff;
+    z-index: 1100;
+    transition: right 0.3s ease;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+  }.page-pest-control .mobile-menu.active{
+    right: 0;
+  }.page-pest-control .mobile-menu-header{
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }.page-pest-control .mobile-menu-close{
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+  }.page-pest-control .mobile-menu-content{
+    padding: 20px;
+    overflow-y: auto;
+    height: calc(100vh - 80px);
+  }.page-pest-control .mobile-menu-content ul{
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }.page-pest-control .mobile-menu-content li{
+    padding: 12px 0;
+    border-bottom: 1px solid #f3f4f6;
+  }.page-pest-control .mobile-menu-content a{
+    display: block;
+    color: #0f172a;
+    text-decoration: none;
+  }.page-pest-control .mobile-menu-buttons{
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }.page-pest-control .mobile-menu-buttons .btn{
+    font-size: 1rem !important;
+    padding: 12px 16px !important;
+    text-align: center;
+    justify-content: center;
+    border-radius: 999px !important;
+  }.page-pest-control .mobile-menu-overlay{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1050;
+    display: none;
+  }.page-pest-control .mobile-menu-overlay.active{
+    display: block;
+  }.page-pest-control .detailed-detection-section{
+    margin-bottom: 80px;
+  }.page-pest-control .section-description{
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--muted);
+    margin-bottom: 40px;
+    text-align: center;
+  }.page-pest-control .detection-tabs{
+    display: flex;
+    justify-content: center;
+    border-radius: 999px !important;
+    gap: 16px;
+    margin-bottom: 40px;
+  }.page-pest-control .detection-tab{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 32px;
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-size: 1.125rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+  }.page-pest-control .detection-tab:hover{
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }.page-pest-control .detection-tab.active{
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    border-color: transparent;
+    box-shadow: var(--shadow);
+  }.page-pest-control .tab-icon{
+    font-size: 1.5rem;
+  }.page-pest-control .detection-content{
+    display: none;
+  }.page-pest-control .detection-content.active{
+    display: block;
+  }.page-pest-control .detection-note{
+    background: #fffbf0;
+    border-left: 4px solid var(--warning);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    border-radius: 8px;
+  }.page-pest-control .detection-note p{
+    margin: 0;
+    font-size: 0.875rem;
+    color: #856404;
+    line-height: 1.6;
+  }.page-pest-control .detection-note p + p{
+    margin-top: 8px;
+  }.page-pest-control .detailed-table{
+    margin-top: 24px;
+  }.page-pest-control .detailed-table table{
+    font-size: 0.875rem;
+  }.page-pest-control .detailed-table th, .page-pest-control .detailed-table td{
+    padding: 20px 16px;
+    vertical-align: top;
+    line-height: 1.7;
+  }.page-pest-control .pest-table .col-pest-name{ 
+    width: 15%; 
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    font-weight: 700;
+  }.page-pest-control .pest-table .col-characteristics{ width: 28%; }.page-pest-control .pest-table .col-trap{ width: 28%; background: #fafafa; }.page-pest-control .pest-table .col-chemicals{ width: 29%; }.page-pest-control .disease-table .col-disease-name{ 
+    width: 12%; 
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    font-weight: 700;
+  }.page-pest-control .disease-table .col-leaf{ width: 28%; }.page-pest-control .disease-table .col-fruit{ width: 18%; background: #fafafa; }.page-pest-control .disease-table .col-other{ width: 12%; background: #fafafa; }.page-pest-control .disease-table .col-chemicals{ width: 30%; }.page-pest-control .pest-name, .page-pest-control .disease-name{
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text);
+  }.page-pest-control .pest-table .pest-name{
+    color: #2e7d32;
+  }.page-pest-control .disease-table .disease-name{
+    color: #1565c0;
+  }.page-pest-control .characteristics, .page-pest-control .trap-info, .page-pest-control .leaf-symptom, .page-pest-control .fruit-symptom, .page-pest-control .other-info{
+    font-size: 0.875rem;
+    line-height: 1.8;
+  }.page-pest-control .chemicals{
+    font-size: 0.813rem;
+    line-height: 1.7;
+    color: #555;
+  }
+  
+  
+  @.page-pest-control media (max-width: 768px){.page-pest-control .detection-tabs{
+      flex-direction: column;
+      gap: 12px;
+    }.page-pest-control .detection-tab{
+      width: 100%;
+      justify-content: center;
+    border-radius: 999px !important;
+      padding: 14px 24px;
+      font-size: 1rem;
+    }.page-pest-control .tab-icon{
+      font-size: 1.25rem;
+    }.page-pest-control .section-description{
+      font-size: 0.938rem;
+      text-align: left;
+    }.page-pest-control .detailed-table table{
+      font-size: 0.75rem;
+    }.page-pest-control .detailed-table th, .page-pest-control .detailed-table td{
+      padding: 12px 8px;
+    }.page-pest-control .pest-name, .page-pest-control .disease-name{
+      font-size: 0.875rem;
+    }.page-pest-control .characteristics, .page-pest-control .trap-info, .page-pest-control .leaf-symptom, .page-pest-control .fruit-symptom, .page-pest-control .other-info{
+      font-size: 0.75rem;
+    }.page-pest-control .chemicals{
+      font-size: 0.688rem;
+    }
+  }
+  
+  
+  @.page-pest-control media print{.page-pest-control .detection-tabs{
+      display: none;
+    }.page-pest-control .detection-content{
+      display: block !important;
+      page-break-before: always;
+    }.page-pest-control .detection-content:first-child{
+      page-break-before: auto;
+    }.page-pest-control .detailed-table table{
+      font-size: 10pt;
+    }.page-pest-control .pest-table, .page-pest-control .disease-table{
+      page-break-inside: avoid;
+    }.page-pest-control .pest-table tbody tr, .page-pest-control .disease-table tbody tr{
+      page-break-inside: avoid;
+    }
+  }.page-pest-control .footer-grid{ display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1.5fr; gap:40px; margin-bottom:40px }.page-pest-control .footer-brand{ display:flex; flex-direction:column }.page-pest-control .social-icon{
+    width:36px; height:36px; border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--muted); transition:all 0.2s;
+  }.page-pest-control .social-icon:hover{ background:var(--accent); color:#fff; border-color:var(--accent) }.page-pest-control .footer-heading{ font-size:0.75rem; font-weight:700; margin:0 0 15px; text-transform:uppercase; letter-spacing:0.1em }.page-pest-control .footer-links{ list-style:none; padding:0; margin:0 }.page-pest-control .footer-links li{ margin-bottom:10px }.page-pest-control .footer-links a{ color:var(--muted); font-size:0.875rem; transition:color 0.2s }.page-pest-control .footer-links a:hover{ color:var(--accent) }.page-pest-control .newsletter-box{ background:#f8f9fa; padding:25px }.page-pest-control .newsletter-form{ display:flex; gap:8px }.page-pest-control .newsletter-input{ flex:1; padding:8px 12px; border:1px solid var(--border); background:#fff; font-size:0.875rem }.page-pest-control .newsletter-btn{ padding:8px 20px; background:var(--accent); color:#fff; border:none; font-weight:600; cursor:pointer; white-space:nowrap }.page-pest-control .footer-bottom{ padding-top:30px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:20px }.page-pest-control .footer-bottom-links{ display:flex; gap:25px }.page-pest-control .footer-bottom-links a{ color:var(--muted); font-size:0.813rem }
+  
+  @.page-pest-control media (max-width:768px){.page-pest-control .footer-wrapper{ padding:40px 15px 30px !important }.page-pest-control .footer-grid{ display:flex !important; flex-direction:column; gap:0; margin-bottom:0 }.page-pest-control .footer-brand{ padding-bottom:30px; border-bottom:1px solid var(--border); margin-bottom:20px }.page-pest-control .footer-column{ border-bottom:1px solid var(--border); padding-bottom:0; margin-bottom:0 }.page-pest-control .footer-heading{ margin:0; padding:15px 0; display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-size:0.875rem; text-transform:none; letter-spacing:normal }.page-pest-control .footer-heading::after{ content:'+'; font-size:1.25rem; color:var(--muted); transition:transform 0.3s }.page-pest-control .footer-column.active .footer-heading::after{ transform:rotate(45deg) }.page-pest-control .footer-links{ max-height:0; overflow:hidden; transition:max-height 0.3s ease-out }.page-pest-control .footer-column.active .footer-links{ max-height:300px; padding-bottom:15px }.page-pest-control .newsletter-box{ background:transparent; padding:30px 0; margin-bottom:20px }.page-pest-control .newsletter-form{ flex-direction:column; gap:12px }.page-pest-control .newsletter-input{ padding:12px; font-size:1rem }.page-pest-control .newsletter-btn{ padding:12px; font-size:1rem; width:100% }.page-pest-control .footer-bottom{ padding-top:20px; border-top:none; flex-direction:column; text-align:center }.page-pest-control .footer-bottom-links{ display:grid; grid-template-columns:1fr 1fr; gap:8px 4px; width:100%; text-align:center }.page-pest-control .footer-bottom-links span{ display:none }.page-pest-control .footer-bottom-links a{ padding:6px 4px; font-size:0.65rem; white-space:nowrap; line-height:1.2 }.page-pest-control .copyright{ font-size:0.75rem !important }
+  }.page-pest-control .mobile-menu{
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 280px;
+    height: 100vh;
+    background: #fff;
+    z-index: 1100;
+    transition: right 0.3s ease;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+  }.page-pest-control .mobile-menu.active{
+    right: 0;
+  }.page-pest-control .mobile-menu-header{
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }.page-pest-control .mobile-menu-close{
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+  }.page-pest-control .mobile-menu-content{
+    padding: 20px;
+    overflow-y: auto;
+    height: calc(100vh - 80px);
+  }.page-pest-control .mobile-menu-content ul{
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }.page-pest-control .mobile-menu-content li{
+    padding: 12px 0;
+    border-bottom: 1px solid #f3f4f6;
+  }.page-pest-control .mobile-menu-content a{
+    display: block;
+    color: #0f172a;
+    text-decoration: none;
+  }.page-pest-control .mobile-menu-buttons{
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }.page-pest-control .mobile-menu-buttons .btn{
+    font-size: 1rem !important;
+    padding: 12px 16px !important;
+    text-align: center;
+    justify-content: center;
+    border-radius: 999px !important;
+  }.page-pest-control .mobile-menu-overlay{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1050;
+    display: none;
+  }.page-pest-control .mobile-menu-overlay.active{
+    display: block;
+  }
+
