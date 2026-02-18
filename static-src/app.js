@@ -889,7 +889,85 @@ async function renderNewsSection(posts, paper) {
   }
   // ========= END Pagination =========
 
-  function renderDetail(post) {
+  
+  // =========================================================
+  // ✅ Detail: render Article Tags (記事タグ)
+  // - Reads taxonomy data exported by cli-static-build.php:
+  //   post.article_tags: [{name, slug}, ...]
+  // - Renders into #article-tags in detail.html
+  // - Hides the whole tag row when there are no tags
+  // =========================================================
+  function normalizeArticleTags(post) {
+    const raw = post && (post.article_tags || post.article_tag || post.tags);
+    if (!raw) return [];
+
+    // [{name, slug}]
+    if (Array.isArray(raw)) {
+      const out = [];
+      raw.forEach((t) => {
+        if (!t) return;
+        if (typeof t === "string") {
+          const name = t.trim();
+          if (name) out.push({ name, slug: "" });
+          return;
+        }
+        if (typeof t === "object") {
+          const name = typeof t.name === "string" ? t.name.trim() : "";
+          const slug = typeof t.slug === "string" ? t.slug.trim() : "";
+          if (name) out.push({ name, slug });
+        }
+      });
+      // de-dup by name
+      const seen = new Set();
+      return out.filter((x) => {
+        const key = x.name;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    // "tag1,tag2" or single string
+    if (typeof raw === "string") {
+      return raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((name) => ({ name, slug: "" }));
+    }
+
+    return [];
+  }
+
+  function renderArticleTags(post) {
+    const container = document.getElementById("article-tags");
+    if (!container) return;
+
+    const tags = normalizeArticleTags(post);
+
+    // Clear old
+    container.innerHTML = "";
+
+    // Hide the whole block (the parent is the row wrapper in detail.html)
+    const row = container.parentElement;
+    if (!tags.length) {
+      if (row) row.style.display = "none";
+      return;
+    }
+    if (row) row.style.display = "";
+
+    // Render tags using CSS classes (match mockup: <a class="tag">...</a>)
+    tags.forEach((t) => {
+      const a = document.createElement("a");
+      a.textContent = t.name;
+      a.className = "tag";
+      a.setAttribute("href", "#");
+      if (t.slug) a.dataset.slug = t.slug;
+      container.appendChild(a);
+    });
+  }
+
+function renderDetail(post) {
     const target = getDetailContentTarget();
     if (!target) return;
 
@@ -933,6 +1011,9 @@ async function renderNewsSection(posts, paper) {
 
       // Article body
       target.innerHTML = content;
+
+      // ✅ Article tags
+      renderArticleTags(post);
       return;
     }
 
@@ -952,6 +1033,9 @@ async function renderNewsSection(posts, paper) {
       ${imgHtml}
       <div>${content}</div>
     `;
+
+    // ✅ Article tags
+    renderArticleTags(post);
   }
 
   // =========================================================

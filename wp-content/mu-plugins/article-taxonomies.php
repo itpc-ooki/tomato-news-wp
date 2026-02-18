@@ -49,8 +49,8 @@ add_action('init', function () {
     'public'            => true,
     'show_ui'           => true,
     'show_admin_column' => true,
-    'hierarchical'      => false,             // ★ここが重要：タグ型（親なし）
-    'meta_box_cb'       => 'post_tags_meta_box', // ★タグ用UIにする（親カテゴリ欄が消える）
+    'hierarchical'      => true,              // チェックボックス表示（Gutenbergでも一覧選択式）
+    'meta_box_cb'       => 'post_categories_meta_box', // チェックボックスUI（クラシックエディタ用）
     'show_in_rest'      => true,
     'rewrite'           => ['slug' => 'article-tag'],
   ]);
@@ -77,6 +77,20 @@ add_action('admin_menu', function () {
 add_action('add_meta_boxes', function () {
   remove_meta_box('tagsdiv-post_tag', 'post', 'side');
 }, 99);
+
+
+// --------------------------------------------------
+// Hide Parent UI for article_tag (we want checkbox selection but no parent concept)
+// --------------------------------------------------
+add_action('admin_head-edit-tags.php', function () {
+  if (!isset($_GET['taxonomy']) || $_GET['taxonomy'] !== 'article_tag') {
+    return;
+  }
+  echo '<style>
+    .term-parent-wrap { display:none !important; }
+    .column-parent { display:none !important; }
+  </style>';
+});
 
 // --------------------------------------------------
 // Require Featured Image (アイキャッチ画像) for posts

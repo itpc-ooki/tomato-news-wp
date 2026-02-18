@@ -568,6 +568,21 @@ private static function sync_uploads_assets(): void {
         $article_type_names = wp_get_post_terms($post_id, 'article_type', ['fields' => 'names']);
         $article_type = (!is_wp_error($article_type_names) && !empty($article_type_names)) ? $article_type_names[0] : null;
 
+        // article tags (taxonomy: article_tag)
+        // Returns array of objects: [{name, slug}, ...]
+        $article_tag_terms = wp_get_post_terms($post_id, 'article_tag', ['fields' => 'all']);
+        $article_tags = [];
+        if (!is_wp_error($article_tag_terms) && !empty($article_tag_terms)) {
+          foreach ($article_tag_terms as $t) {
+            if (!isset($t->name) || $t->name === '') continue;
+            $article_tags[] = [
+              'name' => $t->name,
+              'slug' => isset($t->slug) ? $t->slug : '',
+            ];
+          }
+        }
+
+
         $list[] = [
           'id'       => $post_id,
           'title'    => $title,
@@ -579,6 +594,7 @@ private static function sync_uploads_assets(): void {
           'url'      => 'detail.html?id=' . $post_id,
           'featured_image' => $featured_image,
           'article_type' => $article_type,
+          'article_tags' => $article_tags,
         ];
 
         // detail json
@@ -593,6 +609,7 @@ private static function sync_uploads_assets(): void {
           'categories' => [$paper],
           'featured_image' => $featured_image,
           'article_type' => $article_type,
+          'article_tags' => $article_tags,
         ];
 
         $detail_path = $posts_dir . '/' . $post_id . '.json';

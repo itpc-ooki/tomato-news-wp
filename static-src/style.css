@@ -1822,7 +1822,7 @@ body.has-chips{padding-top: calc(var(--hdrH) + var(--chipsH));}
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border-color: #d1d5db;}
-.card-header{display: flex;
+.market-card .market-card .card-header{display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
@@ -2028,7 +2028,7 @@ header img, nav img, footer img{aspect-ratio: auto; height: auto; object-fit: co
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     overflow: visible;}
-  .card-header{display: flex;
+  .market-card .card-header{display: flex;
     margin-bottom: 6px;
     padding-bottom: 5px;
     border-bottom: 1px solid #f3f4f6;}
@@ -4737,7 +4737,7 @@ a{ color:inherit; text-decoration:none}
     margin-top:0.5rem;
   }
   
-  .pill{
+  .filter-pills .pill{
     display:inline-flex;
     align-items:center;
     gap:0.4rem;
@@ -5380,7 +5380,7 @@ a{ color:inherit; text-decoration:none}
   }
   
   /* Card Header - 画像の上に重ねて透過グラデーション背景 */
-  .card-header{
+  .variety-card .card-header{
     margin-top:-280px;
     padding:1.25rem 1.25rem 0;
     position:relative;
@@ -7545,3 +7545,35 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
     display: block;
   }
 
+
+
+/* ===============================
+   Detail page: Article tags (match mockup TOMATO_COLUMN_DETAIL_20260125.html)
+   - Scoped so other pages are unaffected
+   =============================== */
+.detail-tags{
+  margin-top:24px;
+  padding-top:20px;
+  border-top:1px solid var(--border);
+}
+.detail-tags .tags-label{
+  font-weight:700;
+  color:var(--accent);
+}
+/* If app.js renders tags without .tag class, still style them like pills */
+.detail-tags #article-tags > *{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:#f3f4f6;
+  color:#6b7280;
+  padding:6px 14px;
+  border-radius:16px;
+  font-size:0.85rem;
+  line-height:1.2;
+  transition:all 0.2s;
+}
+.detail-tags #article-tags > *:hover{
+  background:var(--accent);
+  color:#fff;
+}
