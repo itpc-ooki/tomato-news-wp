@@ -722,7 +722,7 @@ async function renderNewsSection(posts, paper) {
       tile.style.display = "";
 
       const catEl = tile.querySelector(".tile-category");
-      if (catEl) catEl.textContent = post.category || "記事";
+      if (catEl) catEl.textContent = post.article_type || post.category || "";
 
       const timeEl = tile.querySelector("time");
       if (timeEl) timeEl.textContent = formatJapaneseDateFromPost(post);
@@ -1037,6 +1037,12 @@ function renderDetail(post) {
       if (meta) {
         const timeEl = meta.querySelector("time");
         const spans = meta.querySelectorAll("span");
+
+        // Category badge (記事タイプ)
+        // detail.html has a placeholder text, but we always override it with JSON value when available.
+        if (spans.length >= 1) {
+          spans[0].textContent = post.article_type ? String(post.article_type) : spans[0].textContent;
+        }
 
         if (timeEl) {
           const rawDate = post.date_ymd || "";
