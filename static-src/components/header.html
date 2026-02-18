@@ -1,9 +1,9 @@
 <header>
   <div class="container hdr">
     <div class="brand">
-      <div>
+      <a href="/static/tomato/index.html">
         <img src="/static/common/img/tomatopaper_logo.png" alt="トマト新聞　ロゴ">
-      </div>
+      </a>
     </div>
     <nav aria-label="main">
       <ul>
@@ -19,7 +19,7 @@
         <li><a href="">紙面</a></li>
       </ul>
     </nav>
-    <div style="display:flex; gap:.5rem">
+    <div class="hdr-actions">
       <a class="btn" id="loginLogoutBtn" href="/static/account/login.html?paper=tomato">ログイン</a>
       <a class="btn accent" id="registerBtn" href="/static/account/register.html?paper=tomato">会員登録（必須）</a>
       <a class="btn" id="mypageBtn" href="/static/account/mypage.html?paper=tomato">マイページ</a>
@@ -27,12 +27,9 @@
     </div>
   </div>
   <!-- ヘッダー下 リーダーボード（表示/非表示は data-hidden で制御） -->
-  <div class="container" style="padding:10px var(--pad) 0">
-<a href="https://pr.agrinews.co.jp/ad/tomato202506" target="_blank" rel="noopener">
-        
-
-      </a>
-    </div>
+  <div class="container header-leader">
+    <a href="https://pr.agrinews.co.jp/ad/tomato202506" target="_blank" rel="noopener">
+    </a>
   </div>
 </header>
 
