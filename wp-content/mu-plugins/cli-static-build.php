@@ -598,6 +598,16 @@ private static function sync_uploads_assets(): void {
         ];
 
         // detail json
+        // Reference materials / writer (ACF recommended, fallback to post meta)
+        $reference_materials = self::get_acf_field_value('reference_materials', $post_id);
+        if (!is_string($reference_materials)) {
+          $reference_materials = get_post_meta($post_id, 'reference_materials', true);
+        }
+        $writer_name = self::get_acf_field_value('writer_name', $post_id);
+        if (!is_string($writer_name)) {
+          $writer_name = get_post_meta($post_id, 'writer_name', true);
+        }
+
         $detail = [
           'id'         => $post_id,
           'title'      => $title,
@@ -610,6 +620,8 @@ private static function sync_uploads_assets(): void {
           'featured_image' => $featured_image,
           'article_type' => $article_type,
           'article_tags' => $article_tags,
+          'reference_materials' => is_string($reference_materials) ? trim($reference_materials) : '',
+          'writer_name' => is_string($writer_name) ? trim($writer_name) : '',
         ];
 
         $detail_path = $posts_dir . '/' . $post_id . '.json';
@@ -785,8 +797,12 @@ add_action('set_object_terms', function ($object_id, $terms, $tt_ids, $taxonomy,
     return;
   }
 
-  // Remove stale detail json from old categories (best-effort)
+  // Remove stale detail json ONLY for categories that were removed (best-effort)
+  // NOTE: Gutenberg calls set_object_terms() on every save, and $old_tt_ids contains "previous terms",
+  // not "removed terms". If we delete based on $old_tt_ids alone, it will delete the current detail json
+  // on every save. So we diff old vs new and delete only removed category slugs.
   $static_src = rtrim(ABSPATH, '/') . '/static-src';
+
   $old_slugs = [];
   if (is_array($old_tt_ids)) {
     foreach ($old_tt_ids as $tt_id) {
@@ -801,7 +817,34 @@ add_action('set_object_terms', function ($object_id, $terms, $tt_ids, $taxonomy,
   }
   $old_slugs = array_values(array_unique($old_slugs));
 
-  foreach ($old_slugs as $paper) {
+  $new_slugs = [];
+  if (is_array($tt_ids)) {
+    foreach ($tt_ids as $tt_id) {
+      $term = get_term_by('term_taxonomy_id', (int) $tt_id, 'category');
+      if ($term && !is_wp_error($term)) {
+        $slug = sanitize_title($term->slug);
+        if ($slug && is_dir($static_src . '/' . $slug)) {
+          $new_slugs[] = $slug;
+        }
+      }
+    }
+  } elseif (is_array($terms)) {
+    // Fallback: sometimes $tt_ids may not be set; try to derive slugs from $terms.
+    foreach ($terms as $t) {
+      $term = is_object($t) ? $t : get_term((int) $t, 'category');
+      if ($term && !is_wp_error($term)) {
+        $slug = sanitize_title($term->slug);
+        if ($slug && is_dir($static_src . '/' . $slug)) {
+          $new_slugs[] = $slug;
+        }
+      }
+    }
+  }
+  $new_slugs = array_values(array_unique($new_slugs));
+
+  $removed_slugs = array_values(array_diff($old_slugs, $new_slugs));
+
+  foreach ($removed_slugs as $paper) {
     Tomato_Static_Builder_ModeB::delete_detail_json($paper, $post_id);
     Tomato_Static_Builder_ModeB::schedule_build($paper);
   }

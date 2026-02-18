@@ -84,6 +84,51 @@ add_action('acf/init', function () {
     'active' => true,
   ]);
 
+
+  // ---------------------------------------------------------------------------
+  // ACF Field Group: 記事詳細（参考資料 / 執筆者） - 右サイドバー
+  // ---------------------------------------------------------------------------
+  acf_add_local_field_group([
+    'key' => 'group_post_detail_meta',
+    'title' => '記事詳細（参考資料 / 執筆者）',
+    'fields' => [
+      [
+        'key' => 'field_post_reference_materials',
+        'label' => '参考資料',
+        'name' => 'reference_materials',
+        'type' => 'textarea',
+        'instructions' => "記事下部に表示する参考資料を入力してください。\n複数ある場合は改行で区切ってください。",
+        'required' => 0,
+        'new_lines' => 'br',
+        'rows' => 4,
+      ],
+      [
+        'key' => 'field_post_writer_name',
+        'label' => '執筆者',
+        'name' => 'writer_name',
+        'type' => 'text',
+        'instructions' => '記事下部に表示する執筆者名（所属含む）を入力してください。',
+        'required' => 0,
+      ],
+    ],
+    'location' => [
+      [
+        [
+          'param' => 'post_type',
+          'operator' => '==',
+          'value' => 'post',
+        ],
+      ],
+    ],
+    'position' => 'side',
+    'menu_order' => 50,
+    'style' => 'default',
+    'label_placement' => 'top',
+    'instruction_placement' => 'label',
+    'active' => true,
+  ]);
+
+
   // ---------------------------------------------------------------------------
   // ACF Field Group: 広告枠（ad_item）設定
   // ---------------------------------------------------------------------------

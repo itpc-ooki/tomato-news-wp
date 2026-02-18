@@ -967,6 +967,52 @@ async function renderNewsSection(posts, paper) {
     });
   }
 
+
+  // =========================================================
+  // ✅ Detail: render 参考資料 / 執筆者
+  // - Reads exported fields from cli-static-build.php:
+  //   post.reference_materials (string)
+  //   post.writer_name (string)
+  // - Renders into #reference-text and #writer-text in detail.html
+  // - Hides each block when empty
+  // =========================================================
+  function renderReferenceAndWriter(post) {
+    const refBox = document.getElementById("reference-box");
+    const refText = document.getElementById("reference-text");
+    const writerBox = document.getElementById("writer-box");
+    const writerText = document.getElementById("writer-text");
+
+    const refRaw = post && (post.reference_materials || post.reference || post.refs || "");
+    const writerRaw = post && (post.writer_name || post.writer || "");
+
+    const ref = typeof refRaw === "string" ? refRaw.trim() : "";
+    const writer = typeof writerRaw === "string" ? writerRaw.trim() : "";
+
+    if (refBox) {
+      if (!ref) {
+        refBox.style.display = "none";
+      } else {
+        refBox.style.display = "";
+        if (refText) {
+          let html = escapeHtml(ref).replace(/\n/g, "<br>");
+          // Allow <br> from ACF "new_lines=br"
+          html = html.replace(/&lt;br\s*\/?&gt;/gi, "<br>");
+          refText.innerHTML = html;
+        }
+      }
+    }
+
+    if (writerBox) {
+      if (!writer) {
+        writerBox.style.display = "none";
+      } else {
+        writerBox.style.display = "";
+        if (writerText) writerText.textContent = writer;
+      }
+    }
+  }
+
+
 function renderDetail(post) {
     const target = getDetailContentTarget();
     if (!target) return;
@@ -1011,6 +1057,9 @@ function renderDetail(post) {
 
       // Article body
       target.innerHTML = content;
+
+      // ✅ Reference materials / writer
+      renderReferenceAndWriter(post);
 
       // ✅ Article tags
       renderArticleTags(post);
