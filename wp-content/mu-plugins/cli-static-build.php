@@ -343,6 +343,64 @@ private static function sync_uploads_assets(): void {
     $static_paper_root = self::static_root() . '/' . $paper;
     self::ensure_dir($static_paper_root);
 
+    // =========================================================
+    // Global menu visibility (per paper)
+    // - Configured on CPT: newspaper (ACF field: hidden_menu_items)
+    // - Output as `menu_hidden` in placements.json
+    // =========================================================
+    $menu_hidden = [];
+    try {
+      $nq = new WP_Query([
+        'post_type'      => 'newspaper',
+        'post_status'    => 'any',
+        'posts_per_page' => 1,
+        'meta_query'     => [
+          [
+            'key'     => 'newspaper_slug',
+            'value'   => $paper,
+            'compare' => '=',
+          ],
+        ],
+      ]);
+
+      // Fallback: match by output_subdir if newspaper_slug didn't match
+      if (!$nq->have_posts()) {
+        $nq = new WP_Query([
+          'post_type'      => 'newspaper',
+          'post_status'    => 'any',
+          'posts_per_page' => 1,
+          'meta_query'     => [
+            [
+              'key'     => 'output_subdir',
+              'value'   => $paper,
+              'compare' => '=',
+            ],
+          ],
+        ]);
+      }
+
+      if ($nq->have_posts()) {
+        $np = $nq->posts[0];
+        if ($np instanceof WP_Post) {
+          $raw = self::get_acf_field_value('hidden_menu_items', (int) $np->ID);
+          if (is_array($raw)) {
+            $menu_hidden = array_values(array_filter(array_map(function($v){
+              $v = sanitize_title((string) $v);
+              return $v !== '' ? $v : null;
+            }, $raw)));
+          } elseif (is_string($raw) && $raw !== '') {
+            // In case return_format is set differently, normalize to array
+            $menu_hidden = [ sanitize_title($raw) ];
+          }
+        }
+      }
+      wp_reset_postdata();
+    } catch (Exception $e) {
+      // keep silent - placements build should not fail because of menu settings
+      $menu_hidden = [];
+    }
+
+
     // Fixed limits + taxonomy slugs for ad_type
     $buckets = [
       'ads'            => ['limit' => 3, 'type_slug' => 'ads'],
@@ -356,6 +414,7 @@ private static function sync_uploads_assets(): void {
       'pr' => [],
       'sponsor_ads' => [],
       'sponsor_videos' => [],
+      'menu_hidden' => $menu_hidden,
     ];
 
     foreach ($buckets as $key => $cfg) {

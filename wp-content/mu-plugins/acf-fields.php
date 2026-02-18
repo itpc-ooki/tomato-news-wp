@@ -67,6 +67,31 @@ add_action('acf/init', function () {
         'instructions' => '例: トマト新聞（未入力ならタイトルを利用）',
         'required' => 0,
       ],
+
+      [
+        'key' => 'field_newspaper_hidden_menu_items',
+        'label' => '非表示メニュー（グローバルメニュー）',
+        'name' => 'hidden_menu_items',
+        'type' => 'checkbox',
+        'instructions' => "この新聞（paper）で非表示にしたいメニューを選択してください。
+未選択の場合はすべて表示されます。",
+        'required' => 0,
+        'choices' => [
+          'featured'    => '特集記事',
+          'news'        => 'トマトNEWS',
+          'variety'     => '品種情報',
+          'cultivation' => '栽培技術',
+          'market'      => '市場動向',
+          'pest'        => '病害虫対策',
+          'seminar'     => 'WEBセミナー',
+          'column'      => 'コラム',
+          'video'       => '動画',
+          'paper'       => '紙面',
+        ],
+        'layout' => 'vertical',
+        'return_format' => 'value',
+      ],
+
     ],
     'location' => [
       [

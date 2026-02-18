@@ -260,6 +260,49 @@
   }
 
 
+  // =========================================================
+  // Header global menu visibility (per paper)
+  // - Reads `menu_hidden` from /static/{paper}/placements.json
+  // - Hides items that match [data-menu-key="..."] in header.html
+  // =========================================================
+  function updateHeaderMenuVisibility() {
+    const paper = getCurrentPaper();
+    if (!paper) return;
+
+    fetchJson(`/static/${encodeURIComponent(paper)}/placements.json`)
+      .then((data) => {
+        const hidden = Array.isArray(data && data.menu_hidden) ? data.menu_hidden : [];
+        if (!hidden.length) return;
+
+        hidden.forEach((key) => {
+          const k = String(key || "").trim();
+          if (!k) return;
+
+          const nodes = document.querySelectorAll(`[data-menu-key="${k}"]`);
+          nodes.forEach((node) => {
+            const li = node.closest ? node.closest("li") : null;
+            const target = li || node;
+            if (target && target.style) target.style.display = "none";
+          });
+        });
+      })
+      .catch(() => {
+        // placements.json may not exist; ignore
+      });
+  }
+
+  // Run after header is injected
+  window.addEventListener("headerLoaded", updateHeaderMenuVisibility);
+
+  // Also run on first load (for pages that already have header in HTML)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", updateHeaderMenuVisibility);
+  } else {
+    updateHeaderMenuVisibility();
+  }
+
+
+
   function getQueryParam(name) {
     return new URLSearchParams(window.location.search).get(name);
   }
