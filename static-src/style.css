@@ -2695,8 +2695,8 @@ header img, nav img, footer img{aspect-ratio: auto; height: auto; object-fit: co
     height: calc(100vw * 1.5) !important;
     min-height: calc(100vw * 1.5) !important;
     max-height: calc(100vw * 1.5) !important;}
-  .vcol .vtile.ad-half-vertical, .v-track .vtile.ad-half-vertical, .band .vtile.ad-half-vertical{width: 100vw !important !important;
-    height: calc(100vw * 1.5) !important !important;}
+  .vcol .vtile.ad-half-vertical, .v-track .vtile.ad-half-vertical, .band .vtile.ad-half-vertical{width: 100vw !important;
+    height: calc(100vw * 1.5) !important;}
   .ad-half-vertical > *, .vtile.ad-half-vertical > *:not(.ad-badge){width: 100% !important;
     height: 100% !important;}
   .halfpage-ad-wrapper, .mpu-ad-wrapper{width: 100vw !important;
@@ -7559,4 +7559,100 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
 }
 .hdr-actions {
   display:flex; gap:.5rem
+}
+
+
+/* =====================================================
+   Member-only gate (detail.html)
+   - Shows teaser + login/register box when post.free_viewable is OFF
+   ===================================================== */
+.article-content.is-paywalled{
+  position: relative;
+}
+
+/* Fade-out at bottom of teaser */
+.article-content.is-paywalled::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:120px;
+  pointer-events:none;
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,1));
+}
+
+.paywall-gate{
+  max-width: 900px;
+  margin: 28px auto 0;
+  padding: 34px 20px;
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  text-align: center;
+}
+
+.paywall-inner{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+}
+
+.paywall-lock{
+  font-size: 28px;
+  line-height: 1;
+}
+
+.paywall-title{
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.paywall-subtitle{
+  font-size: 0.9rem;
+  color: var(--muted, #64748b);
+}
+
+.paywall-actions{
+  width: min(520px, 100%);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top: 10px;
+}
+
+.paywall-btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 16px 18px;
+  font-weight: 700;
+  border-radius: 0;
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.paywall-btn-register{
+  background: #e0523d;
+  color: #fff;
+  box-shadow:var(--shadow)
+}
+
+.paywall-btn-login{
+  background: #ffffff;
+  color: #000;
+  box-shadow:var(--shadow)
+}
+
+@media (max-width:768px){
+  .paywall-gate{
+    margin: 18px 15px 0;
+    padding: 26px 16px;
+  }
+  .paywall-btn{
+    padding: 14px 14px;
+    font-size: 0.95rem;
+  }
 }

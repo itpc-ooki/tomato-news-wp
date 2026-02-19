@@ -1056,6 +1056,289 @@ async function renderNewsSection(posts, paper) {
   }
 
 
+
+  // =========================================================
+  // Member-only gating (per post flag)
+  // - If post.free_viewable === 1 (or true): show full content even if not logged in
+  // - Else: show teaser (~10%) for non-logged-in users, and show gate UI
+  // =========================================================
+  function isUserLoggedIn() {
+    try {
+      // If some page exposes a global helper, prefer it
+      if (typeof window.isUserLoggedIn === "function") {
+        return !!window.isUserLoggedIn();
+      }
+
+      // Our account system (auth.js) exposes TomatoAuth and stores session in web storage
+      if (window.TomatoAuth) {
+        if (typeof window.TomatoAuth.currentUser === "function") {
+          const u = window.TomatoAuth.currentUser();
+          if (u && (u.email || u.id || u.name)) return true;
+        }
+        if (typeof window.TomatoAuth.isLoggedIn === "function") {
+          return !!window.TomatoAuth.isLoggedIn();
+        }
+      }
+
+      // Legacy / other auth helper (if present)
+      if (window.TOMATO_AUTH && typeof window.TOMATO_AUTH.isLoggedIn === "function") {
+        return !!window.TOMATO_AUTH.isLoggedIn();
+      }
+
+      // Directly check the session keys used by auth.js (works even if auth.js loads later)
+      try {
+        const ls = window.localStorage;
+        const ss = window.sessionStorage;
+        const email1 = ls ? ls.getItem("tomato_session_email_v1") : "";
+        const email2 = ss ? ss.getItem("tomato_session_email_session_v1") : "";
+        if ((email1 && email1.trim()) || (email2 && email2.trim())) return true;
+      } catch (e2) {
+        // ignore storage access errors
+      }
+
+      // WordPress sets "wordpress_logged_in_*" cookie after WP login (fallback)
+      const c = String(document.cookie || "");
+      return /wordpress_logged_in_/i.test(c);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isFreeViewable(post) {
+    const v = post && post.free_viewable;
+    return v === 1 || v === true || v === "1";
+  }
+
+  function shouldGatePost(post) {
+    return !!post && !isFreeViewable(post) && !isUserLoggedIn();
+  }
+
+  
+
+  // If auth.js loads after app.js (common when header is injected),
+  // the first render may incorrectly show the paywall even though the user is logged in.
+  // This helper re-checks login shortly after and re-renders the full article when login becomes true.
+  function maybeUngateDetailAfterLogin(post, fullHtml, target) {
+    if (!post || !target) return;
+
+    function tryUngate() {
+      if (!isUserLoggedIn()) return false;
+
+      target.classList.remove("is-paywalled");
+      target.innerHTML = fullHtml;
+
+      hidePaywallGate();
+      setAncillaryDetailVisibility(true);
+
+      // Keep ancillary blocks consistent with the full view
+      renderReferenceAndWriter(post);
+      renderArticleTags(post);
+
+      return true;
+    }
+
+    // Try immediately (next tick) and again after header injection
+    setTimeout(tryUngate, 0);
+    window.addEventListener("headerLoaded", tryUngate);
+
+    // Also poll briefly (covers cases where storage is written slightly later)
+    let attempts = 0;
+    const timer = setInterval(function () {
+      attempts += 1;
+      if (tryUngate() || attempts >= 15) clearInterval(timer); // ~3 seconds max
+    }, 200);
+  }
+
+  // =========================================================
+  // Paywall state sync (fix for: already logged-in users still seeing gate)
+  // - Stores last rendered detail post so we can re-evaluate after auth.js loads
+  // - Re-runs when:
+  //    * headerLoaded (header injection can load auth.js later)
+  //    * authChanged (login/logout on other pages, then navigate back)
+  // =========================================================
+  const __PAYWALL_STATE = {
+    post: null,
+    fullHtml: "",
+    target: null,
+    isMock: false,
+  };
+
+  function syncPaywallState() {
+    try {
+      const st = __PAYWALL_STATE;
+      if (!st.post || !st.target) return;
+
+      // Only apply on detail pages where we rendered mock article
+      if (!st.isMock) return;
+
+      const wantGate = shouldGatePost(st.post);
+      const isPaywalled = st.target.classList.contains("is-paywalled");
+
+      if (!wantGate && isPaywalled) {
+        // Logged in (or free viewable) -> show full and hide gate
+        st.target.classList.remove("is-paywalled");
+        st.target.innerHTML = st.fullHtml;
+
+        hidePaywallGate();
+        setAncillaryDetailVisibility(true);
+
+        renderReferenceAndWriter(st.post);
+        renderArticleTags(st.post);
+        return;
+      }
+
+      if (wantGate && !isPaywalled) {
+        // Not logged in -> show teaser and gate
+        st.target.classList.add("is-paywalled");
+        st.target.innerHTML = buildTeaserHtmlFromFullHtml(st.fullHtml, 2);
+
+        renderPaywallGate(st.post);
+        showPaywallGate();
+        setAncillaryDetailVisibility(false);
+
+        // keep trying to ungate if auth becomes available
+        maybeUngateDetailAfterLogin(st.post, st.fullHtml, st.target);
+      }
+    } catch (_e) {
+      // no-op
+    }
+  }
+
+  // Re-check after header injection and after auth changes
+  window.addEventListener("headerLoaded", syncPaywallState);
+  window.addEventListener("authChanged", syncPaywallState);
+
+function buildTeaserHtmlFromFullHtml(fullHtml, ratioOrCount) {
+    // Requirement:
+    // - For member-only posts viewed by non-logged-in users, show only the "top 2 tags" of the post content,
+    //   then display the paywall gate (login/register).
+    //
+    // Backward compatible behavior:
+    // - If ratioOrCount is <= 1, treat it as a ratio (legacy teaser behavior).
+    // - If ratioOrCount is > 1, treat it as the number of top-level nodes to show.
+    const arg = typeof ratioOrCount === "number" ? ratioOrCount : 0.10;
+
+    const tmp = document.createElement("div");
+    tmp.innerHTML = String(fullHtml || "");
+
+    const nodes = Array.from(tmp.childNodes).filter((n) => {
+      // ignore empty text nodes
+      if (n.nodeType === Node.TEXT_NODE) {
+        return (String(n.textContent || "").trim()).length > 0;
+      }
+      return true;
+    });
+
+    // If we don't have enough structure, just return original (gate will still show below).
+    if (!nodes.length) return String(fullHtml || "");
+
+    // New spec: show top N tags (top-level nodes)
+    if (arg > 1) {
+      const count = Math.max(1, Math.min(10, Math.floor(arg)));
+      const out = document.createElement("div");
+      for (let i = 0; i < Math.min(count, nodes.length); i++) {
+        out.appendChild(nodes[i].cloneNode(true));
+      }
+      return out.innerHTML;
+    }
+
+    // Legacy: ratio-based teaser (~10%)
+    const r = Math.max(0.05, Math.min(0.3, arg));
+    const totalText = (tmp.textContent || "").trim();
+    const totalLen = totalText.length;
+
+    // If content is very short, don't bother truncating (still show gate below)
+    if (!totalLen || totalLen < 200) {
+      return String(fullHtml || "");
+    }
+
+    const targetLen = Math.max(200, Math.floor(totalLen * r));
+
+    const out = document.createElement("div");
+    let acc = 0;
+
+    // Copy top-level nodes until we reach target text length
+    for (const n of nodes) {
+      const clone = n.cloneNode(true);
+      out.appendChild(clone);
+      acc += ((clone.textContent || "").trim()).length;
+      if (acc >= targetLen) break;
+    }
+
+    return out.innerHTML;
+  }
+
+  function ensurePaywallGateNode() {
+    let gate = document.getElementById("paywall-gate");
+    if (gate) return gate;
+
+    gate = document.createElement("div");
+    gate.id = "paywall-gate";
+    gate.className = "paywall-gate";
+    document.body.appendChild(gate);
+    return gate;
+  }
+
+  function renderPaywallGate(post) {
+    const gate = ensurePaywallGateNode();
+
+    // Place gate after the article on detail page (if possible)
+    const article = document.querySelector("article.article-content");
+    const mainContent = document.querySelector(".main-content");
+    if (article && article.parentNode) {
+      // If gate is not right after article, move it
+      if (article.nextSibling !== gate) {
+        article.parentNode.insertBefore(gate, article.nextSibling);
+      }
+    } else if (mainContent) {
+      mainContent.appendChild(gate);
+    }
+
+    const paper = getCurrentPaper() || "tomato";
+    const loginHref = `/static/account/login.html?paper=${encodeURIComponent(paper)}`;
+    const registerHref = `/static/account/register.html?paper=${encodeURIComponent(paper)}`;
+
+    gate.innerHTML = `
+      <div class="paywall-inner">
+        <div class="paywall-lock" aria-hidden="true">🔒</div>
+        <div class="paywall-text">
+          <div class="paywall-title">この記事は会員限定記事です</div>
+          <div class="paywall-subtitle">登録すると続き（全文）をお読みいただけます。</div>
+        </div>
+        <div class="paywall-actions">
+          <a class="paywall-btn paywall-btn-register" href="${registerHref}">★ 新規会員登録（無料）</a>
+          <a class="paywall-btn paywall-btn-login" href="${loginHref}">→ ログイン</a>
+        </div>
+      </div>
+    `;
+  }
+
+  function hidePaywallGate() {
+    const gate = document.getElementById("paywall-gate");
+    if (gate) gate.style.display = "none";
+  }
+
+  function showPaywallGate() {
+    const gate = document.getElementById("paywall-gate");
+    if (gate) gate.style.display = "";
+  }
+
+  function setAncillaryDetailVisibility(isVisible) {
+    // Hide sections that should not be shown on teaser view
+    const ids = ["reference-box", "writer-box", "article-tags"];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      // article-tags is inside tags section; hide whole tags section for neatness
+      if (id === "article-tags") {
+        const section = el.closest ? el.closest(".tags-section") : null;
+        (section || el).style.display = isVisible ? "" : "none";
+      } else {
+        el.style.display = isVisible ? "" : "none";
+      }
+    });
+  }
+
 function renderDetail(post) {
     const target = getDetailContentTarget();
     if (!target) return;
@@ -1104,8 +1387,32 @@ function renderDetail(post) {
         mainImageBox.alt = post.title || "";
       }
 
-      // Article body
-      target.innerHTML = content;
+      // Article body (member gating if needed)
+      const fullHtml = content;
+
+      // Store for later re-check (auth.js may load after app.js)
+      try {
+        __PAYWALL_STATE.post = post;
+        __PAYWALL_STATE.fullHtml = fullHtml;
+        __PAYWALL_STATE.target = target;
+        __PAYWALL_STATE.isMock = true;
+        // next tick sync (covers cases where auth is already ready)
+        setTimeout(syncPaywallState, 0);
+      } catch (_e) {}
+      if (shouldGatePost(post)) {
+        target.classList.add("is-paywalled");
+        target.innerHTML = buildTeaserHtmlFromFullHtml(fullHtml, 2);
+        renderPaywallGate(post);
+        showPaywallGate();
+        setAncillaryDetailVisibility(false);
+        maybeUngateDetailAfterLogin(post, fullHtml, target);
+      } else {
+        target.classList.remove("is-paywalled");
+        target.innerHTML = fullHtml;
+        hidePaywallGate();
+        setAncillaryDetailVisibility(true);
+      }
+
 
       // ✅ Reference materials / writer
       renderReferenceAndWriter(post);

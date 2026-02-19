@@ -135,6 +135,16 @@ add_action('acf/init', function () {
         'instructions' => '記事下部に表示する執筆者名（所属含む）を入力してください。',
         'required' => 0,
       ],
+      [
+        'key' => 'field_post_free_viewable',
+        'label' => '非ログイン閲覧を許可（無料公開）',
+        'name' => 'free_viewable',
+        'type' => 'true_false',
+        'instructions' => 'ON の場合：ログインしていないユーザーでも記事全文を閲覧できます。OFF の場合：冒頭のみ表示してログイン/会員登録を促します。',
+        'required' => 0,
+        'ui' => 1,
+        'default_value' => 0,
+      ],
     ],
     'location' => [
       [

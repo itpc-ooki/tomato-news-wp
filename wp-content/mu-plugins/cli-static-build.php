@@ -642,7 +642,14 @@ private static function sync_uploads_assets(): void {
         }
 
 
-        $list[] = [
+                // Free viewable flag (ACF true_false) - if ON, users can read without login
+        $free_viewable = self::get_acf_field_value('free_viewable', $post_id);
+        if (!is_bool($free_viewable)) {
+          $mv = get_post_meta($post_id, 'free_viewable', true);
+          $free_viewable = ($mv === '1' || $mv === 1 || $mv === true);
+        }
+
+$list[] = [
           'id'       => $post_id,
           'title'    => $title,
           'date'     => $date,
@@ -654,6 +661,7 @@ private static function sync_uploads_assets(): void {
           'featured_image' => $featured_image,
           'article_type' => $article_type,
           'article_tags' => $article_tags,
+          'free_viewable' => $free_viewable ? 1 : 0,
         ];
 
         // detail json
@@ -679,6 +687,7 @@ private static function sync_uploads_assets(): void {
           'featured_image' => $featured_image,
           'article_type' => $article_type,
           'article_tags' => $article_tags,
+          'free_viewable' => $free_viewable ? 1 : 0,
           'reference_materials' => is_string($reference_materials) ? trim($reference_materials) : '',
           'writer_name' => is_string($writer_name) ? trim($writer_name) : '',
         ];

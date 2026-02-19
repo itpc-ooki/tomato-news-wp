@@ -10,6 +10,12 @@
 
   function nowIso(){ return new Date().toISOString(); }
 
+  function dispatchAuthChanged(){
+    try{
+      window.dispatchEvent(new CustomEvent('authChanged'));
+    }catch(_e){}
+  }
+
   function loadUsers(){
     try{
       const raw = localStorage.getItem(USERS_KEY);
@@ -53,12 +59,18 @@
     if (!remember){
       sessionStorage.setItem(SESSION_SESSION_KEY, e);
     }
+
+    dispatchAuthChanged();
   }
+
 
   function logout(){
     localStorage.removeItem(SESSION_LOCAL_KEY);
     sessionStorage.removeItem(SESSION_SESSION_KEY);
+
+    dispatchAuthChanged();
   }
+
 
   function findUserByEmail(users, email){
     const e = normalizeEmail(email);
