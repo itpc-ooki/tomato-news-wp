@@ -226,6 +226,9 @@
     const paper = getCurrentPaper();
     if (!paper) return;
 
+    // Variety page enhancement (clickable images)
+    enhanceVarietyImageLinks();
+
     const loginHref = `/static/account/login.html?paper=${encodeURIComponent(paper)}`;
     const registerHref = `/static/account/register.html?paper=${encodeURIComponent(paper)}`;
     const mypageHref = `/static/account/mypage.html?paper=${encodeURIComponent(paper)}`;
@@ -268,6 +271,9 @@
   function updateHeaderMenuVisibility() {
     const paper = getCurrentPaper();
     if (!paper) return;
+
+    // Variety page enhancement (clickable images)
+    enhanceVarietyImageLinks();
 
     fetchJson(`/static/${encodeURIComponent(paper)}/placements.json`)
       .then((data) => {
@@ -1947,9 +1953,190 @@ async function loadAndRenderPlacementsJson(paper) {
   // ✅ End Added: placements.json rendering for sponsor videos
   // =========================================================
 
+
+
+  // =========================================================
+  // Variety page: make images clickable using admin-defined link
+  // - Reads /static/{paper}/varieties.json and expects each item to have "link"
+  // - Makes images inside:
+  //     .variety-thumb img
+  //     .card-image-hero img
+  //   clickable and navigates to the link.
+  // - Works even if the variety cards are rendered later (MutationObserver)
+  // =========================================================
+  function enhanceVarietyImageLinks() {
+    try {
+      if (!document.body || !document.body.classList.contains("page-variety")) return;
+
+      const paper = getPaperFromPath() || getCurrentPaper();
+      if (!paper || paper === "account") return;
+
+      const gridRoot = document.getElementById("varietyGrid");
+      const listRoot = document.getElementById("varietyList");
+      const roots = [gridRoot, listRoot].filter(Boolean);
+      if (roots.length === 0) return;
+
+      function normalizeSrc(src) {
+        const s = String(src || "").trim();
+        if (!s) return "";
+        try {
+          // strip origin + query/hash
+          const u = new URL(s, window.location.origin);
+          return (u.pathname || "") + (u.search ? "" : "");
+        } catch (_e) {
+          return s.split("?")[0].split("#")[0];
+        }
+      }
+
+      function buildMaps(items) {
+        const byId = new Map();
+        const byName = new Map();
+        const byImgPath = new Map();
+
+        (Array.isArray(items) ? items : []).forEach((it) => {
+          if (!it) return;
+          const id = it.id != null ? String(it.id) : "";
+          const name = typeof it.name === "string" ? it.name.trim() : "";
+          const link = typeof it.link === "string" ? it.link.trim() : "";
+
+          if (id && link) byId.set(id, link);
+          if (name && link) byName.set(name, link);
+
+          const img = typeof it.image === "string" ? it.image.trim() : "";
+          const nimg = normalizeSrc(img);
+          if (nimg && link) byImgPath.set(nimg, link);
+        });
+
+        return { byId, byName, byImgPath };
+      }
+
+      function findVarietyLinkForImg(imgEl, maps) {
+        if (!imgEl || !maps) return "";
+
+        // 1) nearest data attributes
+        const host =
+          imgEl.closest("[data-variety-id]") ||
+          imgEl.closest("[data-id]") ||
+          imgEl.closest("[data-item-id]") ||
+          imgEl.closest("[data-post-id]");
+
+        if (host) {
+          const did =
+            host.getAttribute("data-variety-id") ||
+            host.getAttribute("data-id") ||
+            host.getAttribute("data-item-id") ||
+            host.getAttribute("data-post-id") ||
+            "";
+          const id = String(did || "").trim();
+          if (id && maps.byId.has(id)) return maps.byId.get(id) || "";
+        }
+
+        // 2) img alt (often variety name)
+        const alt = String(imgEl.getAttribute("alt") || "").trim();
+        if (alt && maps.byName.has(alt)) return maps.byName.get(alt) || "";
+
+        // 3) match by image path
+        const src = normalizeSrc(imgEl.getAttribute("src") || "");
+        if (src && maps.byImgPath.has(src)) return maps.byImgPath.get(src) || "";
+
+        // 4) match by last path segment (fallback)
+        if (src) {
+          const seg = src.split("/").filter(Boolean).pop() || "";
+          if (seg) {
+            for (const [k, v] of maps.byImgPath.entries()) {
+              const kseg = String(k).split("/").filter(Boolean).pop() || "";
+              if (kseg && kseg === seg) return v || "";
+            }
+          }
+        }
+
+        return "";
+      }
+
+      function makeImgClickable(imgEl, link) {
+        if (!imgEl) return;
+        if (!link) return;
+
+        // avoid double-binding
+        if (imgEl.dataset && imgEl.dataset.varietyLinkApplied === "1") return;
+
+        // If image is already inside an anchor, respect it
+        if (imgEl.closest("a")) {
+          if (imgEl.dataset) imgEl.dataset.varietyLinkApplied = "1";
+          return;
+        }
+
+        // Visual affordance
+        imgEl.style.cursor = "pointer";
+
+        // Click + keyboard
+        imgEl.setAttribute("role", "link");
+        imgEl.setAttribute("tabindex", "0");
+
+        const go = function () {
+          try {
+            const href = resolveUrlMaybeRelative(link);
+            if (href) window.location.href = href;
+          } catch (_e) {}
+        };
+
+        imgEl.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          go();
+        });
+
+        imgEl.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            e.stopPropagation();
+            go();
+          }
+        });
+
+        if (imgEl.dataset) imgEl.dataset.varietyLinkApplied = "1";
+      }
+
+      function applyOnce(root, maps) {
+        if (!root) return;
+
+        const imgs = root.querySelectorAll(".variety-thumb img, .card-image-hero img");
+        imgs.forEach((imgEl) => {
+          const link = findVarietyLinkForImg(imgEl, maps);
+          makeImgClickable(imgEl, link);
+        });
+      }
+
+      fetchJson(`/static/${encodeURIComponent(paper)}/varieties.json`)
+        .then((payload) => {
+          const items = payload && Array.isArray(payload.items) ? payload.items : [];
+          const maps = buildMaps(items);
+
+          // initial apply
+          roots.forEach((r) => applyOnce(r, maps));
+
+          // observe later renders (variety.js)
+          roots.forEach((r) => {
+            const obs = new MutationObserver(function () {
+              applyOnce(r, maps);
+            });
+            obs.observe(r, { childList: true, subtree: true });
+          });
+        })
+        .catch(() => {
+          // varieties.json may be missing; ignore
+        });
+    } catch (_e) {
+      // ignore
+    }
+  }
+
   async function main() {
     const paper = getPaperFromPath();
     if (!paper) return;
+
+    // Variety page enhancement (clickable images)
+    enhanceVarietyImageLinks();
 
     // TOP page uses a.vtile
     const hasVtiles = getTopVtiles().length > 0;

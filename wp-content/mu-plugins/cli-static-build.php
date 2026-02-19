@@ -528,6 +528,137 @@ private static function sync_uploads_assets(): void {
   }
 
   /**
+   * Build varieties.json for a paper.
+   *
+   * Source:
+   * - CPT: variety (品種マスタ)
+   * - Category (category slug) is used as "paper" filter (tomato/leek/strawberry)
+   *
+   * Output:
+   * - /static/{paper}/varieties.json
+   *
+   * JSON format (matches current variety.html/variety.js expectations):
+   * { "items": [ { id, name, category, company, image, tomvType, description, res } ... ] }
+   */
+  private static function build_varieties_json(string $paper): void {
+    $paper = sanitize_title($paper);
+    if ($paper === '') return;
+    if (!self::paper_exists($paper)) return;
+
+    $static_paper_root = self::static_root() . '/' . $paper;
+    self::ensure_dir($static_paper_root);
+
+    $items = [];
+
+    $q = new WP_Query([
+      'post_type'      => 'variety',
+      'post_status'    => 'publish',
+      'posts_per_page' => -1,
+      'orderby'        => 'meta_value_num title',
+      'meta_key'       => 'sort_order',
+      'order'          => 'ASC',
+      'tax_query'      => [
+        [
+          'taxonomy' => 'category',
+          'field'    => 'slug',
+          'terms'    => [$paper],
+        ],
+      ],
+    ]);
+
+    if ($q->have_posts()) {
+      while ($q->have_posts()) {
+        $q->the_post();
+        $id = get_the_ID();
+
+        $category = function_exists('get_field') ? (string) get_field('variety_category', $id) : '';
+        $company  = function_exists('get_field') ? (string) get_field('company', $id) : '';
+        $image    = function_exists('get_field') ? get_field('image', $id) : '';
+        $link     = function_exists('get_field') ? (string) get_field('link', $id) : '';
+        $tomvType = function_exists('get_field') ? (string) get_field('tomvType', $id) : '';
+        $desc     = function_exists('get_field') ? (string) get_field('description', $id) : '';
+        $res      = function_exists('get_field') ? get_field('res', $id) : null;
+        $sort     = function_exists('get_field') ? (int) get_field('sort_order', $id) : 0;
+
+        // Fallbacks
+        if ($category === '') $category = 'large';
+        if (!is_array($res)) $res = [];
+
+        // Normalize image path (so it works in /static/{paper}/ pages)
+        $image_rel = null;
+        if (is_string($image) && $image !== '') {
+          $image_rel = self::to_relative_path($image);
+        }
+
+        $link_norm = '';
+        if (is_string($link) && trim($link) !== '') {
+          $link_norm = trim($link);
+        }
+
+        $items[] = [
+          'id' => $id,
+          'name' => get_the_title(),
+          'category' => $category,
+          'company' => $company,
+          'image' => $image_rel ?: '',
+          'link' => $link_norm,
+          'tomvType' => $tomvType,
+          'description' => $desc,
+          'res' => $res,
+          // internal sort key (removed later)
+          '__sort' => $sort,
+        ];
+      }
+    }
+    wp_reset_postdata();
+
+    // Stable ordering: sort_order asc, then name asc, then id asc
+    usort($items, function ($a, $b) {
+      $sa = isset($a['__sort']) ? (int) $a['__sort'] : 0;
+      $sb = isset($b['__sort']) ? (int) $b['__sort'] : 0;
+      if ($sa !== $sb) return $sa <=> $sb;
+
+      $na = isset($a['name']) ? (string) $a['name'] : '';
+      $nb = isset($b['name']) ? (string) $b['name'] : '';
+      $cmp = strcmp($na, $nb);
+      if ($cmp !== 0) return $cmp;
+
+      return ((int) ($a['id'] ?? 0)) <=> ((int) ($b['id'] ?? 0));
+    });
+
+    // remove internal field
+    foreach ($items as &$it) {
+      if (isset($it['__sort'])) unset($it['__sort']);
+    }
+    unset($it);
+
+    // If admin forgot to assign the paper category to varieties, the tax_query above returns 0 items.
+    // In that case, we should NOT overwrite (effectively "delete") the existing varieties.json.
+    // Only skip when there is already an existing file; otherwise, write an empty payload.
+    $static_out = $static_paper_root . '/varieties.json';
+
+    if (count($items) === 0 && is_file($static_out)) {
+      return;
+    }
+
+    $payload = [ 'items' => $items ];
+    $json = wp_json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+
+    // 1) Always write the public build output
+    file_put_contents($static_out, $json);
+
+    // 2) Also sync back into static-src so the source tree stays up to date
+    //    (requested: currently only /static/... was updated).
+    $src_paper_root = self::static_src_root() . '/' . $paper;
+    if (is_dir($src_paper_root)) {
+      $src_out = rtrim($src_paper_root, '/') . '/varieties.json';
+      file_put_contents($src_out, $json);
+    }
+  }
+
+
+
+  /**
    * Copy templates into /static/{paper}/
    * - index.html (category top): copy /static-src/{paper}/index.html if exists, else copy list.html
    * - list.html  (list page):     copy /static-src/{paper}/list.html
@@ -704,6 +835,9 @@ $list[] = [
 
     // placements.json (ads/pr/sponsor)
     self::build_placements_json($paper);
+
+    // varieties.json (variety master data)
+    self::build_varieties_json($paper);
 
     // market.json (market data: price/volume + diff/trend)
     // Generated by market-data.php (Tomato_Market_Data). Safe no-op if plugin not present.
