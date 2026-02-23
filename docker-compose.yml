@@ -103,7 +103,7 @@ services:
       echo "[static_builder] wordpress ready.";
       while true; do
         echo "[static_builder] build start: $(date -u +%F\ %T) UTC";
-        wp --allow-root tomato auto-static-run-now --debug || true;
+        wp --allow-root tomato auto-static-run --debug || true;
 
         # S3 sync (safe for local dev: it will skip if AWS credentials are not available)
         if [ "${ENABLE_S3_SYNC:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "${TOMATO_STATIC_S3_TARGET:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
