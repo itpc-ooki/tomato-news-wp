@@ -111,6 +111,9 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
         // Sync to S3 if configured
         self::run_s3_sync();
 
+
+        // Auto CloudFront invalidation (optional; keeps cache but updates immediately)
+        self::run_cloudfront_invalidation();
         self::append_log('Done build');
       } catch (\Throwable $e) {
         self::append_log('ERROR: ' . $e->getMessage());
@@ -206,6 +209,79 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
 
       \WP_CLI::success('Build + sync complete.');
     }
+
+/**
+ * Auto CloudFront invalidation (optional)
+ *
+ * Keeps CloudFront caching ON, but makes updates visible immediately.
+ *
+ * Required env:
+ * - ENABLE_CLOUDFRONT_INVALIDATION=1
+ * - CLOUDFRONT_DISTRIBUTION_ID=E2XXXXXXXXXXXXX
+ *
+ * Optional env:
+ * - CLOUDFRONT_INVALIDATION_PATHS="/static/*"  (comma-separated)
+ */
+private static function run_cloudfront_invalidation(): void {
+  if (!defined('WP_CLI') || !WP_CLI) {
+    self::append_log('Skip invalidation: not WP_CLI');
+    return;
+  }
+
+  $enabled = getenv('ENABLE_CLOUDFRONT_INVALIDATION');
+  if (!$enabled || $enabled === '0') {
+    self::append_log('Skip invalidation: ENABLE_CLOUDFRONT_INVALIDATION not enabled');
+    return;
+  }
+
+  // Only invalidate when S3 sync is configured (same environment as the builder sync)
+  $s3_target = getenv('TOMATO_STATIC_S3_TARGET');
+  if (!$s3_target) {
+    self::append_log('Skip invalidation: TOMATO_STATIC_S3_TARGET not set');
+    return;
+  }
+
+  $dist_id = getenv('CLOUDFRONT_DISTRIBUTION_ID');
+  if (!$dist_id) {
+    \WP_CLI::warning('Missing env CLOUDFRONT_DISTRIBUTION_ID (CloudFront distribution id)');
+    self::append_log('Skip invalidation: CLOUDFRONT_DISTRIBUTION_ID not set');
+    return;
+  }
+
+  // Default: invalidate all generated files under /static (all papers)
+  $paths_env = getenv('CLOUDFRONT_INVALIDATION_PATHS');
+  if ($paths_env) {
+    $paths = array_values(array_filter(array_map('trim', explode(',', $paths_env))));
+  } else {
+    $paths = ['/static/*'];
+  }
+
+  if (!$paths) {
+    self::append_log('Skip invalidation: no paths');
+    return;
+  }
+
+  $args = implode(' ', array_map('escapeshellarg', $paths));
+
+  $cmd = sprintf(
+    'aws cloudfront create-invalidation --distribution-id %s --paths %s',
+    escapeshellarg($dist_id),
+    $args
+  );
+
+  \WP_CLI::log('Invalidate: ' . $cmd);
+  $code = 0;
+  \WP_CLI::runcommand($cmd, ['exit_error' => false, 'return' => 'all', 'launch' => true], $code);
+
+  if ($code !== 0) {
+    \WP_CLI::warning('CloudFront invalidation failed with code ' . $code);
+    self::append_log('Invalidate ERROR code=' . $code);
+    return;
+  }
+
+  self::append_log('Invalidate OK paths=' . implode(',', $paths));
+  \WP_CLI::success('CloudFront invalidation created.');
+}
 
     /**
      * WP-CLI command handler

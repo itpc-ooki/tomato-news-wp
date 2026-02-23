@@ -22,4 +22,5 @@ static/
 .DS_Store
 
 # env
-.env
+.env.local
+.env.stg
