@@ -248,35 +248,51 @@ private static function sync_uploads_assets(): void {
 
     $url = (string) $url;
 
-    // If it's a root-relative path, make it relative so it works both:
-    // - Local:  http://localhost:8080/static/{paper}/index.html
-    // - S3:     http://.../{paper}/index.html
+    // Goal:
+    // - Static site is served under /static/...
+    // - Uploads are synced to /static/wp-content/uploads/...
+    // So always return a URL that is valid from the static site origin.
     //
-    // Example:
-    //   /wp-content/uploads/...   -> ../wp-content/uploads/...
-    //   /static/wp-content/...    -> ../wp-content/...
+    // Preferred output:
+    // - /static/wp-content/uploads/....jpg
+
+    // Root-relative path
     if (strpos($url, '/') === 0) {
-      // Normalize "/static/..." to "/..."
+      // Already points to /static/... => keep
       if (strpos($url, '/static/') === 0) {
-        $url = substr($url, strlen('/static'));
-        if ($url === '') $url = '/';
+        return $url;
       }
 
-      // Uploads (and other wp-content assets): point to root wp-content, but as a relative path from paper pages.
+      // WordPress assets (uploads, etc) => serve via /static/wp-content/...
       if (strpos($url, '/wp-content/') === 0) {
-        return '../' . ltrim($url, '/');
+        return '/static' . $url;
       }
 
+      // Other root paths: keep as-is
       return $url;
     }
 
-    // Absolute URL (http/https) -> keep as-is
+    // Absolute URL (http/https)
     if (preg_match('#^https?://#i', $url)) {
+      $parts = parse_url($url);
+      $path = is_array($parts) && isset($parts['path']) ? (string) $parts['path'] : '';
+
+      // If the absolute URL points to wp-content, rewrite to /static/wp-content/...
+      if ($path && strpos($path, '/wp-content/') === 0) {
+        return '/static' . $path;
+      }
+      if ($path && strpos($path, '/static/wp-content/') === 0) {
+        return $path;
+      }
+
+      // Otherwise keep as-is (external assets like YouTube thumbnails)
       return $url;
     }
 
+    // Relative path (e.g. "../assets/...") => keep
     return $url;
   }
+
 
 
   /**
