@@ -295,6 +295,30 @@ private static function sync_uploads_assets(): void {
 
 
 
+
+
+  /**
+   * Rewrite absolute wp-content/uploads URLs inside HTML content to the static-site path.
+   *
+   * Example:
+   * - http://54.xx.xx.xx:8080/wp-content/uploads/...  -> /static/wp-content/uploads/...
+   * - https://example.com/wp-content/uploads/...      -> /static/wp-content/uploads/...
+   *
+   * This is required because post_content often contains absolute URLs (src/srcset).
+   */
+  private static function rewrite_uploads_urls_in_html(string $html): string {
+    if ($html === '') return $html;
+
+    // Replace protocol + host (and optional port) pointing to wp-content/uploads
+    $html = preg_replace(
+      '#(?:https?:)?//[^/]+/wp-content/uploads/#i',
+      '/static/wp-content/uploads/',
+      $html
+    );
+
+    return $html;
+  }
+
   /**
    * Get featured image URL (relative) or null
    * - returns string|null
@@ -828,7 +852,7 @@ $list[] = [
           'date'       => $date,
           'date_ymd'   => $date_ymd,
           // Keep raw HTML content (Gutenberg) as string
-          'content'    => apply_filters('the_content', $p->post_content),
+          'content'    => self::rewrite_uploads_urls_in_html(apply_filters('the_content', $p->post_content)),
           'slug'       => $slug,
           'categories' => [$paper],
           'featured_image' => $featured_image,
