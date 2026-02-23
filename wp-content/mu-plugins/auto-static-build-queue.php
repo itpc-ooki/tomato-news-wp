@@ -154,6 +154,40 @@ class Tomato_Auto_Static_Build_Queue
     self::request_build($papers, 'save_post');
   }
 
+
+  public static function on_trashed_post($post_id): void
+  {
+    $post_id = (int)$post_id;
+    $post = get_post($post_id);
+    if (!$post || ($post->post_type ?? '') !== 'post') {
+      return;
+    }
+
+    $papers = self::detect_papers_from_post($post_id);
+    if (empty($papers)) {
+      $papers = self::get_papers_from_newspaper_master();
+    }
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers, 'trashed_post');
+  }
+
+  public static function on_deleted_post($post_id): void
+  {
+    $post_id = (int)$post_id;
+
+    // At this point the post may already be gone; rebuild all papers as safe fallback.
+    $papers = self::get_papers_from_newspaper_master();
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers, 'deleted_post');
+  }
+
+
   public static function get_papers_from_newspaper_master(): array
   {
     $args = [
@@ -201,7 +235,10 @@ class Tomato_Auto_Static_Build_Queue
 add_action('save_post', [Tomato_Auto_Static_Build_Queue::class, 'on_save_post'], 10, 3);
 add_action('save_post_newspaper', [Tomato_Auto_Static_Build_Queue::class, 'on_save_newspaper'], 10, 3);
 
+add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_post'], 10, 1);
+add_action('deleted_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_post'], 10, 1);
+
 add_action('edited_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
 add_action('created_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
 
-// The runner will hook this event and process the queue.
+// Queue is consumed by the static_builder container (polls the option).
