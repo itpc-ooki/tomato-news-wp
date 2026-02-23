@@ -102,25 +102,36 @@ services:
 
       echo "[static_builder] wordpress ready.";
       while true; do
-        echo "[static_builder] build start: $(date -u +%F\ %T) UTC";
-        wp --allow-root tomato auto-static-run --debug || true;
+        echo "[static_builder] cycle start: $(date -u +%F\ %T) UTC";
 
-        # S3 sync (safe for local dev: it will skip if AWS credentials are not available)
-        if [ "${ENABLE_S3_SYNC:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "${TOMATO_STATIC_S3_TARGET:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
-          echo "[static_builder] s3 sync start: $(date -u +%F\ %T) UTC -> ${TOMATO_STATIC_S3_TARGET}";
-          aws s3 sync /var/www/html/static "${TOMATO_STATIC_S3_TARGET}" --delete || true;
-          # CloudFront invalidation (after S3 sync)
-          if [ "${ENABLE_CLOUDFRONT_INVALIDATION:-0}" = "1" ] && [ -n "${CLOUDFRONT_DISTRIBUTION_ID:-}" ]; then
+        # Only run build/sync/invalidation when the queue has items.
+        # Queue is managed by wp-content/mu-plugins/auto-static-build-queue.php
+        QUEUE_JSON="$(wp --allow-root option get tomato_static_build_queue --format=json 2>/dev/null || echo '[]')"
+
+        if [ -n "$QUEUE_JSON" ] && [ "$QUEUE_JSON" != "[]" ] && [ "$QUEUE_JSON" != "null" ]; then
+          echo "[static_builder] queue detected -> build start: $(date -u +%F\ %T) UTC";
+          wp --allow-root tomato auto-static-run --debug || true;
+
+          # S3 sync (safe for local dev: it will skip if AWS credentials are not available)
+          if [ "${ENABLE_S3_SYNC:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "${TOMATO_STATIC_S3_TARGET:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
+            echo "[static_builder] s3 sync start: $(date -u +%F\ %T) UTC -> ${TOMATO_STATIC_S3_TARGET}";
+            aws s3 sync /var/www/html/static "${TOMATO_STATIC_S3_TARGET}" --delete || true;
+          else
+            echo "[static_builder] s3 sync skipped (ENABLE_S3_SYNC=${ENABLE_S3_SYNC:-0}, or missing creds/target)";
+          fi;
+
+          # CloudFront invalidation (optional, only after S3 sync)
+          if [ "${ENABLE_CLOUDFRONT_INVALIDATION:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "${CLOUDFRONT_DISTRIBUTION_ID:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
             echo "[static_builder] cloudfront invalidation start: $(date -u +%F\ %T) UTC";
             aws cloudfront create-invalidation \
               --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
               --paths "${CLOUDFRONT_INVALIDATION_PATHS:-/static/*}" || true;
           else
-            echo "[static_builder] cloudfront invalidation skipped (disabled or no distribution id).";
-          fi
+            echo "[static_builder] cloudfront invalidation skipped (ENABLE_CLOUDFRONT_INVALIDATION=${ENABLE_CLOUDFRONT_INVALIDATION:-0}, or missing dist-id/creds)";
+          fi;
         else
-          echo "[static_builder] s3 sync skipped (aws cli not available or no AWS credentials).";
-        fi
+          echo "[static_builder] queue empty -> skip build/sync/invalidation";
+        fi;
 
         echo "[static_builder] cycle done. sleep ${BUILD_INTERVAL_SECONDS:-30}s";
         sleep "${BUILD_INTERVAL_SECONDS:-30}";
