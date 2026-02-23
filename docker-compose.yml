@@ -175,6 +175,7 @@ services:
           done
 
 
+networks:
   wp-cms_default:
 
 volumes:
