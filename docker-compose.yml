@@ -90,94 +90,91 @@ services:
       - ./static:/var/www/html/static
     networks:
       - wp-cms_default
-    command: >
-      sh -lc '
-      set -u;
+    command:
+      - sh
+      - -lc
+      - |
+          set -u
 
-      echo "[static_builder] start. interval=$${BUILD_INTERVAL_SECONDS:-30}s";
-      until wp core is-installed --path=/var/www/html >/dev/null 2>&1; do
-        echo "[static_builder] waiting wordpress...";
-        sleep 3;
-      done;
+          echo "[static_builder] start. interval=$${BUILD_INTERVAL_SECONDS:-30}s";
+          until wp core is-installed --path=/var/www/html >/dev/null 2>&1; do
+            echo "[static_builder] waiting wordpress...";
+            sleep 3;
+          done;
 
-      echo "[static_builder] wordpress ready.";
+          echo "[static_builder] wordpress ready.";
 
-      while true; do
-        echo "[static_builder] cycle start: $$(date -u +%F\ %T) UTC";
+          while true; do
+            echo "[static_builder] cycle start: $$(date -u +%F\ %T) UTC";
 
-        # 1) Read queue from WP option (set by auto-static-build-queue.php)
-        QUEUE_JSON="$$(wp --allow-root --path=/var/www/html option get tomato_static_build_queue --format=json 2>/dev/null || echo '{}')"
+            # 1) Read queue from WP option (set by auto-static-build-queue.php)
+            QUEUE_JSON="$$(wp --allow-root --path=/var/www/html option get tomato_static_build_queue --format=json 2>/dev/null || echo '{}')"
 
-        # Extract paper keys from the queue (no jq needed)
-        PAPERS="$$(printf "%s" "$$QUEUE_JSON" | php -r '
-          $$q=json_decode(stream_get_contents(STDIN), true);
-          if (!is_array($$q) || empty($$q)) { exit(1); }
-          echo implode(" ", array_keys($$q));
-        ' 2>/dev/null || true)"
+            # Extract paper keys from the queue (no jq needed)
+            PAPERS="$$(printf "%s" "$$QUEUE_JSON" | php -r '$$q=json_decode(stream_get_contents(STDIN), true); if(!is_array($$q) || empty($$q)){ exit(1); } echo implode(" ", array_keys($$q));' 2>/dev/null || true)"
 
-        if [ -z "$$PAPERS" ]; then
-          echo "[static_builder] queue empty -> skip build/sync/invalidation";
-          echo "[static_builder] cycle done. sleep $${BUILD_INTERVAL_SECONDS:-30}s";
-          sleep "$${BUILD_INTERVAL_SECONDS:-30}";
-          continue;
-        fi
-
-        echo "[static_builder] queue detected papers: $$PAPERS";
-
-        # 2) Run static build (per paper)
-        BUILD_OK=1
-        for PAPER in $$PAPERS; do
-          echo "[static_builder] build: $$PAPER";
-          if ! wp --allow-root --path=/var/www/html static-build "$$PAPER" --debug; then
-            echo "[static_builder] ERROR: build failed for $$PAPER";
-            BUILD_OK=0
-            break
-          fi
-        done
-
-        # 3) Sync to S3 + CloudFront invalidation ONLY if build succeeded
-        if [ "$$BUILD_OK" = "1" ]; then
-          SYNC_OK=1
-
-          if [ "$${ENABLE_S3_SYNC:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "$${TOMATO_STATIC_S3_TARGET:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
-            echo "[static_builder] s3 sync start: $$(date -u +%F\ %T) UTC -> $${TOMATO_STATIC_S3_TARGET}";
-            if ! aws s3 sync /var/www/html/static "$${TOMATO_STATIC_S3_TARGET}" --delete; then
-              echo "[static_builder] ERROR: s3 sync failed";
-              SYNC_OK=0
+            if [ -z "$$PAPERS" ]; then
+              echo "[static_builder] queue empty -> skip build/sync/invalidation";
+              echo "[static_builder] cycle done. sleep $${BUILD_INTERVAL_SECONDS:-30}s";
+              sleep "$${BUILD_INTERVAL_SECONDS:-30}";
+              continue;
             fi
-          else
-            echo "[static_builder] s3 sync skipped (aws cli not available or no AWS credentials).";
-          fi
 
-          if [ "$$SYNC_OK" = "1" ] && [ "$${ENABLE_CLOUDFRONT_INVALIDATION:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "$${CLOUDFRONT_DISTRIBUTION_ID:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
-            # Default path: /static/*
-            PATHS="$${CLOUDFRONT_INVALIDATION_PATHS:-/static/*}"
-            echo "[static_builder] cloudfront invalidation start: dist=$${CLOUDFRONT_DISTRIBUTION_ID} paths=$${PATHS}";
-            # Split comma-separated paths safely
-            IFS=',' read -r -a CF_PATH_ARR <<< "$$PATHS"
-            aws cloudfront create-invalidation --distribution-id "$${CLOUDFRONT_DISTRIBUTION_ID}" --paths "$${CF_PATH_ARR[@]}" || true
-          else
-            echo "[static_builder] cloudfront invalidation skipped.";
-          fi
+            echo "[static_builder] queue detected papers: $$PAPERS";
 
-          # 4) Clear queue ONLY after successful build (and if sync failed, keep queue for retry)
-          if [ "$$SYNC_OK" = "1" ] || [ "$${ENABLE_S3_SYNC:-0}" != "1" ]; then
-            wp --allow-root --path=/var/www/html option update tomato_static_build_queue "{}" --format=json >/dev/null 2>&1 || true
-            echo "[static_builder] queue cleared";
-          else
-            echo "[static_builder] queue NOT cleared (sync failed)";
-          fi
-        else
-          echo "[static_builder] build failed -> keep queue for retry";
-        fi
+            # 2) Run static build (per paper)
+            BUILD_OK=1
+            for PAPER in $$PAPERS; do
+              echo "[static_builder] build: $$PAPER";
+              if ! wp --allow-root --path=/var/www/html static-build "$$PAPER" --debug; then
+                echo "[static_builder] ERROR: build failed for $$PAPER";
+                BUILD_OK=0
+                break
+              fi
+            done
 
-        echo "[static_builder] cycle done. sleep $${BUILD_INTERVAL_SECONDS:-30}s";
-        sleep "$${BUILD_INTERVAL_SECONDS:-30}";
-      done
-      '
+            # 3) Sync to S3 + CloudFront invalidation ONLY if build succeeded
+            if [ "$$BUILD_OK" = "1" ]; then
+              SYNC_OK=1
+
+              if [ "$${ENABLE_S3_SYNC:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "$${TOMATO_STATIC_S3_TARGET:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
+                echo "[static_builder] s3 sync start: $$(date -u +%F\ %T) UTC -> $${TOMATO_STATIC_S3_TARGET}";
+                if ! aws s3 sync /var/www/html/static "$${TOMATO_STATIC_S3_TARGET}" --delete; then
+                  echo "[static_builder] ERROR: s3 sync failed";
+                  SYNC_OK=0
+                fi
+              else
+                echo "[static_builder] s3 sync skipped (aws cli not available or no AWS credentials).";
+              fi
+
+              if [ "$$SYNC_OK" = "1" ] && [ "$${ENABLE_CLOUDFRONT_INVALIDATION:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "$${CLOUDFRONT_DISTRIBUTION_ID:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
+                # Default path: /static/*
+                PATHS="$${CLOUDFRONT_INVALIDATION_PATHS:-/static/*}";
+                echo "[static_builder] cloudfront invalidation start: dist=$${CLOUDFRONT_DISTRIBUTION_ID} paths=$$PATHS";
+
+                # Split comma-separated paths safely
+                IFS=',' read -r -a CF_PATH_ARR <<< "$$PATHS"
+                aws cloudfront create-invalidation --distribution-id "$${CLOUDFRONT_DISTRIBUTION_ID}" --paths "$${CF_PATH_ARR[@]}" || true
+              else
+                echo "[static_builder] cloudfront invalidation skipped.";
+              fi
+
+              # 4) Clear queue ONLY after successful build (and if sync failed, keep queue for retry)
+              if [ "$$SYNC_OK" = "1" ] || [ "$${ENABLE_S3_SYNC:-0}" != "1" ]; then
+                wp --allow-root --path=/var/www/html option update tomato_static_build_queue "{}" --format=json >/dev/null 2>&1 || true
+                echo "[static_builder] queue cleared";
+              else
+                echo "[static_builder] queue NOT cleared (sync failed)";
+              fi
+            else
+              echo "[static_builder] build failed -> keep queue for retry";
+            fi
+
+            echo "[static_builder] cycle done. sleep $${BUILD_INTERVAL_SECONDS:-30}s";
+            sleep "$${BUILD_INTERVAL_SECONDS:-30}";
+          done
 
 
-networks:
   wp-cms_default:
 
 volumes:
