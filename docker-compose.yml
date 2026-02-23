@@ -109,6 +109,15 @@ services:
         if [ "${ENABLE_S3_SYNC:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "${TOMATO_STATIC_S3_TARGET:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
           echo "[static_builder] s3 sync start: $(date -u +%F\ %T) UTC -> ${TOMATO_STATIC_S3_TARGET}";
           aws s3 sync /var/www/html/static "${TOMATO_STATIC_S3_TARGET}" --delete || true;
+          # CloudFront invalidation (after S3 sync)
+          if [ "${ENABLE_CLOUDFRONT_INVALIDATION:-0}" = "1" ] && [ -n "${CLOUDFRONT_DISTRIBUTION_ID:-}" ]; then
+            echo "[static_builder] cloudfront invalidation start: $(date -u +%F\ %T) UTC";
+            aws cloudfront create-invalidation \
+              --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+              --paths "${CLOUDFRONT_INVALIDATION_PATHS:-/static/*}" || true;
+          else
+            echo "[static_builder] cloudfront invalidation skipped (disabled or no distribution id).";
+          fi
         else
           echo "[static_builder] s3 sync skipped (aws cli not available or no AWS credentials).";
         fi
