@@ -346,6 +346,11 @@ private static function run_cloudfront_invalidation(): void {
       self::run($force);
     }
 
+    public static function cli_run_force($args, $assoc_args): void {
+      // Force run immediately (ignore debounce)
+      self::run(true);
+    }
+
     public static function cli_run_now($args, $assoc_args): void {
       // Always run immediately (ignore debounce)
       self::run(true);
@@ -357,13 +362,14 @@ if (defined('WP_CLI') && WP_CLI) {
   // Debounced runner (for cron): runs only when due.
   \WP_CLI::add_command('tomato auto-static-run', [Tomato_Auto_Static_Build_Runner::class, 'cli_run'], [
     'shortdesc' => 'Run queued static-build and S3 sync (if due).',
-    'synopsis'  => [
-      ['type' => 'flag', 'name' => 'force', 'description' => 'Run immediately, ignore debounce timer'],
-    ],
   ]);
 
-  // Run immediately, ignoring debounce
-  \WP_CLI::add_command('tomato auto-static-run-now', [Tomato_Auto_Static_Build_Runner::class, 'cli_run_now'], [
+// Run immediately, ignoring debounce
+  \WP_CLI::add_command('tomato auto-static-run-force', [Tomato_Auto_Static_Build_Runner::class, 'cli_run_force'], [
+    'shortdesc' => 'Run queued static-build and S3 sync immediately (force, ignore debounce).',
+  ]);
+
+WP_CLI::add_command('tomato auto-static-run-now', [Tomato_Auto_Static_Build_Runner::class, 'cli_run_now'], [
     'shortdesc' => 'Run queued static-build and S3 sync immediately (ignore debounce).',
   ]);
 }
