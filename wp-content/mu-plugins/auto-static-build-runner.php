@@ -10,10 +10,14 @@
 if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
   class Tomato_Auto_Static_Build_Runner {
 
+    private const OPTION_KEY = 'tomato_static_build_queue';
+
     private const LOCK_FILE = 'wp-content/uploads/static-build-queue/.lock';
     private const QUEUE_DIR = 'wp-content/uploads/static-build-queue';
     private const REQUESTED_JSON = 'wp-content/uploads/static-build-queue/requested.json';
     private const BUILD_LOG = 'wp-content/uploads/static-build-queue/build.log';
+
+    private const DEBOUNCE_SECONDS = 10;
 
     private static function lock_path(): string {
       return ABSPATH . ltrim(self::LOCK_FILE, '/');
@@ -61,6 +65,48 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
       return $data;
     }
 
+    /**
+     * Preferred queue source: WP option set by Tomato_Auto_Static_Build_Queue (MU).
+     * Format: { "tomato": {paper, requested_at, reasons...}, "leek": {...} }
+     */
+    private static function read_option_queue(): array {
+      $queue = get_option(self::OPTION_KEY, []);
+      if (!is_array($queue)) return [];
+
+      $papers = [];
+      $latest_requested = 0;
+
+      // Accept either associative (paper => meta) or list of items.
+      foreach ($queue as $k => $v) {
+        if (is_array($v)) {
+          $paper = isset($v['paper']) ? (string) $v['paper'] : (is_string($k) ? (string) $k : '');
+          $paper = sanitize_title($paper);
+          if ($paper !== '') $papers[] = $paper;
+
+          $ts = isset($v['requested_at']) ? (int) $v['requested_at'] : 0;
+          if ($ts > $latest_requested) $latest_requested = $ts;
+        } elseif (is_string($v)) {
+          $paper = sanitize_title($v);
+          if ($paper !== '') $papers[] = $paper;
+        } elseif (is_string($k)) {
+          $paper = sanitize_title($k);
+          if ($paper !== '') $papers[] = $paper;
+        }
+      }
+
+      $papers = array_values(array_unique(array_filter($papers)));
+
+      return [
+        'papers' => $papers,
+        // Run shortly after the latest enqueue to debounce rapid saves.
+        'run_after' => $latest_requested > 0 ? ($latest_requested + self::DEBOUNCE_SECONDS) : 0,
+      ];
+    }
+
+    private static function clear_option_queue(): void {
+      update_option(self::OPTION_KEY, [], false);
+    }
+
     private static function append_log(string $line): void {
       self::ensure_queue_dir();
       $path = self::build_log_path();
@@ -81,22 +127,27 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
         return;
       }
 
-      $req = self::read_requested();
-      if (!$req) {
-        self::append_log('Skip: no requested.json');
-        return;
+      // 1) Preferred: WP option queue (tomato_static_build_queue)
+      $req = self::read_option_queue();
+
+      // 2) Backward compatibility: legacy requested.json
+      if ((!$req || empty($req['papers'])) && file_exists(self::requested_json_path())) {
+        $legacy = self::read_requested();
+        if ($legacy && !empty($legacy['papers'])) {
+          $req = $legacy;
+        }
       }
 
-      $run_after = isset($req['run_after']) ? (int) $req['run_after'] : 0;
       $papers = isset($req['papers']) && is_array($req['papers']) ? $req['papers'] : [];
+      $run_after = isset($req['run_after']) ? (int) $req['run_after'] : 0;
 
       if (!$papers) {
-        self::append_log('Skip: no papers');
+        self::append_log('Skip: queue empty');
         return;
       }
 
       $now = time();
-      if (!$force && $run_after > $now) {
+      if (!$force && $run_after > 0 && $run_after > $now) {
         self::append_log('Debounce waiting until ' . gmdate('c', $run_after));
         return;
       }
@@ -111,9 +162,13 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
         // Sync to S3 if configured
         self::run_s3_sync();
 
-
         // Auto CloudFront invalidation (optional; keeps cache but updates immediately)
         self::run_cloudfront_invalidation();
+
+        // Clear queue AFTER successful build+sync+invalidation
+        self::clear_option_queue();
+        @unlink(self::requested_json_path());
+
         self::append_log('Done build');
       } catch (\Throwable $e) {
         self::append_log('ERROR: ' . $e->getMessage());
