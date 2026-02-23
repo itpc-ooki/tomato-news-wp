@@ -144,6 +144,7 @@ class Tomato_Auto_Static_Build_Queue
     }
 
     $papers = self::detect_papers_from_post((int)$post_id);
+    $papers = array_values(array_filter(array_unique(array_map('sanitize_title', (array) $papers)), function($p){ return is_string($p) && $p !== ''; }));
     if (empty($papers)) {
       $papers = self::get_papers_from_newspaper_master();
     }
@@ -164,6 +165,7 @@ class Tomato_Auto_Static_Build_Queue
     }
 
     $papers = self::detect_papers_from_post($post_id);
+    $papers = array_values(array_filter(array_unique(array_map('sanitize_title', (array) $papers)), function($p){ return is_string($p) && $p !== ''; }));
     if (empty($papers)) {
       $papers = self::get_papers_from_newspaper_master();
     }

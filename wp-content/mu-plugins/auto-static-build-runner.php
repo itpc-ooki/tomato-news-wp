@@ -373,3 +373,29 @@ WP_CLI::add_command('tomato auto-static-run-now', [Tomato_Auto_Static_Build_Runn
     'shortdesc' => 'Run queued static-build and S3 sync immediately (ignore debounce).',
   ]);
 }
+  private static function normalize_paper_slug(string $paper): ?string
+  {
+    $paper = trim($paper);
+    if ($paper === '') {
+      return null;
+    }
+
+    // Some terminals display UTF-8 as percent-encoding when dumped from JSON.
+    // Try to decode once; if it's not encoded, urldecode() is a no-op for normal slugs.
+    $decoded = urldecode($paper);
+
+    // If it's already a safe slug, keep it.
+    if (preg_match('/^[a-z0-9][a-z0-9\-]*$/', $decoded)) {
+      return $decoded;
+    }
+
+    // Fallback: sanitize title (may become empty for non-latin).
+    $slug = sanitize_title($decoded);
+    if (is_string($slug) && $slug !== '') {
+      return $slug;
+    }
+
+    return null;
+  }
+
+
