@@ -15,9 +15,6 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
     private const REQUESTED_JSON = 'wp-content/uploads/static-build-queue/requested.json';
     private const BUILD_LOG = 'wp-content/uploads/static-build-queue/build.log';
 
-    // New queue source (matches auto-static-build-queue.php)
-    private const OPTION_KEY = 'tomato_static_build_queue';
-
     private static function lock_path(): string {
       return ABSPATH . ltrim(self::LOCK_FILE, '/');
     }
@@ -64,60 +61,50 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
       return $data;
     }
 
+private const QUEUE_OPTION_KEY = 'tomato_static_build_queue';
 
-    /**
-     * Read queued papers from WordPress option (preferred).
-     * Falls back to requested.json for backward compatibility.
-     */
-    private static function read_queue_papers(): array {
-      // Preferred: option-based queue (set by auto-static-build-queue.php)
-      $queue = get_option(self::OPTION_KEY, []);
-      if (is_array($queue) && !empty($queue)) {
-        $papers = [];
-        foreach ($queue as $key => $item) {
-          // Keys are paper slugs; item may contain 'paper'
-          $paper = is_string($key) ? $key : '';
-          if (is_array($item) && isset($item['paper']) && is_string($item['paper'])) {
-            $paper = $item['paper'];
-          }
-          $paper = self::normalize_paper_key((string) $paper);
-          if ($paper !== null) {
-            $papers[] = $paper;
-          }
-        }
-        $papers = array_values(array_unique(array_filter($papers)));
-        if (!empty($papers)) {
-          return $papers;
-        }
-      }
-
-      // Backward compatibility: requested.json format
-      $req = self::read_requested();
-      if (is_array($req) && isset($req['papers']) && is_array($req['papers'])) {
-        $papers = [];
-        foreach ($req['papers'] as $p) {
-          $n = self::normalize_paper_key((string) $p);
-          if ($n !== null) {
-            $papers[] = $n;
-          }
-        }
-        $papers = array_values(array_unique(array_filter($papers)));
-        return $papers;
-      }
-
-      return [];
+/**
+ * Queue option format (from auto-static-build-queue.php):
+ *   [
+ *     'tomato' => [
+ *       'paper' => 'tomato',
+ *       'requested_at' => 1712345678,
+ *       'reasons' => [...],
+ *     ],
+ *     ...
+ *   ]
+ */
+private static function read_queue_option(): array {
+  $queue = get_option(self::QUEUE_OPTION_KEY, []);
+  if (!is_array($queue)) {
+    return [];
+  }
+  // Remove any empty / invalid keys
+  foreach ($queue as $k => $v) {
+    if (!is_string($k) || $k === '') {
+      unset($queue[$k]);
     }
+  }
+  return $queue;
+}
 
-    private static function clear_queue(): void {
-      // Clear option-based queue
-      update_option(self::OPTION_KEY, [], false);
+private static function remove_queue_items(array $papers): void {
+  if (empty($papers)) return;
+  $queue = get_option(self::QUEUE_OPTION_KEY, []);
+  if (!is_array($queue)) $queue = [];
 
-      // Also clear requested.json (if present)
-      $path = self::requested_json_path();
-      if (file_exists($path)) {
-        @unlink($path);
-      }
+  $changed = false;
+  foreach ($papers as $paper) {
+    if (isset($queue[$paper])) {
+      unset($queue[$paper]);
+      $changed = true;
     }
+  }
+
+  if ($changed) {
+    update_option(self::QUEUE_OPTION_KEY, $queue, false);
+  }
+}
 
     private static function append_log(string $line): void {
       self::ensure_queue_dir();
@@ -139,14 +126,19 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
         return;
       }
 
-      $papers = self::read_queue_papers();
-      if (!$papers) {
-        self::append_log('Skip: queue empty');
-        return;
-      }
+      $queue = self::read_queue_option();
+if (!$queue) {
+  self::append_log('Skip: empty queue');
+  return;
+}
 
-
-      self::lock();
+$papers = array_keys($queue);
+$papers = array_values(array_unique(array_filter($papers, function ($p) { return is_string($p) && $p !== ''; })));
+if (empty($papers)) {
+  self::append_log('Skip: queue has no paper keys');
+  return;
+}
+self::lock();
       try {
         self::append_log('Start build: papers=' . implode(',', $papers));
 
@@ -158,11 +150,8 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
 
 
         // Auto CloudFront invalidation (optional; keeps cache but updates immediately)
-        self::run_cloudfront_invalidation();
-
-        // Clear queue only after everything succeeded
-        self::clear_queue();
-
+        self::run_cloudfront_invalidation($papers);
+        self::remove_queue_items($papers);
         self::append_log('Done build');
       } catch (\Throwable $e) {
         self::append_log('ERROR: ' . $e->getMessage());
@@ -214,103 +203,77 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
   }
 
 private static function run_static_build(array $papers): void {
-      if (!defined('WP_CLI') || !WP_CLI) {
-        // Not running under WP-CLI; just skip.
-        self::append_log('Skip: not WP_CLI');
-        return;
-      }
+  if (!defined('WP_CLI') || !WP_CLI) {
+    self::append_log('Skip build: not WP_CLI');
+    return;
+  }
 
-      $wp_path = ABSPATH;
+  // Normalize + de-duplicate
+  $normalized_papers = [];
+  foreach ($papers as $p) {
+    $n = self::normalize_paper_key((string) $p);
+    if ($n !== null) $normalized_papers[] = $n;
+  }
+  $normalized_papers = array_values(array_unique($normalized_papers));
+  if (empty($normalized_papers)) {
+    $normalized_papers = ['tomato'];
+  }
 
-      // NOTE:
-      // cli-static-build.php expects:
-      //   wp static-build <paper>
-      //   wp static-build --all
-      // NOT:
-      //   wp static-build --paper=<paper>
-      $is_all = in_array('all', $papers, true);
+  foreach ($normalized_papers as $paper) {
+    // NOTE: cli-static-build.php registers "static-build".
+    // The command signature in this project is: wp static-build <paper>
+    $cmd = sprintf('static-build %s', escapeshellarg($paper));
+    \WP_CLI::log('Running: wp ' . $cmd);
 
-      // 1) Build static
-      // - If --all was requested, run once: wp static-build --all
-      // - Otherwise, run once per paper: wp static-build tomato / leek / strawberry ...
-      if ($is_all) {
-      $cmd_build = sprintf(
-          'wp --path=%s static-build --all --debug',
-          escapeshellarg($wp_path)
-      );
-      \WP_CLI::log('Build: ' . $cmd_build);
-      $code = 0;
-      \WP_CLI::runcommand($cmd_build, ['exit_error' => false, 'return' => 'all', 'launch' => true], $code);
-      if ($code !== 0) {
-          \WP_CLI::error('static-build failed with code ' . $code);
-      }
-      } else {
-      $papers = array_values(array_unique($papers));
+    $exit_code = 0;
+    // Use WP_CLI to execute so it inherits WP/ABSPATH context correctly.
+    \WP_CLI::runcommand($cmd, ['launch' => true, 'return' => 'all', 'exit_error' => false], $exit_code);
 
-        // Normalize papers (avoid %xx folders when slugs are Japanese).
-        $normalized_papers = [];
-        foreach ($papers as $p) {
-          $n = self::normalize_paper_key((string) $p);
-          if ($n !== null) {
-            $normalized_papers[] = $n;
-          }
-        }
-        $normalized_papers = array_values(array_unique($normalized_papers));
-        if (empty($normalized_papers)) {
-          $normalized_papers = ['tomato'];
-        }
-
-        foreach ($normalized_papers as $paper) {
-          $cmd_build = sprintf(
-            'wp --allow-root static-build %s --no-s3',
-            escapeshellarg($paper)
-          );
-          $code = 0;
-          \WP_CLI::runcommand($cmd_build, ['exit_error' => false, 'return' => 'all', 'launch' => true], $code);
-          if ($code !== 0) {
-            \WP_CLI::error('static-build failed for ' . $paper . ' with code ' . $code);
-          }
-        }
-      }
+    if ((int)$exit_code !== 0) {
+      \WP_CLI::error('static-build failed for ' . $paper . ' (exit=' . $exit_code . ')');
     }
+  }
+}
+
 
     private static function run_s3_sync(): void {
-      if (!defined('WP_CLI') || !WP_CLI) {
-        self::append_log('Skip sync: not WP_CLI');
-        return;
-      }
+  if (!defined('WP_CLI') || !WP_CLI) {
+    self::append_log('Skip sync: not WP_CLI');
+    return;
+  }
 
-      $s3_target = getenv('TOMATO_STATIC_S3_TARGET');
-      if (!$s3_target) {
-        \WP_CLI::warning('Missing env TOMATO_STATIC_S3_TARGET (e.g. s3://tomatonews-static-stg/static)');
-        self::append_log('Skip sync: TOMATO_STATIC_S3_TARGET not set');
-        return;
-      }
+  $enabled = getenv('ENABLE_S3_SYNC');
+  if ($enabled !== '1') {
+    self::append_log('Skip sync: ENABLE_S3_SYNC != 1');
+    return;
+  }
 
-      // Your static output dir (adjust if your project differs)
-      $static_dir = ABSPATH . 'static';
+  $s3_target = getenv('TOMATO_STATIC_S3_TARGET');
+  if (!$s3_target) {
+    \WP_CLI::warning('Missing env TOMATO_STATIC_S3_TARGET (e.g. s3://tomatonews-static-stg/static)');
+    return;
+  }
 
-      if (!is_dir($static_dir)) {
-        \WP_CLI::warning('static dir missing: ' . $static_dir);
-        self::append_log('Skip sync: static dir missing');
-        return;
-      }
+  $src_dir = getenv('STATIC_OUTPUT_DIR') ?: '/var/www/html/static';
+  $src_dir = rtrim($src_dir, '/');
 
-      $cmd_sync = sprintf(
-        'aws s3 sync %s %s --delete',
-        escapeshellarg($static_dir . '/'),
-        escapeshellarg(rtrim($s3_target, '/') . '/')
-      );
+  $cmd = sprintf(
+    'aws s3 sync %s %s --delete',
+    escapeshellarg($src_dir . '/'),
+    escapeshellarg(rtrim($s3_target, '/') . '/')
+  );
 
-      \WP_CLI::log('Sync: ' . $cmd_sync);
-      $code2 = 0;
-      \WP_CLI::runcommand($cmd_sync, ['exit_error' => false, 'return' => 'all', 'launch' => true], $code2);
-      if ($code2 !== 0) {
-        \WP_CLI::error('aws s3 sync failed with code ' . $code2);
-      }
+  \WP_CLI::log('Running: ' . $cmd);
 
-      \WP_CLI::success('Build + sync complete.');
-    }
+  $code = 0;
+  self::run_shell($cmd, ['stderr' => false, 'return' => 'all', 'launch' => true], $code);
+  if ((int)$code !== 0) {
+    \WP_CLI::error('aws s3 sync failed with code ' . $code);
+  }
+
+  self::append_log('S3 sync OK target=' . $s3_target);
+}
+
 
 /**
  * Auto CloudFront invalidation (optional)
@@ -324,66 +287,73 @@ private static function run_static_build(array $papers): void {
  * Optional env:
  * - CLOUDFRONT_INVALIDATION_PATHS="/static/*"  (comma-separated)
  */
-private static function run_cloudfront_invalidation(): void {
+private static function run_cloudfront_invalidation(array $papers): void {
   if (!defined('WP_CLI') || !WP_CLI) {
     self::append_log('Skip invalidation: not WP_CLI');
     return;
   }
 
   $enabled = getenv('ENABLE_CLOUDFRONT_INVALIDATION');
-  if (!$enabled || $enabled === '0') {
-    self::append_log('Skip invalidation: ENABLE_CLOUDFRONT_INVALIDATION not enabled');
-    return;
-  }
-
-  // Only invalidate when S3 sync is configured (same environment as the builder sync)
-  $s3_target = getenv('TOMATO_STATIC_S3_TARGET');
-  if (!$s3_target) {
-    self::append_log('Skip invalidation: TOMATO_STATIC_S3_TARGET not set');
+  if ($enabled !== '1') {
+    self::append_log('Skip invalidation: ENABLE_CLOUDFRONT_INVALIDATION != 1');
     return;
   }
 
   $dist_id = getenv('CLOUDFRONT_DISTRIBUTION_ID');
   if (!$dist_id) {
-    \WP_CLI::warning('Missing env CLOUDFRONT_DISTRIBUTION_ID (CloudFront distribution id)');
-    self::append_log('Skip invalidation: CLOUDFRONT_DISTRIBUTION_ID not set');
+    \WP_CLI::warning('Missing env CLOUDFRONT_DISTRIBUTION_ID');
     return;
   }
 
-  // Default: invalidate all generated files under /static (all papers)
-  $paths_env = getenv('CLOUDFRONT_INVALIDATION_PATHS');
-  if ($paths_env) {
-    $paths = array_values(array_filter(array_map('trim', explode(',', $paths_env))));
+  // If you want custom paths, set CLOUDFRONT_INVALIDATION_PATHS as space-separated values.
+  $custom = getenv('CLOUDFRONT_INVALIDATION_PATHS');
+  $paths = [];
+
+  if ($custom) {
+    $parts = preg_split('/\s+/', trim($custom));
+    foreach ($parts as $p) {
+      if ($p !== '') $paths[] = $p;
+    }
   } else {
-    $paths = ['/static/*'];
+    // Default: invalidate the changed paper folders under /static
+    $normalized = [];
+    foreach ($papers as $p) {
+      $n = self::normalize_paper_key((string) $p);
+      if ($n !== null) $normalized[] = $n;
+    }
+    $normalized = array_values(array_unique($normalized));
+    if (empty($normalized)) $normalized = ['tomato'];
+
+    foreach ($normalized as $paper) {
+      // minimal but effective
+      $paths[] = "/static/{$paper}/*";
+    }
   }
 
-  if (!$paths) {
+  if (empty($paths)) {
     self::append_log('Skip invalidation: no paths');
     return;
   }
 
-  $args = implode(' ', array_map('escapeshellarg', $paths));
+  $cmd = 'aws cloudfront create-invalidation'
+    . ' --distribution-id ' . escapeshellarg($dist_id)
+    . ' --paths ' . implode(' ', array_map('escapeshellarg', $paths));
 
-  $cmd = sprintf(
-    'aws cloudfront create-invalidation --distribution-id %s --paths %s',
-    escapeshellarg($dist_id),
-    $args
-  );
+  \WP_CLI::log('Running: ' . $cmd);
 
-  \WP_CLI::log('Invalidate: ' . $cmd);
   $code = 0;
-  \WP_CLI::runcommand($cmd, ['exit_error' => false, 'return' => 'all', 'launch' => true], $code);
+  self::run_shell($cmd, ['stderr' => false, 'return' => 'all', 'launch' => true], $code);
 
-  if ($code !== 0) {
-    \WP_CLI::warning('CloudFront invalidation failed with code ' . $code);
+  if ((int)$code !== 0) {
     self::append_log('Invalidate ERROR code=' . $code);
+    \WP_CLI::warning('CloudFront invalidation failed (exit=' . $code . ')');
     return;
   }
 
   self::append_log('Invalidate OK paths=' . implode(',', $paths));
   \WP_CLI::success('CloudFront invalidation created.');
 }
+
 
     /**
      * WP-CLI command handler
