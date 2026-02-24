@@ -83,6 +83,7 @@ services:
       ENABLE_CLOUDFRONT_INVALIDATION: "${ENABLE_CLOUDFRONT_INVALIDATION:-0}"
       CLOUDFRONT_DISTRIBUTION_ID: "${CLOUDFRONT_DISTRIBUTION_ID:-}"
       CLOUDFRONT_INVALIDATION_PATHS: "${CLOUDFRONT_INVALIDATION_PATHS:-/static/*}"
+      STATIC_OUTPUT_DIR: "${STATIC_OUTPUT_DIR:-/var/www/html/static}"
     volumes:
       - wp_html:/var/www/html
       - ./wp-content:/var/www/html/wp-content
