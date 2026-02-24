@@ -15,6 +15,9 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
     private const REQUESTED_JSON = 'wp-content/uploads/static-build-queue/requested.json';
     private const BUILD_LOG = 'wp-content/uploads/static-build-queue/build.log';
 
+    // New queue source (matches auto-static-build-queue.php)
+    private const OPTION_KEY = 'tomato_static_build_queue';
+
     private static function lock_path(): string {
       return ABSPATH . ltrim(self::LOCK_FILE, '/');
     }
@@ -61,6 +64,61 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
       return $data;
     }
 
+
+    /**
+     * Read queued papers from WordPress option (preferred).
+     * Falls back to requested.json for backward compatibility.
+     */
+    private static function read_queue_papers(): array {
+      // Preferred: option-based queue (set by auto-static-build-queue.php)
+      $queue = get_option(self::OPTION_KEY, []);
+      if (is_array($queue) && !empty($queue)) {
+        $papers = [];
+        foreach ($queue as $key => $item) {
+          // Keys are paper slugs; item may contain 'paper'
+          $paper = is_string($key) ? $key : '';
+          if (is_array($item) && isset($item['paper']) && is_string($item['paper'])) {
+            $paper = $item['paper'];
+          }
+          $paper = self::normalize_paper_key((string) $paper);
+          if ($paper !== null) {
+            $papers[] = $paper;
+          }
+        }
+        $papers = array_values(array_unique(array_filter($papers)));
+        if (!empty($papers)) {
+          return $papers;
+        }
+      }
+
+      // Backward compatibility: requested.json format
+      $req = self::read_requested();
+      if (is_array($req) && isset($req['papers']) && is_array($req['papers'])) {
+        $papers = [];
+        foreach ($req['papers'] as $p) {
+          $n = self::normalize_paper_key((string) $p);
+          if ($n !== null) {
+            $papers[] = $n;
+          }
+        }
+        $papers = array_values(array_unique(array_filter($papers)));
+        return $papers;
+      }
+
+      return [];
+    }
+
+    private static function clear_queue(): void {
+      // Clear option-based queue
+      update_option(self::OPTION_KEY, [], false);
+
+      // Also clear requested.json (if present)
+      $path = self::requested_json_path();
+      if (file_exists($path)) {
+        @unlink($path);
+      }
+    }
+
     private static function append_log(string $line): void {
       self::ensure_queue_dir();
       $path = self::build_log_path();
@@ -81,25 +139,12 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
         return;
       }
 
-      $req = self::read_requested();
-      if (!$req) {
-        self::append_log('Skip: no requested.json');
-        return;
-      }
-
-      $run_after = isset($req['run_after']) ? (int) $req['run_after'] : 0;
-      $papers = isset($req['papers']) && is_array($req['papers']) ? $req['papers'] : [];
-
+      $papers = self::read_queue_papers();
       if (!$papers) {
-        self::append_log('Skip: no papers');
+        self::append_log('Skip: queue empty');
         return;
       }
 
-      $now = time();
-      if (!$force && $run_after > $now) {
-        self::append_log('Debounce waiting until ' . gmdate('c', $run_after));
-        return;
-      }
 
       self::lock();
       try {
@@ -114,6 +159,10 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
 
         // Auto CloudFront invalidation (optional; keeps cache but updates immediately)
         self::run_cloudfront_invalidation();
+
+        // Clear queue only after everything succeeded
+        self::clear_queue();
+
         self::append_log('Done build');
       } catch (\Throwable $e) {
         self::append_log('ERROR: ' . $e->getMessage());
@@ -216,7 +265,8 @@ private static function run_static_build(array $papers): void {
             'wp --allow-root static-build %s --no-s3',
             escapeshellarg($paper)
           );
-          $code = self::run_shell($cmd_build, ['stderr' => false, 'return' => 'all', 'launch' => true], $code);
+          $code = 0;
+          \WP_CLI::runcommand($cmd_build, ['exit_error' => false, 'return' => 'all', 'launch' => true], $code);
           if ($code !== 0) {
             \WP_CLI::error('static-build failed for ' . $paper . ' with code ' . $code);
           }
