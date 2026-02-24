@@ -105,8 +105,13 @@ services:
         echo "[static_builder] build start: $(date -u +%F\ %T) UTC";
         wp --allow-root tomato auto-static-run-now --debug || true;
 
-        # S3 sync + CloudFront invalidation are handled inside `wp tomato auto-static-run-now` (runner).
-        # (keeping the builder loop lightweight and queue-driven)
+        # S3 sync (safe for local dev: it will skip if AWS credentials are not available)
+        if [ "${ENABLE_S3_SYNC:-0}" = "1" ] && command -v aws >/dev/null 2>&1 && [ -n "${TOMATO_STATIC_S3_TARGET:-}" ] && aws sts get-caller-identity >/dev/null 2>&1; then
+          echo "[static_builder] s3 sync start: $(date -u +%F\ %T) UTC -> ${TOMATO_STATIC_S3_TARGET}";
+          aws s3 sync /var/www/html/static "${TOMATO_STATIC_S3_TARGET}" --delete || true;
+        else
+          echo "[static_builder] s3 sync skipped (aws cli not available or no AWS credentials).";
+        fi
 
         echo "[static_builder] cycle done. sleep ${BUILD_INTERVAL_SECONDS:-30}s";
         sleep "${BUILD_INTERVAL_SECONDS:-30}";

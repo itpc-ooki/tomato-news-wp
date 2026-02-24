@@ -144,7 +144,6 @@ class Tomato_Auto_Static_Build_Queue
     }
 
     $papers = self::detect_papers_from_post((int)$post_id);
-    $papers = array_values(array_filter(array_unique(array_map('sanitize_title', (array) $papers)), function($p){ return is_string($p) && $p !== ''; }));
     if (empty($papers)) {
       $papers = self::get_papers_from_newspaper_master();
     }
@@ -165,7 +164,6 @@ class Tomato_Auto_Static_Build_Queue
     }
 
     $papers = self::detect_papers_from_post($post_id);
-    $papers = array_values(array_filter(array_unique(array_map('sanitize_title', (array) $papers)), function($p){ return is_string($p) && $p !== ''; }));
     if (empty($papers)) {
       $papers = self::get_papers_from_newspaper_master();
     }
@@ -216,17 +214,91 @@ class Tomato_Auto_Static_Build_Queue
 
   private static function detect_papers_from_post(int $post_id): array
   {
-    // Option A: Rebuild all papers from 新聞マスター.
-    $papers = self::get_papers_from_newspaper_master();
+    // Prefer explicit taxonomy/category slugs on the edited post.
+    $papers = [];
+
+    // 1) WordPress built-in categories (used in your staging admin: tomato/leek/...).
+    $cat_slugs = wp_get_post_terms($post_id, 'category', ['fields' => 'slugs']);
+    if (is_array($cat_slugs)) {
+      foreach ($cat_slugs as $slug) {
+        $normalized = self::normalize_paper_key((string) $slug);
+        if ($normalized !== null) {
+          $papers[] = $normalized;
+        }
+      }
+    }
+
+    // 2) Optional custom taxonomy "paper" (if you ever switch to it).
+    if (empty($papers)) {
+      $paper_slugs = wp_get_post_terms($post_id, 'paper', ['fields' => 'slugs']);
+      if (is_array($paper_slugs)) {
+        foreach ($paper_slugs as $slug) {
+          $normalized = self::normalize_paper_key((string) $slug);
+          if ($normalized !== null) {
+            $papers[] = $normalized;
+          }
+        }
+      }
+    }
+
+    $papers = array_values(array_unique(array_filter($papers)));
+
     if (!empty($papers)) {
       return $papers;
     }
 
-    // Fallback (for local/dev before 新聞マスター is configured)
+    // Fallback: safest default.
     return self::get_default_papers();
   }
 
-  private static function get_default_papers(): array
+
+  
+  private static function normalize_paper_key(string $raw): ?string
+  {
+    $raw = trim($raw);
+    if ($raw === '') {
+      return null;
+    }
+
+    // If it's percent-encoded (common when slugs contain Japanese), decode once.
+    $decoded = urldecode($raw);
+
+    // Known mappings (you can extend this if needed).
+    $map = [
+      'tomato' => 'tomato',
+      'leek' => 'leek',
+      'strawberry' => 'strawberry',
+
+      // Japanese label variants -> slug
+      'トマト' => 'tomato',
+      'トマト新聞' => 'tomato',
+      'ねぎ' => 'leek',
+      'ネギ' => 'leek',
+      'リーク' => 'leek',
+      'いちご' => 'strawberry',
+      'イチゴ' => 'strawberry',
+      '苺' => 'strawberry',
+    ];
+
+    if (isset($map[$decoded])) {
+      return $map[$decoded];
+    }
+
+    // If it's already a safe slug, keep it.
+    if (preg_match('/^[a-z0-9][a-z0-9\-]*$/', $decoded)) {
+      return $decoded;
+    }
+
+    // Last resort: sanitize_title may produce %xx for Japanese; reject those to avoid wrong folders.
+    $san = sanitize_title($decoded);
+    if ($san === '' || strpos($san, '%') !== false) {
+      return null;
+    }
+
+    return $san;
+  }
+
+private static function get_default_papers(): array
   {
     // Default paper(s) when 新聞マスター is not configured yet.
     return ['tomato'];
