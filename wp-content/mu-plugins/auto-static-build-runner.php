@@ -236,6 +236,46 @@ private static function run_static_build(array $papers): void {
 }
 
 
+
+    /**
+     * Run a shell command and return its output.
+     *
+     * This project uses WP-CLI context but AWS commands are plain shell.
+     */
+    private static function run_shell(string $cmd, array $opts = [], ?int &$exit_code = null): string {
+      $exit_code = 0;
+
+      $descriptorspec = [
+        1 => ['pipe', 'w'], // stdout
+        2 => ['pipe', 'w'], // stderr
+      ];
+
+      // Execute through sh -lc so PATH/aliases behave consistently in the container.
+      $process = proc_open(['sh', '-lc', $cmd], $descriptorspec, $pipes);
+      if (!is_resource($process)) {
+        $exit_code = 1;
+        return '';
+      }
+
+      $stdout = stream_get_contents($pipes[1]);
+      fclose($pipes[1]);
+
+      $stderr = stream_get_contents($pipes[2]);
+      fclose($pipes[2]);
+
+      $status = proc_close($process);
+      $exit_code = (int) $status;
+
+      // If stderr output is not requested, drop it.
+      $include_stderr = !isset($opts['stderr']) || $opts['stderr'] !== false;
+      $out = (string) $stdout;
+      if ($include_stderr && $stderr) {
+        $out .= ($out !== '' ? "\n" : '') . $stderr;
+      }
+
+      return $out;
+    }
+
     private static function run_s3_sync(): void {
   if (!defined('WP_CLI') || !WP_CLI) {
     self::append_log('Skip sync: not WP_CLI');
