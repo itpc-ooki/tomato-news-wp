@@ -2173,7 +2173,15 @@ async function loadAndRenderPlacementsJson(paper) {
       const tiles = getListArticleTiles();
       const perPage = tiles.length > 0 ? tiles.length : 20;
 
-      __listAllPosts = Array.isArray(posts) ? posts : [];
+      // Optional filter by Article Type (taxonomy: article_type)
+      // Example: list.html?article_type=トマトNEWS
+      const requestedArticleType = getQueryParam("article_type");
+      const all = Array.isArray(posts) ? posts : [];
+      const filtered = requestedArticleType
+        ? all.filter((p) => String((p && p.article_type) || "") === String(requestedArticleType))
+        : all;
+
+      __listAllPosts = filtered;
       __listPerPage = perPage;
 
       const page = getCurrentPageFromUrl();
