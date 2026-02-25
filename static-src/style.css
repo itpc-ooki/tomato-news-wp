@@ -2524,7 +2524,7 @@ header img, nav img, footer img{aspect-ratio: auto; height: auto; object-fit: co
 }
 @media (max-width:1179px){
   #highlight .tomato-market-data{
-    display:none !important;}
+    display:block !important;}
 }
 @media (max-width:768px){
   .sp-lanes{ 
@@ -8059,6 +8059,25 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border-color: #d1d5db;
+}
+
+/* Fix: prevent global .card-header/.card-body overlay styles (used on variety cards) from affecting market cards */
+.market-carousel .market-card .card-header{
+  margin-top: 0 !important;
+  position: static !important;
+  z-index: auto !important;
+  background: transparent !important;
+  padding-top: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.market-carousel .market-card .card-body{
+  margin: 0 !important;
+  padding: 0 !important;
+  position: static !important;
+  z-index: auto !important;
+  background: transparent !important;
 }
 
 .card-header {
