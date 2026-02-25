@@ -812,6 +812,18 @@ private static function sync_uploads_assets(): void {
           }
         }
 
+        // season (taxonomy: season)
+        // Single-select in admin, but we safely take the first term if multiple exist.
+        // e.g. "冬春" / "夏秋"
+        $season_terms = wp_get_post_terms($post_id, 'season', ['fields' => 'all']);
+        $season = null;
+        $season_slug = null;
+        if (!is_wp_error($season_terms) && !empty($season_terms)) {
+          $st = $season_terms[0];
+          $season = isset($st->name) ? $st->name : null;
+          $season_slug = isset($st->slug) ? $st->slug : null;
+        }
+
 
                 // Free viewable flag (ACF true_false) - if ON, users can read without login
         $free_viewable = self::get_acf_field_value('free_viewable', $post_id);
@@ -832,6 +844,8 @@ $list[] = [
           'featured_image' => $featured_image,
           'article_type' => $article_type,
           'article_tags' => $article_tags,
+          'season' => $season,
+          'season_slug' => $season_slug,
           'free_viewable' => $free_viewable ? 1 : 0,
         ];
 
@@ -858,6 +872,8 @@ $list[] = [
           'featured_image' => $featured_image,
           'article_type' => $article_type,
           'article_tags' => $article_tags,
+          'season' => $season,
+          'season_slug' => $season_slug,
           'free_viewable' => $free_viewable ? 1 : 0,
           'reference_materials' => is_string($reference_materials) ? trim($reference_materials) : '',
           'writer_name' => is_string($writer_name) ? trim($writer_name) : '',

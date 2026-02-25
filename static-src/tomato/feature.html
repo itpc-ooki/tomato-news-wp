@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>トマト新聞</title>
+    <link href="../style.css" rel="stylesheet" />
+  </head>
+  <body class="page-feature">
+    <!-- Common Header -->
+    <div id="header-container"></div>
+
+    <div class="article-container">
+      <div class="article-header">
+        <span class="article-category">Special Feature</span>
+        <h1 class="article-title">トマト特集</h1>
+        <p class="article-subtitle">
+          今日も、最高の一粒を追って。全国のトマト産地から、最新の栽培技術、品種情報、市場動向をお届けします。
+        </p>
+      </div>
+
+      <div class="selector-container">
+        <div class="selector-group">
+          <span class="selector-label">Year</span>
+          <div class="selector-buttons" id="yearSelector"></div>
+        </div>
+
+        <div class="selector-group">
+          <span class="selector-label">Season</span>
+          <div class="selector-buttons" id="seasonSelector">
+            <button class="selector-btn active" data-season="冬春">冬春</button>
+            <button class="selector-btn" data-season="夏秋">夏秋</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="articles-section">
+      <div class="no-content" id="featureNoContent" style="display: none">
+        <div class="no-content-icon">🍅</div>
+        <h3 class="no-content-title">Coming Soon</h3>
+        <p class="no-content-text" id="featureNoContentMessage">準備中です</p>
+      </div>
+
+      <div class="articles-grid" id="featureArticlesGrid"></div>
+    </section>
+
+    <!-- Common Footer -->
+    <div id="footer-container"></div>
+
+    <!-- 全paper共通 -->
+    <script src="../auth.js"></script>
+    <script src="../app.js"></script>
+  </body>
+</html>

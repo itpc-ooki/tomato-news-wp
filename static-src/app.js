@@ -2496,10 +2496,25 @@ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState=
 })();
 
 /* --- from index_latest.html <script> (block #11) --- */
-function openModal(type) {
-  alert(type + ' モーダル（仮）');
+function openModal(kind) {
+  // Support mockup-style kinds (signin/signup/mypage) while keeping backward compatibility
+  if (kind === "signin") {
+    alert("ログイン（ダミー）");
+    return;
+  }
+  if (kind === "signup") {
+    alert("会員登録（ダミー）");
+    return;
+  }
+  if (kind === "mypage") {
+    alert("マイページ（ダミー）");
+    return;
+  }
+
+  alert(kind + " モーダル（仮）");
   // 実際の実装では適切なモーダル表示処理
 }
+
 
 // 画像拡大モーダル機能
 function openImageModal() {
@@ -3297,3 +3312,355 @@ function resetAutoSlide() {
   }
 })();
 
+/* =========================================================
+   Feature page (feature.html)
+   - Moved from TOMATO_TOKUSHU_MODAL版_20260122.html
+   - Guarded so other pages are unaffected
+   ========================================================= */
+
+if (typeof window.openContentModal !== "function") {
+  window.openContentModal = function openContentModal(type, id) {
+    const overlay = document.getElementById("modalOverlay");
+    if (!overlay) return;
+
+    const panels = document.querySelectorAll(".modal-panel");
+    panels.forEach((p) => p.classList.remove("active"));
+
+    if (type === "article") {
+      const p = document.getElementById("modal-article");
+      if (p) p.classList.add("active");
+    } else if (type === "variety") {
+      const p = document.getElementById("modal-variety");
+      if (p) p.classList.add("active");
+    } else if (type === "pest") {
+      const p = document.getElementById("modal-pest");
+      if (p) p.classList.add("active");
+    }
+
+    overlay.classList.add("active");
+    document.body.classList.add("modal-open");
+
+    // Reset scroll position inside overlay
+    overlay.scrollTop = 0;
+  };
+}
+
+if (typeof window.closeModal !== "function") {
+  window.closeModal = function closeModal() {
+    const overlay = document.getElementById("modalOverlay");
+    if (!overlay) return;
+    overlay.classList.remove("active");
+    document.body.classList.remove("modal-open");
+  };
+}
+
+if (typeof window.switchVarietyTab !== "function") {
+  window.switchVarietyTab = function switchVarietyTab(tabId, ev) {
+    const e = ev || window.event;
+    document.querySelectorAll(".variety-tab").forEach((t) => t.classList.remove("active"));
+    if (e && e.target) e.target.classList.add("active");
+
+    document
+      .querySelectorAll(".variety-content-panel")
+      .forEach((p) => p.classList.remove("active"));
+    const panel = document.getElementById("variety-" + tabId);
+    if (panel) panel.classList.add("active");
+  };
+}
+
+if (typeof window.toggleVarietyItem !== "function") {
+  window.toggleVarietyItem = function toggleVarietyItem(header) {
+    if (!header || !header.closest) return;
+    const item = header.closest(".variety-item");
+    if (!item) return;
+
+    const wasOpen = item.classList.contains("open");
+    const accordion = item.closest(".variety-accordion");
+    if (accordion) {
+      accordion.querySelectorAll(".variety-item").forEach((i) => i.classList.remove("open"));
+    }
+    if (!wasOpen) item.classList.add("open");
+  };
+}
+
+if (typeof window.switchPestTab !== "function") {
+  window.switchPestTab = function switchPestTab(tabId, ev) {
+    const e = ev || window.event;
+    document.querySelectorAll(".pest-search-tab").forEach((t) => t.classList.remove("active"));
+    if (e && e.target) e.target.classList.add("active");
+    // Note: content switching is handled by existing markup/CSS in feature.html
+  };
+}
+
+(function () {
+  if (!document.body || !document.body.classList.contains("page-feature")) return;
+
+  // -------------------------------------------------------------------
+  // Feature page local helpers (self-contained)
+  // - This block intentionally defines helpers inside this IIFE so the
+  //   feature page works even if common helpers are not in scope.
+  // -------------------------------------------------------------------
+  function getPaperFromPathLocal() {
+    const parts = String(window.location.pathname || "").split("/").filter(Boolean);
+    const idx = parts.indexOf("static");
+    if (idx !== -1 && parts.length >= idx + 2) {
+      const paper = parts[idx + 1];
+      return paper && paper !== "account" ? paper : null;
+    }
+    return null;
+  }
+
+  function getCurrentPaperLocal() {
+    // Prefer paper from path: /static/{paper}/...
+    const fromPath = getPaperFromPathLocal();
+    if (fromPath) return fromPath;
+
+    // Fallback to query param (?paper=tomato)
+    try {
+      const qp = new URLSearchParams(window.location.search).get("paper");
+      return qp ? String(qp) : null;
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  async function fetchJsonLocal(url) {
+    const res = await fetch(url, { cache: "no-store" });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Invalid JSON from ${url}: ${String(e)}`);
+    }
+  }
+
+  function stripHtmlLocal(text) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = String(text ?? "");
+    return (tmp.textContent || tmp.innerText || "").trim();
+  }
+
+  function resolveUrlMaybeRelativeLocal(path) {
+    if (!path) return "";
+    if (/^https?:\/\//i.test(path)) return path;
+    try {
+      return new URL(path, window.location.origin).href;
+    } catch (_e) {
+      return String(path);
+    }
+  }
+
+  function formatSlashDateLocal(ymd) {
+    if (!ymd) return "";
+    const parts = String(ymd).split("-");
+    if (parts.length !== 3) return String(ymd);
+    return `${parts[0]}/${parts[1]}/${parts[2]}`;
+  }
+
+  function formatSlashDateFromPostLocal(post) {
+    if (post && post.date_ymd) return formatSlashDateLocal(post.date_ymd);
+    if (post && post.date) return formatSlashDateLocal(String(post.date).slice(0, 10));
+    return "";
+  }
+
+  function buildDynamicYearButtons() {
+    const container = document.getElementById("yearSelector");
+    if (!container) return;
+
+    // If buttons already exist, keep them (avoid duplicates)
+    if (container.querySelector(".selector-btn")) return;
+
+    const thisYear = new Date().getFullYear();
+    const lastYear = thisYear - 1;
+    const nextYear = thisYear + 1;
+
+    // Left: last year, Middle: this year, Right: next year
+    const years = [lastYear, thisYear, nextYear];
+
+    years.forEach((year, idx) => {
+      const btn = document.createElement("button");
+      btn.className = "selector-btn";
+      btn.dataset.year = String(year);
+      btn.textContent = `${year}年`;
+      if (idx === 1) btn.classList.add("active"); // middle
+      container.appendChild(btn);
+    });
+  }
+
+  function getSelectedYear() {
+    const active = document.querySelector("#yearSelector .selector-btn.active");
+    if (active && active.dataset.year) return parseInt(active.dataset.year, 10);
+    return new Date().getFullYear();
+  }
+
+  function getSelectedSeason() {
+    const active = document.querySelector("#seasonSelector .selector-btn.active");
+    if (active && active.dataset.season) return String(active.dataset.season);
+    // Fallback to first button (if any)
+    const first = document.querySelector("#seasonSelector .selector-btn");
+    if (first && first.dataset.season) return String(first.dataset.season);
+    return "";
+  }
+
+  function setActiveButton(groupSelector, btn) {
+    const buttons = document.querySelectorAll(`${groupSelector} .selector-btn`);
+    buttons.forEach((b) => b.classList.remove("active"));
+    if (btn) btn.classList.add("active");
+  }
+
+  function renderNoContent(message) {
+    const grid = document.getElementById("featureArticlesGrid");
+    const noContent = document.getElementById("featureNoContent");
+    const msg = document.getElementById("featureNoContentMessage");
+
+    if (grid) grid.innerHTML = "";
+    if (msg) msg.textContent = message || "準備中です";
+    if (noContent) noContent.style.display = "";
+  }
+
+  function hideNoContent() {
+    const noContent = document.getElementById("featureNoContent");
+    if (noContent) noContent.style.display = "none";
+  }
+
+  function buildArticleCard(post, index) {
+    const a = document.createElement("a");
+    a.className = "article-card";
+    a.href = post && post.url ? String(post.url) : `detail.html?id=${encodeURIComponent(post && post.id ? post.id : "")}`;
+
+    const imgWrap = document.createElement("div");
+    imgWrap.className = "article-card-image";
+    const img = document.createElement("img");
+    const title = stripHtmlLocal(post && post.title ? post.title : "");
+    const imgUrl = resolveUrlMaybeRelativeLocal(post && post.featured_image ? post.featured_image : "");
+    if (imgUrl) {
+      img.src = imgUrl;
+      img.alt = title;
+      img.loading = "lazy";
+    } else {
+      img.alt = title;
+      img.style.display = "none";
+    }
+    imgWrap.appendChild(img);
+
+    const overlay = document.createElement("div");
+    overlay.className = "article-card-overlay";
+
+    const content = document.createElement("div");
+    content.className = "article-card-content";
+
+    const meta = document.createElement("span");
+    meta.className = "article-card-number";
+    const count = (typeof index === "number" && isFinite(index)) ? (index + 1) : null;
+    meta.textContent = count ? `${count}面` : "特集";
+
+    const h2 = document.createElement("h2");
+    h2.className = "article-card-title";
+    h2.textContent = title;
+
+    const excerptRaw = post && post.excerpt ? String(post.excerpt) : "";
+    const excerpt = stripHtmlLocal(excerptRaw);
+    const p = document.createElement("p");
+    p.className = "article-card-subtitle";
+    p.textContent = excerpt;
+
+    content.appendChild(meta);
+    content.appendChild(h2);
+    if (excerpt) content.appendChild(p);
+
+    const arrow = document.createElement("div");
+    arrow.className = "article-card-arrow";
+    arrow.innerHTML =
+      '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>';
+
+    a.appendChild(imgWrap);
+    a.appendChild(overlay);
+    a.appendChild(content);
+    a.appendChild(arrow);
+
+    return a;
+  }
+
+  async function loadPostsForFeature(paper) {
+    if (!paper) return [];
+    try {
+      const posts = await fetchJsonLocal(`/static/${encodeURIComponent(paper)}/posts.json`);
+      return Array.isArray(posts) ? posts : [];
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  }
+
+  function getPostYear(post) {
+    const ymd = post && (post.date_ymd || (post.date ? String(post.date).slice(0, 10) : ""));
+    const y = ymd ? parseInt(String(ymd).slice(0, 4), 10) : NaN;
+    return Number.isFinite(y) ? y : null;
+  }
+
+  function renderFeature(posts, thisYear) {
+    const grid = document.getElementById("featureArticlesGrid");
+    if (!grid) return;
+
+    const selectedYear = getSelectedYear();
+    const selectedSeason = getSelectedSeason(); // "冬春" or "夏秋"
+
+    // Next year always shows "no-content" (even if future data exists)
+    if (selectedYear === thisYear + 1) {
+      renderNoContent(`${selectedYear}年は準備中です`);
+      return;
+    }
+
+    const filtered = (Array.isArray(posts) ? posts : [])
+      .filter((p) => p && String(p.article_type || "") === "トマト特集")
+      .filter((p) => getPostYear(p) === selectedYear)
+      .filter((p) => {
+        if (!selectedSeason) return true;
+        return String(p.season || "") === selectedSeason;
+      });
+
+    if (!filtered.length) {
+      renderNoContent(`${selectedYear}年${selectedSeason ? selectedSeason : ""}号は準備中です`);
+      return;
+    }
+
+    hideNoContent();
+    grid.innerHTML = "";
+    filtered.forEach((post, i) => grid.appendChild(buildArticleCard(post, i)));
+  }
+
+  async function initFeaturePage() {
+    buildDynamicYearButtons();
+
+    const paper = (typeof getCurrentPaper === 'function' ? getCurrentPaper() : getCurrentPaperLocal()) || 'tomato';
+    const posts = await loadPostsForFeature(paper);
+
+    const thisYear = new Date().getFullYear();
+
+    const yearBtns = document.querySelectorAll("#yearSelector .selector-btn");
+    const seasonBtns = document.querySelectorAll("#seasonSelector .selector-btn");
+
+    yearBtns.forEach((btn) => {
+      btn.addEventListener("click", function () {
+        setActiveButton("#yearSelector", this);
+        renderFeature(posts, thisYear);
+      });
+    });
+
+    seasonBtns.forEach((btn) => {
+      btn.addEventListener("click", function () {
+        setActiveButton("#seasonSelector", this);
+        renderFeature(posts, thisYear);
+      });
+    });
+
+    renderFeature(posts, thisYear);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initFeaturePage);
+  } else {
+    initFeaturePage();
+  }
+})();

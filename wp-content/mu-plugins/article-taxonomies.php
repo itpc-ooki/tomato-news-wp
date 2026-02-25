@@ -55,7 +55,53 @@ add_action('init', function () {
     'rewrite'           => ['slug' => 'article-tag'],
   ]);
 
+
+
+  // SEASON（冬春 / 夏秋）
+  // - チェックボックスUIで 1つ選択（想定）
+  register_taxonomy('season', ['post'], [
+    'labels' => [
+      'name'              => 'SEASON',
+      'singular_name'     => 'SEASON',
+      'menu_name'         => 'SEASON',
+      'all_items'         => 'すべてのSEASON',
+      'add_new_item'      => '新しいSEASONを追加',
+      'edit_item'         => 'SEASONを編集',
+      'update_item'       => 'SEASONを更新',
+      'search_items'      => 'SEASONを検索',
+    ],
+    'public'            => true,
+    'show_ui'           => true,
+    'show_admin_column' => true,
+    'hierarchical'      => true,  // チェックボックス表示
+    'meta_box_cb'       => 'post_categories_meta_box', // チェックボックスUI
+    'show_in_rest'      => true,
+    'rewrite'           => ['slug' => 'season'],
+  ]);
+
 }, 10);
+
+// --------------------------------------------------
+// Ensure default SEASON terms exist
+// --------------------------------------------------
+add_action('init', function () {
+  if (!taxonomy_exists('season')) {
+    return;
+  }
+
+  $defaults = [
+    ['name' => '冬春', 'slug' => 'winter-spring'],
+    ['name' => '夏秋', 'slug' => 'summer-autumn'],
+  ];
+
+  foreach ($defaults as $t) {
+    if (!term_exists($t['slug'], 'season')) {
+      wp_insert_term($t['name'], 'season', ['slug' => $t['slug']]);
+    }
+  }
+}, 11);
+
+
 
 // --------------------------------------------------
 // Hide default WordPress tags (post_tag)
@@ -83,7 +129,7 @@ add_action('add_meta_boxes', function () {
 // Hide Parent UI for article_tag (we want checkbox selection but no parent concept)
 // --------------------------------------------------
 add_action('admin_head-edit-tags.php', function () {
-  if (!isset($_GET['taxonomy']) || $_GET['taxonomy'] !== 'article_tag') {
+  if (!isset($_GET['taxonomy']) || !in_array($_GET['taxonomy'], ['article_tag', 'season'], true)) {
     return;
   }
   echo '<style>
