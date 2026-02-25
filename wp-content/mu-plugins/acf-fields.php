@@ -108,6 +108,7 @@ add_action('acf/init', function () {
           'column'      => 'コラム',
           'video'       => '動画',
           'paper'       => '紙面',
+          'survey'      => 'JA部会アンケート',
         ],
         'layout' => 'vertical',
         'return_format' => 'value',
