@@ -150,17 +150,17 @@
         </div>
       </div>
 
-      <div class="table-legend" id="tableLegend">
-        <span class="legend-title">凡例：</span>
-        <span class="legend-item"><span class="legend-symbol high">○</span> 抵抗性あり</span>
-        <span class="legend-item"><span class="legend-symbol high">◎</span> 極めて強い</span>
-        <span class="legend-item"><span class="legend-symbol filled">●</span> 複合抵抗性</span>
-        <span class="legend-item"><span class="legend-symbol medium">△</span> 中程度</span>
+      <div id="varietyGrid" class="variety-grid list-view" aria-live="polite">
+        <div class="table-legend" id="tableLegend">
+          <span class="legend-title">凡例：</span>
+          <span class="legend-item"><span class="legend-symbol high">○</span> 抵抗性あり</span>
+          <span class="legend-item"><span class="legend-symbol high">◎</span> 極めて強い</span>
+          <span class="legend-item"><span class="legend-symbol filled">●</span> 複合抵抗性</span>
+          <span class="legend-item"><span class="legend-symbol medium">△</span> 中程度</span>
+        </div>
+
+        <div id="varietyGridInner"></div>
       </div>
-
-      <div id="varietyGrid" class="variety-grid" aria-live="polite"></div>
-      <div id="varietyList" class="variety-list" aria-live="polite"></div>
-
       <div id="emptyState" class="empty-state" style="display:none;">
         <div class="empty-icon" aria-hidden="true">🍅</div>
         <div class="empty-title">該当する品種がありません</div>

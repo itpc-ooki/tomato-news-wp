@@ -104,7 +104,7 @@
     // results
     resultsCount: document.getElementById("resultsCount"),
     grid: document.getElementById("varietyGrid"),
-    list: document.getElementById("varietyList"),
+    gridInner: document.getElementById("varietyGridInner"),
     emptyState: document.getElementById("emptyState"),
     tableLegend: document.getElementById("tableLegend"),
   };
@@ -150,12 +150,19 @@
     if (el.gridBtn) el.gridBtn.classList.toggle("active", currentView === "grid");
     if (el.listBtn) el.listBtn.classList.toggle("active", currentView === "list");
 
-    if (el.grid) el.grid.style.display = (currentView === "grid") ? "" : "none";
-    if (el.list) el.list.style.display = (currentView === "list") ? "" : "none";
+    // We render both views inside #varietyGrid (to match latest mock).
+    // Toggle parent class to switch layout.
+    if (el.grid) {
+      el.grid.classList.toggle("list-view", currentView === "list");
+      el.grid.classList.toggle("grid-view", currentView === "grid");
+      el.grid.style.display = "";
+    }
+
     if (el.tableLegend) el.tableLegend.style.display = (currentView === "list") ? "" : "none";
 
     render();
   }
+
 
   function getRes(v, keys) {
     const res = (v && typeof v.res === "object" && v.res) ? v.res : {};
@@ -174,31 +181,40 @@
 
   function cellSymbol(symbol) {
     const s = (symbol ?? "").toString().trim();
-    if (!s || s === "-" || s === "—") return `<span class="symbol empty">-</span>`;
+    if (!s || s === "-" || s === "—") return `<span class="cell-empty">-</span>`;
 
-    // class names are defined in your style.css (moved from mock)
-    if (s === "◎" || s === "○") return `<span class="symbol high">${escapeHtml(s)}</span>`;
-    if (s === "△") return `<span class="symbol medium">${escapeHtml(s)}</span>`;
-    if (s === "●") return `<span class="symbol filled">${escapeHtml(s)}</span>`;
-    return `<span class="symbol">${escapeHtml(s)}</span>`;
+    // Class names are defined in style.css (table view)
+    if (s === "◎" || s === "○") return `<span class="cell-high">${escapeHtml(s)}</span>`;
+    if (s === "△") return `<span class="cell-medium">${escapeHtml(s)}</span>`;
+    if (s === "●") return `<span class="cell-filled">${escapeHtml(s)}</span>`;
+    return `<span>${escapeHtml(s)}</span>`;
   }
 
   function createNameCell(v) {
-    const img = v.image
-      ? `<div class="variety-thumb"><img src="${escapeHtml(v.image)}" alt="${escapeHtml(v.name)}"></div>`
-      : `<div class="variety-thumb placeholder" aria-hidden="true"></div>`;
+    const hasImg = !!(v && v.image);
+    const url = (v && v.link) ? String(v.link).trim() : "";
+
+    // Make at least the image clickable (fallback if row click doesn't work).
+    // The anchor fills the cell, while keeping the existing overlay text intact.
+    const bg = hasImg
+      ? (url
+          ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" aria-label="${escapeHtml((v.name || "") + " の詳細へ")}" style="position:absolute; inset:0; z-index:1; display:block;">
+               <img class="name-cell-bg" src="${escapeHtml(v.image)}" alt="${escapeHtml(v.name)}" onerror="this.style.display='none'">
+             </a>`
+          : `<img class="name-cell-bg" src="${escapeHtml(v.image)}" alt="${escapeHtml(v.name)}" onerror="this.style.display='none'">`)
+      : "";
+    const nameHtml = url
+      ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="variety-name-link">${escapeHtml(v.name)}</a>`
+      : `${escapeHtml(v.name)}`;
 
     return `
-      <td class="cell-name">
-        <div class="name-wrap">
-          ${img}
-          <div class="name-text">
-            <div class="name-title">${escapeHtml(v.name)}</div>
-          </div>
-        </div>
+      <td class="name-cell" rowspan="2">
+        ${bg}
+        <div class="name-cell-inner"><span>${nameHtml}</span></div>
       </td>
     `;
   }
+
 
   function buildTableForCategory(categoryKey, varieties) {
     const headerClass =
@@ -208,8 +224,8 @@
 
     const label = CATEGORY_LABELS[categoryKey] || categoryKey;
     const count = varieties.length;
+    // Table header (matches TOMATO_VARIETY_20260123_modified.html)
 
-    // Table header (matches TOMATO_VARIETY_COMPLETE.html)
     const thead = `
       <thead>
         <tr>
@@ -223,8 +239,6 @@
           <th rowspan="2">半身<br>萎ちょう病<br>※4</th>
           <th rowspan="2">ネコブ<br>センチュウ</th>
           <th rowspan="2">ToMV</th>
-          <th rowspan="2">品種の特徴 ※5</th>
-          <th rowspan="2">種苗会社<br>※6</th>
         </tr>
         <tr>
           <th>果実<br>肥大性</th>
@@ -237,6 +251,8 @@
       </thead>
     `;
 
+
+    
     const rows = varieties.map((v) => {
       const r = (k, fallback) => {
         const val = getRes(v, [k]);
@@ -245,9 +261,14 @@
       };
 
       const tomv = (v.tomvType || getRes(v, ["ToMV"])).toString().trim();
+      const url = (v && v.link) ? String(v.link).trim() : "";
+      const rowClass = url ? "clickable-row" : "";
+      const rowAttrs = url
+        ? `data-link="${escapeHtml(url)}" role="link" tabindex="0" aria-label="${escapeHtml((v.name || "") + " の詳細へ")}" `
+        : "";
 
       return `
-        <tr>
+        <tr class="variety-row-top ${rowClass}" ${rowAttrs}>
           ${createNameCell(v)}
           <td>${cellSymbol(r("果実肥大性", "○"))}</td>
           <td>${cellSymbol(r("着果性", "○"))}</td>
@@ -262,20 +283,23 @@
           <td>${cellSymbol(r("半身萎凋病", ""))}</td>
           <td>${cellSymbol(r("ネコブセンチュウ", ""))}</td>
           <td class="cell-tomv">${escapeHtml(tomv || "-")}</td>
-          <td class="cell-features">${escapeHtml(v.description || "")}</td>
+        </tr>
+        <tr class="variety-row-bottom ${rowClass}" ${rowAttrs}>
+          <td class="cell-features" colspan="12">${escapeHtml(v.description || "")}</td>
           <td class="cell-company">${escapeHtml(v.company || "")}</td>
         </tr>
       `;
     }).join("");
 
+
     return `
       <section class="category-section">
         <div class="category-header ${headerClass}">
           <span>${escapeHtml(label)}</span>
-          <span class="category-badge">${escapeHtml(String(count))}品種</span>
+          <span class="category-count">${escapeHtml(String(count))}品種</span>
         </div>
-        <div class="table-scroll">
-          <table class="variety-table">
+        <div class="variety-table-wrapper">
+          <table class="variety-table variety-table-2row">
             ${thead}
             <tbody>${rows}</tbody>
           </table>
@@ -289,25 +313,60 @@
       ? `<img src="${escapeHtml(v.image)}" alt="${escapeHtml(v.name)}">`
       : "";
 
-    // small badges (company + ToMV)
+    const categoryKey = (v.category || "").toString().trim();
+    const categoryLabel = CATEGORY_LABELS[categoryKey] || categoryKey || "";
+    const categoryClass = categoryKey ? ` ${escapeHtml(categoryKey)}` : "";
+
+    // Traits (match mock chips)
+    const traits = [
+      { key: "果実肥大性", label: "果実肥大性" },
+      { key: "着果性", label: "着果性" },
+      { key: "耐裂果性", label: "耐裂果性" },
+      { key: "耐尻腐れ", label: "耐尻腐れ" },
+    ];
+
+    function traitClass(symbol) {
+      const s = (symbol || "").toString().trim();
+      if (s === "◎" || s === "○" || s === "●") return "is-good";
+      if (s === "△") return "is-medium";
+      return "is-none";
+    }
+
+    const traitPills = traits.map((t) => {
+      const sym = getRes(v, [t.key]) || "";
+      const cls = traitClass(sym);
+      const symLabel = sym ? `<span class="trait-symbol">${escapeHtml(sym)}</span>` : "";
+      return `
+        <span class="trait-pill ${cls}">
+          <span class="trait-dot" aria-hidden="true"></span>
+          <span class="trait-label">${escapeHtml(t.label)}</span>
+          ${symLabel}
+        </span>
+      `.trim();
+    }).join("");
+
+    // small badge (ToMV)
     const tomv = (v.tomvType || getRes(v, ["ToMV"])).toString().trim();
-    const badges = [
-      tomv ? `<span class="resistance-badge">ToMV ${escapeHtml(tomv)}</span>` : "",
-    ].filter(Boolean).join("");
+    const tomvBadge = tomv ? `<span class="resistance-badge">ToMV ${escapeHtml(tomv)}</span>` : "";
 
     return `
-      <article class="variety-card ${v.image ? "" : "no-image"}" tabindex="0">
-        <div class="card-image-hero">${img}</div>
-        <div class="card-header">
-          <div class="card-category">${escapeHtml(CATEGORY_LABELS[v.category] || v.category || "")}</div>
-          <h3 class="card-title">${escapeHtml(v.name)}</h3>
-          <div class="card-company">🏢 ${escapeHtml(v.company || "")}</div>
+      <div class="variety-card ${v.image ? "" : "no-image"}" tabindex="0">
+        <div class="card-image-hero">
+          ${img}
+          <div class="card-category${categoryClass}">${escapeHtml(categoryLabel)}</div>
         </div>
+
+        <div class="card-header">
+          <h3 class="card-title">${escapeHtml(v.name)}</h3>
+          <div class="card-company"><span class="company-icon" aria-hidden="true"></span>${escapeHtml(v.company || "")}</div>
+        </div>
+
         <div class="card-summary">
-          <div class="resistance-row">${badges}</div>
+          <div class="trait-pills">${traitPills}</div>
+          ${tomvBadge ? `<div class="resistance-row">${tomvBadge}</div>` : ""}
           <p class="card-description">${escapeHtml(v.description || "")}</p>
         </div>
-      </article>
+      </div>
     `;
   }
 
@@ -456,7 +515,52 @@
     });
   }
 
-  function render() {
+  
+
+  function bindClickableVarietyRows(root) {
+    if (!root) return;
+
+    const tables = root.querySelectorAll(".variety-table");
+    tables.forEach((table) => {
+      if (table.dataset && table.dataset.rowClickBound === "1") return;
+      if (table.dataset) table.dataset.rowClickBound = "1";
+
+      table.addEventListener("click", function (e) {
+        const target = e.target;
+        if (!target || !target.closest) return;
+
+        // If the user clicked an actual link, let it behave normally.
+        const a = target.closest("a");
+        if (a) return;
+
+        const tr = target.closest("tr.clickable-row");
+        if (!tr || !table.contains(tr)) return;
+
+        const link = tr.getAttribute("data-link");
+        if (!link) return;
+
+        window.open(link, "_blank", "noopener");
+      });
+
+      table.addEventListener("keydown", function (e) {
+        const key = e.key;
+        if (key !== "Enter" && key !== " ") return;
+
+        const target = e.target;
+        if (!target || !target.closest) return;
+
+        const tr = target.closest("tr.clickable-row");
+        if (!tr || !table.contains(tr)) return;
+
+        const link = tr.getAttribute("data-link");
+        if (!link) return;
+
+        e.preventDefault();
+        window.open(link, "_blank", "noopener");
+      });
+    });
+  }
+function render() {
     const list = getFilteredList();
     renderPills();
 
@@ -467,38 +571,39 @@
     const isEmpty = (list.length === 0);
     if (el.emptyState) el.emptyState.style.display = isEmpty ? "" : "none";
 
-    if (el.grid) {
-      el.grid.innerHTML = (currentView === "grid" && !isEmpty)
-        ? list.map(renderGridCard).join("")
-        : "";
+    if (!el.gridInner) return;
+
+    if (isEmpty) {
+      el.gridInner.innerHTML = "";
+      return;
     }
 
-    if (el.list) {
-      if (currentView === "list" && !isEmpty) {
-        // group by category
-        const grouped = {
-          large: [],
-          midi: [],
-          mini: [],
-          rootstock: [],
-        };
-        list.forEach((v) => {
-          const c = v.category || "large";
-          if (!grouped[c]) grouped[c] = [];
-          grouped[c].push(v);
-        });
-
-        // render in the standard order
-        const sections = ["large", "midi", "mini", "rootstock"]
-          .filter((k) => grouped[k] && grouped[k].length > 0)
-          .map((k) => buildTableForCategory(k, grouped[k]))
-          .join("");
-
-        el.list.innerHTML = sections || "";
-      } else {
-        el.list.innerHTML = "";
-      }
+    if (currentView === "grid") {
+      el.gridInner.innerHTML = list.map(renderGridCard).join("");
+      return;
     }
+
+    // list view (table): group by category
+    const grouped = {
+      large: [],
+      midi: [],
+      mini: [],
+      rootstock: [],
+    };
+    list.forEach((v) => {
+      const c = v.category || "large";
+      if (!grouped[c]) grouped[c] = [];
+      grouped[c].push(v);
+    });
+
+    // render in the standard order
+    const sections = ["large", "midi", "mini", "rootstock"]
+      .filter((k) => grouped[k] && grouped[k].length > 0)
+      .map((k) => buildTableForCategory(k, grouped[k]))
+      .join("");
+
+    el.gridInner.innerHTML = sections || "";
+    bindClickableVarietyRows(el.gridInner);
   }
 
   function populateSelectOptions() {
@@ -535,6 +640,7 @@
     const items = Array.isArray(json) ? json : (json?.items ?? []);
     allVarieties = (items || []).map((v) => ({
       id: v.id,
+      link: v.link ?? "",
       name: v.name ?? "",
       category: v.category ?? "large",
       company: v.company ?? "",
@@ -604,6 +710,5 @@
       `console を確認してください。</div>`;
 
     if (el.grid) el.grid.innerHTML = msg;
-    if (el.list) el.list.innerHTML = msg;
   });
 })();

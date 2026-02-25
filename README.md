@@ -1,157 +1,210 @@
-
 # Tomato News – Static WordPress Infrastructure
 
 ## Project Summary
 
-Tomato News is a **Static WordPress Website** powered by Docker and Amazon S3.
+Tomato News is a **Static WordPress Website** powered by Docker and AWS.
 
-WordPress is used only as a content management system.  
-The public website is served from static HTML/JS/CSS files on S3.
+WordPress is used only as a CMS.
+The public website is served from static HTML/JS/CSS files stored on Amazon S3 and delivered via CloudFront.
+
+The system uses a **queue-based static build architecture** to prevent unnecessary rebuilds and CloudFront invalidation loops.
 
 ---
 
-## Tech Stack
+# Architecture Overview
+
+WordPress (EC2, Docker)
+    ↓
+auto-static-build-queue.php
+    ↓
+Queue (WordPress option)
+    ↓
+static_builder container (30-sec loop)
+    ↓
+Generate /static
+    ↓
+S3 Sync (if ENABLE_S3_SYNC=1)
+    ↓
+CloudFront Invalidation (if ENABLE_CLOUDFRONT_INVALIDATION=1)
+    ↓
+Public Site
+
+---
+
+# Tech Stack
 
 | Component | Technology |
-|---------|-----------|
+|-----------|------------|
 | CMS | WordPress |
-| Static Builder | Custom Docker Container |
+| Static Builder | Custom Docker container loop |
 | Database | MySQL |
 | Hosting | Amazon S3 |
+| CDN | CloudFront |
+| DNS | Route53 |
 | Containerization | Docker Compose |
+| Infrastructure | AWS EC2 |
 
 ---
 
-## Directory Structure
+# Directory Structure
 
 ```
 
-static-src/   → Source templates
-static/       → Generated output
-wp-content/   → WordPress assets
-docker/       → Docker configs
+static-src/      → Source templates
+static/          → Generated output
+wp-content/      → WordPress core assets
+docker-compose.yml
+.env.stg
 
 ```
 
 ---
 
-## Static Build Flow
+# Static Build Flow (Queue-Based)
 
-```
-
-Admin Save → Queue → Static Builder → /static → S3
-
-```
+Admin Save / Update / Trash
+    ↓
+Queue is updated
+    ↓
+Builder checks every 30 seconds
+    ↓
+If queue empty → SKIP
+If queue has items → BUILD
+    ↓
+Update /static
+    ↓
+S3 sync
+    ↓
+CloudFront invalidation
+    ↓
+Queue cleared
 
 No cron is used.
 
 ---
 
-## Environment Variables
+# Important Environment Variables
 
 ```
 
 BUILD_INTERVAL_SECONDS=30
-STATIC_OUTPUT_DIR=/var/www/static
+STATIC_OUTPUT_DIR=/var/www/html/static
+
+ENABLE_S3_SYNC=1
+ENABLE_CLOUDFRONT_INVALIDATION=1
+
 AWS_REGION=ap-northeast-1
 S3_BUCKET=tomatonews-static-stg
 TOMATO_STATIC_S3_TARGET=s3://tomatonews-static-stg/static
+
+CLOUDFRONT_DISTRIBUTION_ID=E2MX9QJVMTMZMM
+CLOUDFRONT_INVALIDATION_PATHS=/static/*
 
 ```
 
 ---
 
-## Docker Usage
+# Docker Usage
 
-### Start
-```
-
-docker compose up -d
+## Start Containers
 
 ```
 
-### Rebuild
-```
-
-docker compose up -d --force-recreate
+docker compose --env-file .env.stg up -d
 
 ```
 
-### Check Status
+## Restart Containers
+
+```
+
+docker compose --env-file .env.stg down
+docker compose --env-file .env.stg up -d
+
+```
+
+## Check Status
+
 ```
 
 docker compose ps
 
 ```
 
+## Check Builder Logs
+
+```
+
+docker compose logs -f static_builder
+
+```
+
+Expected message when idle:
+
+```
+
+Skip: empty queue
+
+```
+
 ---
 
-## S3 Structure
+# S3 Structure
+
+Bucket: tomatonews-static-stg
 
 ```
 
 /static
-/account
-/common
-/components
 /tomato
 /leek
 /strawberry
-/wp-content
 
 ```
 
-Root bucket contains only:
-```
-
-/static
-
-```
+Only `/static` is uploaded.
+Root bucket is not used for website files.
 
 ---
 
-## Public Site URL
+# Public URLs
 
-```
+S3 Website:
+http://tomatonews-static-stg.s3-website-ap-northeast-1.amazonaws.com/static/tomato/index.html
 
-[http://tomatonews-static-stg.s3-website-ap-northeast-1.amazonaws.com/static/tomato/index.html](http://tomatonews-static-stg.s3-website-ap-northeast-1.amazonaws.com/static/tomato/index.html)
-
-```
+CloudFront:
+https://stg-tomato.agrinews.jp/
 
 ---
 
-## Development vs Staging
+# Development vs Staging
 
 | Environment | Purpose |
-|-----------|--------|
-| Local | Template editing |
+|------------|----------|
+| Local | Template development |
 | Staging | Static build verification |
+| Production | Public release (planned separation) |
 
 ---
 
-## Do NOT Use
+# What NOT To Do
 
-- Cron
-- Manual wp build commands
-- S3 root uploads
-- S3_PREFIX
-
----
-
-## Recommended Future Steps
-
-- CloudFront CDN
-- HTTPS
-- Cache headers
-- CI/CD pipeline
+- Do NOT use cron
+- Do NOT manually run wp static-build in production
+- Do NOT upload files directly to S3 root
+- Do NOT enable S3_PREFIX
+- Do NOT disable queue system
 
 ---
 
-## Current Status
+# Current Status (2026)
 
-✔ Static Builder Running  
-✔ S3 Sync OK  
-✔ Public Site Working  
-✔ Cron Removed  
+✔ Queue-based build working  
+✔ No automatic invalidation loop  
+✔ S3 sync stable  
+✔ CloudFront invalidation triggered only on content change  
+✔ Route53 + SSL working  
+✔ Staging fully operational  
 
+Production separation pending.
 

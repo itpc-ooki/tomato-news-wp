@@ -11,6 +11,13 @@
     --leftW: 520px; --thumbH: 400px; --cardH: 400px;
     --radius:16px; --shadow:0 20px 50px rgba(16,24,40,.10);
     --adbadge:#334155;
+  
+    --bg-secondary:#f8f9fa; --border-light:#f1f3f5;
+    --text-secondary:#475569;
+    --accent-light:#fff5f2;
+    --success:#10b981; --warning:#f59e0b; --info:#3b82f6;
+    --radius-sm:8px; --radius-lg:16px;
+    --shadow-md:0 4px 12px rgba(0,0,0,0.1); --shadow-lg:0 10px 24px rgba(0,0,0,0.15); --shadow-xl:0 20px 50px rgba(16,24,40,.10);
   }
 
 /* ===== Reset & Base Styles ===== */
@@ -69,23 +76,23 @@ header{ position:sticky; top:0; z-index:60; background:#ffffffd8; backdrop-filte
 
 /* ヘッダーロゴのサイズ調整 */
 .brand img {
-    height: 60px;
+    height: 78px;
     width: auto;
     display: block;
-    margin: 8px 0 8px 12px;
+    margin: 10px 0 10px 12px;
   }
 
 @media (min-width:768px) and (max-width:1179px) {
     .brand img {
-      height: 72px;
-      margin: 8px 0;
+      height: 95px;
+      margin: 10px 0;
     }
   }
 
 @media (min-width:1180px){
     .brand img {
-      height: 84px;
-      margin: 8px 0;
+      height: 110px;
+      margin: 10px 0;
     }
   }
 
@@ -95,12 +102,13 @@ nav ul{ list-style:none; display:flex; gap:1rem; padding:0; margin:0; align-item
 @media (min-width:1180px){
   nav{ 
     width:100%;
-    padding:0.8rem 0;
+    border-top:1px solid var(--border);
+    padding:0.9rem 0;
   }
   nav ul{ 
     justify-content:center;
-    gap:2rem;
-    font-size:0.95rem;
+    gap:2.5rem;
+    font-size:1.1rem;
   }
 }
 .btn{ 
@@ -1666,10 +1674,10 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
          padding: clamp(12px,4vw,28px) var(--pad)}
 .left-hero{ padding:28px 24px; display:flex; flex-direction:column; justify-content:center; min-height:500px;
               border-radius:0; box-shadow: var(--shadow); background:linear-gradient(180deg,#fafafa,#fff); position:relative}
-.left-hero .mark{ font-size:2rem; letter-spacing:.2em; margin-bottom:12px; text-align:center}
+.left-hero .mark{ font-size:1.75rem; letter-spacing:.08em; margin-bottom:12px; text-align:center; line-height:1.5 }
 .left-hero h1{ font-size: clamp(1.8rem,2.8vw,2.4rem); margin:.2rem 0 .6rem; line-height:1.15}
 .left-hero p{ color:#6b7280; margin:0 0 12px}
-.pill{ background:#fff; border:1px solid var(--border); padding:.38rem .8rem; border-radius:999px; color:#334155; margin-right:8px; box-shadow: var(--shadow); text-align:center}
+.pill{ background:#fff; border:1px solid var(--border); padding:.38rem .8rem; border-radius:999px; color:#334155; margin-right:8px; margin-bottom:16px; box-shadow: var(--shadow); text-align:center }
 .right-gallery{ display:none}
 .vcol{ position:relative; width:400px; height:100%; overflow:hidden}
 .v-track{ position:absolute; inset:0; display:flex; flex-direction:column; gap:2px; padding:0; will-change:transform}
@@ -4480,6 +4488,14 @@ a{ color:inherit; text-decoration:none}
     gap:24px;
     margin-bottom:32px;
   }
+  
+  /* PC版: 4列グリッド */
+  @media (min-width:768px){
+    .points-grid{
+      grid-template-columns:repeat(4, 1fr);
+      gap:20px;
+    }
+  }
 
   .point-card{
     background:#fff;
@@ -4522,6 +4538,66 @@ a{ color:inherit; text-decoration:none}
 
   .point-text p:last-child{
     margin-bottom:0;
+  }
+  
+  /* SP版: アコーディオン表示 */
+  @media (max-width:767px){
+    .points-grid{
+      gap:8px;
+    }
+    
+    .point-card{
+      padding:0;
+      border-radius:8px;
+      overflow:hidden;
+    }
+    
+    .point-card:hover{
+      transform:none;
+      box-shadow:none;
+    }
+    
+    .point-title{
+      font-size:1rem;
+      margin:0;
+      padding:16px 20px;
+      background:#fff;
+      cursor:pointer;
+      position:relative;
+      user-select:none;
+    }
+    
+    .point-title::after{
+      content:'▼';
+      position:absolute;
+      right:16px;
+      font-size:0.75rem;
+      color:var(--muted);
+      transition:transform 0.3s ease;
+    }
+    
+    .point-card.open .point-title::after{
+      transform:rotate(180deg);
+    }
+    
+    .point-text{
+      max-height:0;
+      overflow:hidden;
+      transition:max-height 0.3s ease, padding 0.3s ease;
+      padding:0 20px;
+      font-size:0.875rem;
+      line-height:1.7;
+      background:#fafafa;
+    }
+    
+    .point-card.open .point-text{
+      max-height:600px;
+      padding:16px 20px;
+    }
+    
+    .point-text p{
+      margin:0 0 10px;
+    }
   }
 
   /* Variety Tabs */
@@ -4906,6 +4982,11 @@ a{ color:inherit; text-decoration:none}
     padding-left:8px;
     min-width:90px;
     width:90px;
+    position:sticky;
+    left:0;
+    z-index:3;
+    background:#f1f5f9;
+    box-shadow:2px 0 4px rgba(0,0,0,0.08);
   }
   
   .variety-table tbody td{
@@ -4926,19 +5007,30 @@ a{ color:inherit; text-decoration:none}
     min-width:90px;
     width:90px;
     height:60px;
-    position:relative;
+    position:sticky;
+    left:0;
+    z-index:2;
     overflow:hidden;
+    box-shadow:2px 0 4px rgba(0,0,0,0.08);
+  }
+  
+  /* name-cellの内部配置用 */
+  td.name-cell{
+    position:relative;
   }
   
   .name-cell-inner{
     display:flex;
-    align-items:flex-end;
+    align-items:center;
     justify-content:flex-start;
     width:100%;
-    height:100%;
-    padding:4px 6px;
-    background:linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
-    position:relative;
+    height:auto;
+    padding:6px 8px;
+    background:linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.15) 70%, transparent 100%);
+    position:absolute;
+    bottom:0;
+    left:0;
+    right:0;
     z-index:2;
   }
   
@@ -4946,6 +5038,30 @@ a{ color:inherit; text-decoration:none}
     font-size:0.688rem;
     line-height:1.2;
     text-shadow:0 1px 2px rgba(0,0,0,0.5);
+  }
+  
+  /* 品種名リンク */
+  .variety-name-link{
+    color:#fff;
+    text-decoration:none;
+    transition:all 0.2s ease;
+    cursor:pointer;
+  }
+  
+  .variety-name-link:hover{
+    color:var(--accent-2);
+    text-decoration:underline;
+  }
+  
+  /* 画像なしセルのリンク */
+  .name-cell-inner[style*="transparent"] .variety-name-link,
+  td.name-cell[style*="background:#f1f5f9"] .variety-name-link{
+    color:var(--accent);
+    text-shadow:none;
+  }
+  
+  td.name-cell[style*="background:#f1f5f9"] .variety-name-link:hover{
+    color:var(--accent-2);
   }
   
   .name-cell-bg{
@@ -4967,6 +5083,24 @@ a{ color:inherit; text-decoration:none}
     background:#666;
   }
   
+  /* クリック可能な行 */
+  .variety-table tbody tr.clickable-row{
+    cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  
+  .variety-table tbody tr.clickable-row:hover td{
+    background:#ffe8e2;
+  }
+  
+  .variety-table tbody tr.clickable-row:hover td.name-cell{
+    background:#555;
+  }
+  
+  .variety-table tbody tr.clickable-row:active td{
+    background:#ffd4cc;
+  }
+  
   /* セル内シンボル */
   .cell-high{ color:#16a34a; font-weight:600; }
   .cell-medium{ color:#d97706; font-weight:600; }
@@ -4983,7 +5117,7 @@ a{ color:inherit; text-decoration:none}
     line-height:1.35;
     color:var(--text-secondary);
     min-width:200px;
-    max-width:280px;
+    max-width:none;
     white-space:normal;
   }
   
@@ -4993,6 +5127,88 @@ a{ color:inherit; text-decoration:none}
     color:var(--muted);
     white-space:nowrap;
     min-width:70px;
+    text-align:center !important;
+    vertical-align:middle !important;
+  }
+  
+  /* === 2行レイアウト用スタイル === */
+  .variety-table-2row{
+    min-width:900px;
+  }
+  
+  .variety-table-2row .name-cell{
+    width:140px;
+    min-width:140px;
+    height:auto;
+    position:relative;
+  }
+  
+  .variety-table-2row .name-cell[rowspan="2"]{
+    vertical-align:middle;
+  }
+  
+  .variety-table-2row .name-cell-bg{
+    width:100%;
+    height:100%;
+    min-height:90px;
+  }
+  
+  .variety-table-2row .name-cell-inner{
+    min-height:auto;
+  }
+  
+  /* 上段の行（耐性情報） */
+  .variety-row-top td{
+    border-bottom:none !important;
+    padding:6px 4px !important;
+  }
+  
+  /* 下段の行（特徴と会社） */
+  .variety-row-bottom td{
+    border-top:none !important;
+    padding:6px 4px !important;
+  }
+  
+  .variety-row-bottom .cell-features{
+    background:linear-gradient(135deg, #fff5f2 0%, #ffe8e2 100%);
+    padding:8px 10px !important;
+    font-size:0.7rem;
+    line-height:1.4;
+    color:#c24d3a;
+    font-weight:500;
+    border-radius:0;
+  }
+  
+  .variety-row-bottom .cell-company{
+    background:#fafafa;
+    font-size:0.7rem;
+    font-weight:600;
+    color:var(--text-secondary);
+    vertical-align:middle !important;
+    text-align:center !important;
+  }
+  
+  /* ホバー時の調整 */
+  .variety-table-2row tbody tr.variety-row-top:hover td,
+  .variety-table-2row tbody tr.variety-row-top:hover + tr.variety-row-bottom td{
+    background:#fff5f2;
+  }
+  
+  .variety-table-2row tbody tr.variety-row-top:hover + tr.variety-row-bottom .cell-features{
+    background:linear-gradient(135deg, #ffe8e2 0%, #ffd4cc 100%);
+  }
+  
+  .variety-table-2row tbody tr.variety-row-bottom:hover td{
+    background:#fff5f2;
+  }
+  
+  .variety-table-2row tbody tr.variety-row-bottom:hover .cell-features{
+    background:linear-gradient(135deg, #ffe8e2 0%, #ffd4cc 100%);
+  }
+  
+  /* 品種間の区切り線 */
+  .variety-row-bottom td{
+    border-bottom:2px solid var(--border) !important;
   }
   
   /* 注釈 */
@@ -5041,6 +5257,11 @@ a{ color:inherit; text-decoration:none}
     .variety-table thead th.name-col{
       min-width:70px;
       width:70px;
+      position:sticky;
+      left:0;
+      z-index:3;
+      background:#f1f5f9;
+      box-shadow:2px 0 4px rgba(0,0,0,0.08);
     }
     
     .variety-table tbody td{
@@ -5052,6 +5273,10 @@ a{ color:inherit; text-decoration:none}
       min-width:70px;
       width:70px;
       height:50px;
+      position:sticky;
+      left:0;
+      z-index:2;
+      box-shadow:2px 0 4px rgba(0,0,0,0.08);
     }
     
     .name-cell-inner span{
@@ -5361,7 +5586,7 @@ a{ color:inherit; text-decoration:none}
   }
   
   /* Card Header - 画像の上に重ねて透過グラデーション背景 */
-  .variety-card .card-header{
+  .card-header{
     margin-top:-280px;
     padding:1.25rem 1.25rem 0;
     position:relative;
@@ -5798,6 +6023,8 @@ a{ color:inherit; text-decoration:none}
   }
 
   /* Footer */
+
+/* Footer */
   footer{
     background:#fff;
     margin-top:4rem;
@@ -7654,5 +7881,650 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
   .paywall-btn{
     padding: 14px 14px;
     font-size: 0.95rem;
+  }
+}
+
+/* =====================================================
+   Market carousel styles (synced from TOMATO_TOP_20260122_modified.html)
+   - Only affects .tomato-market-data / .market-carousel and child elements
+   ===================================================== */
+
+/* ========================================
+   トマト市況データ - 4品種カードデザイン
+   ======================================== */
+
+.tomato-market-data {
+  width: 100%;
+  max-width: 450px;
+  margin: 0 auto;
+  padding: 0;
+  position: relative;
+}
+
+.market-carousel {
+  position: relative;
+  overflow: visible;
+}
+
+.market-carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #475569;
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+
+.market-carousel-nav:hover {
+  background: rgba(224, 82, 61, 0.1);
+  border-color: #e0523d;
+  color: #e0523d;
+}
+
+/* ページインジケーター（ドット） */
+.market-indicators {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.indicator-dot:hover {
+  background: #94a3b8;
+  transform: scale(1.2);
+}
+
+.indicator-dot.active {
+  background: #e0523d;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.market-carousel-nav.prev {
+  left: 4px;
+}
+
+.market-carousel-nav.next {
+  right: 4px;
+}
+
+.market-header {
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.market-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  letter-spacing: 0.02em;
+}
+
+.market-date {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.market-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 2px;
+  transition: transform 0.3s ease-out;
+}
+
+.market-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 品種別の背景カラー（薄いオレンジ/ピンク系） */
+.market-card[data-variety="large"] {
+  background: linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%);
+}
+
+.market-card[data-variety="medium"] {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+}
+
+.market-card[data-variety="mini"] {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.market-card[data-variety="first"] {
+  background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
+}
+
+.market-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  transition: opacity 0.2s ease;
+}
+
+/* 品種別のアクセントカラー */
+.market-card[data-variety="large"]::before {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.market-card[data-variety="medium"]::before {
+  background: linear-gradient(90deg, #f97316, #ea580c);
+}
+
+.market-card[data-variety="mini"]::before {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.market-card[data-variety="first"]::before {
+  background: linear-gradient(90deg, #eab308, #ca8a04);
+}
+
+.market-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #d1d5db;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.variety-info {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.variety-name {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 2px 0;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* 品種別のテキストカラー */
+.market-card[data-variety="large"] .variety-name {
+  color: #dc2626;
+}
+
+.market-card[data-variety="medium"] .variety-name {
+  color: #ea580c;
+}
+
+.market-card[data-variety="mini"] .variety-name {
+  color: #d97706;
+}
+
+.market-card[data-variety="first"] .variety-name {
+  color: #ca8a04;
+}
+
+.variety-code {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.price-section {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.price-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.price-display {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.current-price {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.price-unit {
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.price-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  width: fit-content;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.price-change.trend-up {
+  color: #dc2626;
+  background: #ffffff;
+  border-color: #fecaca;
+}
+
+.price-change.trend-down {
+  color: #2563eb;
+  background: #ffffff;
+  border-color: #bfdbfe;
+}
+
+.change-icon {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.change-value {
+  font-weight: 700;
+}
+
+.change-label {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+.volume-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.volume-label {
+  font-size: 0.65rem;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.volume-display {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.volume-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+}
+
+.volume-unit {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+
+.market-footer {
+  text-align: center;
+  padding-top: 2px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.data-source {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* PC版での配置調整 */
+@media (min-width: 1180px) {
+  .tomato-market-data {
+    position: absolute;
+    top: 200px;
+    left: 0;
+    right: auto;
+    width: 450px;
+    z-index: 10;
+  }
+  
+  #highlight .left-hero > p {
+    margin-top: 340px !important;
+    margin-bottom: 8px !important;
+  }
+}
+
+/* タブレット版 */
+@media (min-width: 768px) and (max-width: 1179px) {
+  .tomato-market-data {
+    max-width: 100%;
+  }
+  
+  .market-grid {
+    gap: 14px;
+  }
+  
+  .market-card {
+    padding: 16px;
+  }
+  
+  .variety-name {
+    font-size: 1.05rem;
+  }
+  
+  .current-price {
+    font-size: 1.9rem;
+  }
+  
+  .volume-area {
+    width: 95px;
+    padding: 10px 14px;
+    align-items: center;
+  }
+  
+  .volume-value {
+    font-size: 1.4rem;
+  }
+}
+
+/* SP版 */
+@media (max-width: 767px) {
+  .tomato-market-data.sp-only-market {
+    width: 100% !important;
+    max-width: 900px !important;
+    margin: 0 auto !important;
+    padding: 12px 6px;
+    background: #fafafa;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .market-header {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 10px;
+    padding: 0 8px;
+  }
+  
+  .market-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  
+  .market-date {
+    font-size: 0.65rem;
+    color: #64748b;
+    line-height: 1.4;
+  }
+  
+  /* 2列グリッド（カルーセル用に固定） */
+  .market-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  
+  /* カルーセル用に常に2列表示を維持 */
+  @media (min-width: 520px) {
+    .sp-only-market .market-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+  }
+  
+  @media (min-width: 700px) {
+    .sp-only-market .market-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+  }
+  
+  .market-footer {
+    width: 100%;
+    text-align: center;
+    padding-top: 8px;
+    margin-top: 8px;
+    border-top: 1px solid #e2e8f0;
+  }
+  
+  /* SP版：カルーセル矢印をさらに小さく、控えめに */
+  .market-carousel-nav {
+    width: 24px;
+    height: 24px;
+    font-size: 0.9rem;
+  }
+  
+  .market-carousel-nav.prev {
+    left: 2px;
+  }
+  
+  .market-carousel-nav.next {
+    right: 2px;
+  }
+  
+  @media (max-width: 400px) {
+    .market-carousel-nav.prev {
+      left: 2px;
+    }
+    
+    .market-carousel-nav.next {
+      right: 2px;
+    }
+  }
+  
+  .data-source {
+    font-size: 0.65rem;
+    color: #94a3b8;
+  }
+  
+  .market-card {
+    display: block;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: visible;
+  }
+  
+  /* SP版：品種別の背景カラーを継承 */
+  .market-card[data-variety="large"] {
+    background: linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%);
+  }
+  
+  .market-card[data-variety="medium"] {
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  }
+  
+  .market-card[data-variety="mini"] {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  }
+  
+  .market-card[data-variety="first"] {
+    background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
+  }
+  
+  .card-header {
+    display: flex;
+    margin-bottom: 6px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  
+  .variety-info {
+    display: block;
+    text-align: center;
+  }
+  
+  .variety-name {
+    font-size: 0.9rem;
+    display: block;
+    margin-bottom: 2px;
+  }
+  
+  .variety-code {
+    font-size: 0.65rem;
+    display: block;
+  }
+  
+  .card-body {
+    display: block;
+  }
+  
+  .price-section {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  
+  .price-area {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .price-display {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    white-space: nowrap;
+  }
+  
+  .current-price {
+    font-size: 1.6rem;
+  }
+  
+  .price-unit {
+    font-size: 0.7rem;
+  }
+  
+  .price-change {
+    display: inline-flex;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
+  
+  .volume-area {
+    padding: 6px 10px;
+    width: auto;
+    min-width: 55px;
+    flex-shrink: 0;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border-radius: 6px;
+  }
+  
+  .volume-label {
+    font-size: 0.6rem;
+    color: #64748b;
+    font-weight: 700;
+  }
+  
+  .volume-value {
+    font-size: 1.2rem;
+  }
+  
+  .volume-unit {
+    font-size: 0.7rem;
+  }
+}
+
+/* SP版：hero領域内での表示調整 */
+@media (max-width: 1179px) {
+  #highlight .tomato-market-data {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1180px) {
+  body > .tomato-market-data {
+    display: none !important;
+  }
+  
+  .sp-only-market {
+    display: none !important;
+  }
+  
+  #highlight .tomato-market-data {
+    display: block !important;
   }
 }
