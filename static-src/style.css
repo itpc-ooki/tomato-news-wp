@@ -11787,3 +11787,94 @@ body.page-feature .pest-name{
     font-size: 0 !important;
     flex: none !important;
   }}
+
+
+/* =========================================================
+   Detail sidebar: 人気記事 (match TOMATO_COLUMN_DETAIL_20260125.html)
+   ========================================================= */
+#sidebar-popular .sidebar-heading{
+  margin:0 0 14px;
+  font-size:1rem;
+  font-weight:700;
+  padding-bottom:10px;
+  border-bottom:2px solid var(--accent);
+}
+#sidebar-popular .popular-list{
+  display:flex;
+  flex-direction:column;
+}
+#sidebar-popular .popular-article{
+  display:flex;
+  gap:12px;
+  padding:14px 0;
+  border-bottom:1px solid #e5e7eb;
+}
+#sidebar-popular .popular-article:last-child{
+  border-bottom:none;
+}
+#sidebar-popular .popular-rank{
+  flex:0 0 auto;
+  width:26px;
+  font-size:1.5rem;
+  font-weight:800;
+  line-height:1;
+  color:var(--accent);
+}
+#sidebar-popular .popular-content{
+  flex:1;
+  min-width:0;
+}
+#sidebar-popular .popular-title{
+  font-size:0.9rem;
+  font-weight:700;
+  line-height:1.45;
+  color:#0f172a;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+}
+#sidebar-popular .popular-meta{
+  margin-top:6px;
+  font-size:0.78rem;
+  color:var(--muted);
+}
+#sidebar-popular .popular-article:hover .popular-title{
+  color:var(--accent);
+}
+
+@media (max-width:768px){
+  #sidebar-popular .popular-article{ padding:12px 0; }
+  #sidebar-popular .popular-rank{ font-size:1.35rem; }
+  #sidebar-popular .popular-title{ font-size:0.92rem; }
+}
+
+/* =====================================
+   Detail Sidebar - Related Links
+   ===================================== */
+
+.related-links {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.related-links > div {
+  margin-bottom: 12px;
+}
+
+.related-links > div:last-child {
+  margin-bottom: 0;
+}
+
+.related-links a {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: opacity 0.2s ease;
+}
+
+.related-links a:hover {
+  opacity: 0.7;
+}

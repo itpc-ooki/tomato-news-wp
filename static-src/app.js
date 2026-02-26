@@ -595,6 +595,145 @@
     }
   }
 
+  // =========================================================
+  // Detail sidebar: 人気記事 (most accessed 5 posts)
+  // - Uses localStorage view counts per paper (no server dependency)
+  // - Falls back to latest 5 posts when no view data exists
+  // =========================================================
+  function getViewsStorageKey(paper) {
+    return `tn_views_${String(paper || "").trim()}`;
+  }
+
+  function readViewCounts(paper) {
+    try {
+      const raw = localStorage.getItem(getViewsStorageKey(paper));
+      const obj = raw ? JSON.parse(raw) : {};
+      return obj && typeof obj === "object" ? obj : {};
+    } catch (_e) {
+      return {};
+    }
+  }
+
+  function writeViewCounts(paper, map) {
+    try {
+      localStorage.setItem(getViewsStorageKey(paper), JSON.stringify(map || {}));
+    } catch (_e) {
+      // ignore (storage might be disabled)
+    }
+  }
+
+  function incrementPostView(paper, postId) {
+    if (!paper || !postId) return;
+    const id = String(postId);
+    const map = readViewCounts(paper);
+    map[id] = (Number(map[id]) || 0) + 1;
+    writeViewCounts(paper, map);
+  }
+
+  function formatDateYmdToDots(dateStr) {
+    const s = String(dateStr || "").trim();
+    // Prefer YYYY-MM-DD if present
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}.${m[2]}.${m[3]}`;
+    // Try Date parse
+    const t = Date.parse(s);
+    if (!Number.isFinite(t)) return "";
+    const d = new Date(t);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}.${mm}.${dd}`;
+  }
+
+  function safeTimeValue(p) {
+    const d = (p && (p.date || p.date_ymd)) || "";
+    const t = Date.parse(String(d));
+    return Number.isFinite(t) ? t : 0;
+  }
+
+  function buildPopularItem(post, rank) {
+    const a = document.createElement("a");
+    a.className = "popular-article";
+
+    // Prefer posts.json's url; fallback to detail.html?id=
+    const href =
+      (post && post.url) ? String(post.url) :
+      (post && post.id) ? `detail.html?id=${encodeURIComponent(post.id)}` :
+      "#";
+    a.setAttribute("href", href);
+
+    const rankEl = document.createElement("div");
+    rankEl.className = "popular-rank";
+    rankEl.textContent = String(rank);
+
+    const contentEl = document.createElement("div");
+    contentEl.className = "popular-content";
+
+    const titleEl = document.createElement("div");
+    titleEl.className = "popular-title";
+    titleEl.textContent = stripHtml((post && post.title) || "");
+
+    const metaEl = document.createElement("div");
+    metaEl.className = "popular-meta";
+    const dateTxt = formatDateYmdToDots((post && (post.date_ymd || post.date)) || "");
+    const typeTxt = String((post && post.article_type) || "").trim();
+    metaEl.textContent = [dateTxt, typeTxt].filter(Boolean).join("｜");
+
+    contentEl.appendChild(titleEl);
+    contentEl.appendChild(metaEl);
+
+    a.appendChild(rankEl);
+    a.appendChild(contentEl);
+
+    return a;
+  }
+
+  async function renderPopularSidebar(paper, currentPostId) {
+    const root = document.getElementById("sidebar-popular");
+    if (!root) return;
+
+    const list = root.querySelector(".popular-list");
+    if (!list) return;
+
+    // Ensure we have at least one view recorded for current post
+    incrementPostView(paper, currentPostId);
+
+    let posts = [];
+    try {
+      posts = await fetchJson(`/static/${encodeURIComponent(paper)}/posts.json`);
+    } catch (_e) {
+      // If posts.json isn't available, keep the list empty.
+      return;
+    }
+
+    const all = Array.isArray(posts) ? posts : [];
+    if (!all.length) return;
+
+    const views = readViewCounts(paper);
+
+    // Build ranking:
+    // - If there are view counts, sort by count desc, then date desc
+    // - If no view counts at all, fallback to newest 5
+    const hasAnyViews = Object.keys(views).some((k) => (Number(views[k]) || 0) > 0);
+
+    const ranked = all
+      .slice()
+      .sort((a, b) => {
+        if (hasAnyViews) {
+          const av = Number(views[String(a && a.id)]) || 0;
+          const bv = Number(views[String(b && b.id)]) || 0;
+          if (bv !== av) return bv - av;
+        }
+        return safeTimeValue(b) - safeTimeValue(a);
+      })
+      .slice(0, 5);
+
+    list.innerHTML = "";
+    ranked.forEach((p, i) => {
+      list.appendChild(buildPopularItem(p, i + 1));
+    });
+  }
+
   function getDetailContentTarget() {
     const article = document.querySelector("article.article-content");
     if (article) return article;
@@ -2448,6 +2587,8 @@ async function loadAndRenderPlacementsJson(paper) {
       const url = `/static/${paper}/posts/${id}.json`;
       const post = await fetchJson(url);
       renderDetail(post);
+      // 人気記事（most accessed 5）
+      renderPopularSidebar(paper, id).catch(() => {});
       return;
     }
   }
