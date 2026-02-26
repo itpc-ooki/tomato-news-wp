@@ -86,6 +86,186 @@
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindCloseHandlers);
     else bindCloseHandlers();
+
+  /* =====================================================================
+   * WEBセミナー: 採録紙面（posts.json から動的表示）
+   * - 記事タイプ（article_type）が「採録紙面」の記事を最大3件表示
+   * - 0件: すべての .seminar-article を非表示（DOMから削除）
+   * - 1-2件: その数だけ表示（残りは削除）
+   * - 3件以上: 3つすべて表示
+   *
+   * NOTE:
+   * - この処理は「できるだけ早く」定義しておき、他の処理で例外が起きても
+   *   WEBセミナーの採録紙面表示が止まらないようにしています。
+   * ===================================================================== */
+  (function initWebSeminarRecordArticlesEarly() {
+    const section = document.querySelector(".past-seminars-section");
+    if (!section) return;
+
+    function stripHtmlLocal(text) {
+      const tmp = document.createElement("div");
+      tmp.innerHTML = String(text ?? "");
+      return (tmp.textContent || tmp.innerText || "").trim();
+    }
+
+    function resolveUrlMaybeRelativeLocal(path) {
+      if (!path) return "";
+      if (/^https?:\/\//i.test(path)) return path;
+      try {
+        return new URL(path, window.location.origin).href;
+      } catch (_e) {
+        return String(path);
+      }
+    }
+
+    function safeDateValue(p) {
+      const d = (p && (p.date || p.date_ymd)) || "";
+      const t = Date.parse(String(d));
+      return Number.isFinite(t) ? t : 0;
+    }
+
+    function getPaperFromPathLocal() {
+      const parts = window.location.pathname.split("/").filter(Boolean);
+      const idx = parts.indexOf("static");
+      if (idx !== -1 && parts.length >= idx + 2) return parts[idx + 1];
+      return null;
+    }
+
+    async function fetchJsonLocal(url) {
+      const res = await fetch(url, { cache: "no-store" });
+      const contentType = res.headers.get("content-type") || "";
+      const text = await res.text();
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} for ${url}\n${text.slice(0, 200)}`);
+      }
+
+      if (contentType.includes("text/html") || text.trim().startsWith("<")) {
+        throw new Error(`Not JSON response from ${url} (received HTML)`);
+      }
+
+      return JSON.parse(text);
+    }
+
+    function buildRecordCard(post) {
+      const a = document.createElement("a");
+      a.className = "seminar-article-link";
+      a.href =
+        post && post.url
+          ? String(post.url)
+          : post && post.id
+          ? `detail.html?id=${post.id}`
+          : "#";
+
+      const thumb = document.createElement("div");
+      thumb.className = "article-thumbnail";
+      const img = document.createElement("img");
+      const title = stripHtmlLocal((post && post.title) || "");
+      const imgUrl = resolveUrlMaybeRelativeLocal((post && post.featured_image) || "");
+      if (imgUrl) {
+        img.src = imgUrl;
+        img.alt = title;
+        img.loading = "lazy";
+      } else {
+        img.alt = "";
+        img.style.display = "none";
+      }
+      thumb.appendChild(img);
+
+      const badge = document.createElement("span");
+      badge.className = "article-badge";
+      badge.textContent = "採録紙面";
+
+      const h3 = document.createElement("h3");
+      // NOTE: style.css currently styles ".seminar-card .article-title",
+      // so we add both classes to match either selector.
+      h3.className = "article-title";
+      h3.textContent = title;
+
+      const p = document.createElement("p");
+      p.className = "article-excerpt";
+      p.textContent = stripHtmlLocal((post && post.excerpt) || "");
+
+      const more = document.createElement("span");
+      more.className = "article-read-more";
+      more.innerHTML =
+        '記事を読む\n' +
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none">\n' +
+        '  <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>\n' +
+        '</svg>';
+
+      a.appendChild(thumb);
+      a.appendChild(badge);
+      a.appendChild(h3);
+      a.appendChild(p);
+      a.appendChild(more);
+
+      return a;
+    }
+
+    async function run() {
+      try {
+        const paper = getPaperFromPathLocal();
+        if (!paper) return;
+
+        const candidates = [
+          `/static/${encodeURIComponent(paper)}/posts.json`,
+          `./posts.json`,
+          `posts.json`,
+          `../${encodeURIComponent(paper)}/posts.json`,
+        ];
+
+        let posts = null;
+        let lastErr = null;
+
+        for (const url of candidates) {
+          try {
+            posts = await fetchJsonLocal(url);
+            if (Array.isArray(posts)) break;
+          } catch (e) {
+            lastErr = e;
+            posts = null;
+          }
+        }
+
+        const all = Array.isArray(posts) ? posts : [];
+        if (!all.length && lastErr) {
+          console.error("[WEBセミナー] posts.json load failed:", lastErr);
+        }
+
+        const recordPosts = all
+          .filter((p) => p && String(p.article_type || "") === "採録紙面")
+          .sort((a, b) => safeDateValue(b) - safeDateValue(a));
+
+        const picks = recordPosts.slice(0, 3);
+
+        const seminarItems = Array.from(section.querySelectorAll(".seminar-item"));
+        seminarItems.forEach((itemEl, i) => {
+          const articleEl = itemEl.querySelector(".seminar-article");
+          if (!articleEl) return;
+
+          if (i >= picks.length) {
+            articleEl.remove();
+            return;
+          }
+
+          articleEl.innerHTML = "";
+          articleEl.appendChild(buildRecordCard(picks[i]));
+        });
+
+        if (picks.length === 0) {
+          section.querySelectorAll(".seminar-article").forEach((el) => el.remove());
+        }
+      } catch (e) {
+        console.error("[WEBセミナー] render failed:", e);
+      }
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
+    else run();
+  })();
+
+
   })();
 
   /* =====================================================================
@@ -3102,6 +3282,15 @@ function resetAutoSlide() {
     if (window.__webSeminarCountdownInterval) clearInterval(window.__webSeminarCountdownInterval);
     window.__webSeminarCountdownInterval = setInterval(update, 1000);
   })();
+
+  // ==========================
+  // WEBセミナー: 採録紙面（posts.json から動的表示）
+  // - 記事タイプ（article_type）が「採録紙面」の記事を最大3件表示
+  // - 0件: すべての .seminar-article を非表示（DOMから削除）
+  // - 1-2件: その数だけ表示（残りは削除）
+  // - 3件以上: 3つすべて表示
+  // ==========================
+  
 
   // ==========================
   // WEBセミナー: Notification (mock)
