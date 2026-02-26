@@ -296,6 +296,7 @@
       const footerContainer = document.getElementById('footer-container');
       if (footerContainer) {
         footerContainer.innerHTML = html;
+        window.dispatchEvent(new CustomEvent('footerLoaded'));
       }
     } catch (error) {
       console.error('Error loading footer:', error);
@@ -432,14 +433,94 @@
     });
   }
 
+  // =========================================================
+  // Header/Footer paper menu links: fix relative links when opened
+  // from /static/account/* pages.
+  //
+  // Example bug:
+  //   /static/account/register.html?paper=tomato
+  //   click "特集記事" (href="./feature.html")
+  //   -> navigates to /static/account/feature.html (404)
+  //
+  // Fix:
+  //   rewrite header/footer relative links to /static/{paper}/...
+  // =========================================================
+  function updatePaperMenuLinks() {
+    const paper = getCurrentPaper();
+    if (!paper) return;
+
+    const base = `/static/${encodeURIComponent(paper)}/`;
+
+    const roots = [];
+    const headerEl = document.querySelector("header");
+    const footerEl = document.querySelector("footer");
+    if (headerEl) roots.push(headerEl);
+    if (footerEl) roots.push(footerEl);
+
+    function shouldSkipHref(href) {
+      if (!href) return true;
+      const h = String(href).trim();
+      if (!h) return true;
+      if (h.startsWith("#")) return true;
+      if (/^javascript:/i.test(h)) return true;
+      if (/^mailto:/i.test(h)) return true;
+      if (/^tel:/i.test(h)) return true;
+      if (/^https?:\/\//i.test(h)) return true;
+      // Account pages must stay under /static/account/
+      if (/\baccount\//i.test(h)) return true;
+      return false;
+    }
+
+    function rewriteHref(rawHref) {
+      const href = String(rawHref || "").trim();
+
+      // If already absolute under /static/{paper}/..., keep.
+      if (href.startsWith(base)) return href;
+
+      // If absolute under /static/{otherPaper}/..., rewrite to current paper.
+      const m = href.match(/^\/static\/([^\/]+)\/(.+)$/);
+      if (m && m[1] && m[2]) {
+        const rest = m[2];
+        return base + rest;
+      }
+
+      // For other absolute paths (e.g. /static/common/...), keep.
+      if (href.startsWith("/")) return href;
+
+      // Rewrite relative html links (./feature.html, feature.html, list.html?...)
+      const normalized = href.replace(/^\.\//, "");
+      // If it looks like a site page, rewrite to /static/{paper}/...
+      if (/\.html(\?|#|$)/i.test(normalized)) {
+        return base + normalized;
+      }
+
+      // Otherwise keep (e.g. empty placeholders)
+      return href;
+    }
+
+    roots.forEach((root) => {
+      root.querySelectorAll("a[href]").forEach((a) => {
+        const href = a.getAttribute("href");
+        if (shouldSkipHref(href)) return;
+
+        const next = rewriteHref(href);
+        if (next && next !== href) a.setAttribute("href", next);
+      });
+    });
+  }
+
   // Run after header is injected
   window.addEventListener("headerLoaded", updateHeaderAccountLinks);
+  window.addEventListener("headerLoaded", updatePaperMenuLinks);
+  window.addEventListener("footerLoaded", updatePaperMenuLinks);
 
   // Also run on first load (for pages that already have header in HTML)
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", updateHeaderAccountLinks);
+    document.addEventListener("DOMContentLoaded", updatePaperMenuLinks);
   } else {
     updateHeaderAccountLinks();
+    updatePaperMenuLinks();
   }
 
 
