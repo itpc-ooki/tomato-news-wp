@@ -860,6 +860,55 @@ $list[] = [
           $writer_name = get_post_meta($post_id, 'writer_name', true);
         }
 
+        // Sidebar placement (single ad_item selected per post)
+        // - ACF field: sidebar_ad_item (post_object return_format=id)
+        // - Fallback to post meta: sidebar_ad_item
+        $sidebar_ad_item_id = self::get_acf_field_value('sidebar_ad_item', $post_id);
+        if ($sidebar_ad_item_id instanceof WP_Post) {
+          $sidebar_ad_item_id = (int) $sidebar_ad_item_id->ID;
+        } elseif (is_string($sidebar_ad_item_id) && $sidebar_ad_item_id !== '' && is_numeric($sidebar_ad_item_id)) {
+          $sidebar_ad_item_id = (int) $sidebar_ad_item_id;
+        } elseif (!is_numeric($sidebar_ad_item_id)) {
+          $mv = get_post_meta($post_id, 'sidebar_ad_item', true);
+          $sidebar_ad_item_id = (is_numeric($mv) ? (int) $mv : 0);
+        } else {
+          $sidebar_ad_item_id = (int) $sidebar_ad_item_id;
+        }
+
+        $sidebar_ad = null;
+        if ($sidebar_ad_item_id > 0) {
+          $ad_post = get_post($sidebar_ad_item_id);
+          if ($ad_post instanceof WP_Post && $ad_post->post_type === 'ad_item') {
+            // URL
+            $link_url = '';
+            $acf_url = self::get_acf_field_value('link_url', $sidebar_ad_item_id);
+            if (is_string($acf_url) && $acf_url !== '') {
+              $link_url = $acf_url;
+            } else {
+              $meta_url = get_post_meta($sidebar_ad_item_id, 'link_url', true);
+              if (is_string($meta_url) && $meta_url !== '') {
+                $link_url = $meta_url;
+              }
+            }
+
+            // Image
+            $image_url = null;
+            $acf_image = self::get_acf_field_value('image', $sidebar_ad_item_id);
+            $image_url = self::resolve_media_to_url($acf_image);
+            if (!$image_url) {
+              $image_url = self::get_featured_image_url($sidebar_ad_item_id);
+            }
+            $image_rel = self::to_relative_path($image_url ? (string) $image_url : null);
+
+            $sidebar_ad = [
+              'id'    => (int) $sidebar_ad_item_id,
+              'title' => get_the_title($ad_post),
+              'url'   => $link_url,
+              'image' => $image_rel,
+            ];
+          }
+        }
+
         $detail = [
           'id'         => $post_id,
           'title'      => $title,
@@ -877,6 +926,7 @@ $list[] = [
           'free_viewable' => $free_viewable ? 1 : 0,
           'reference_materials' => is_string($reference_materials) ? trim($reference_materials) : '',
           'writer_name' => is_string($writer_name) ? trim($writer_name) : '',
+          'sidebar_ad' => $sidebar_ad,
         ];
 
         $detail_path = $posts_dir . '/' . $post_id . '.json';

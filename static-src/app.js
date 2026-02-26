@@ -1447,6 +1447,94 @@ async function renderNewsSection(posts, paper) {
   }
 
 
+  // =========================================================
+  // ✅ Detail: render Sidebar Ad (記事ごとに1枠)
+  // - Reads exported field from cli-static-build.php:
+  //   post.sidebar_ad: {id, title, url, image} | null
+  // - Renders into: <div class="sidebar-section" id="sidebar-ads"></div>
+  // =========================================================
+  function normalizeSidebarAd(post) {
+    const raw = post && (post.sidebar_ad || post.sidebarAd || post.sidebar_ad_item);
+    if (!raw) return null;
+
+    // If already an object with image/url
+    if (typeof raw === "object" && !Array.isArray(raw)) {
+      const url = typeof raw.url === "string" ? raw.url.trim() : "";
+      const image = typeof raw.image === "string" ? raw.image.trim() : "";
+      const title = typeof raw.title === "string" ? raw.title.trim() : "";
+      if (!image && !url) return null;
+      return {
+        id: raw.id != null ? raw.id : null,
+        title,
+        url,
+        image,
+      };
+    }
+
+    // If only an id is present, we can't resolve it here without extra fetch.
+    // Keep it null to avoid wrong display.
+    return null;
+  }
+
+  function renderSidebarAd(post) {
+    const box = document.getElementById("sidebar-ads");
+    if (!box) return;
+
+    // Ensure markup matches requested structure
+    box.classList.add("sidebar-section");
+    box.classList.add("sidebar-ad");
+
+    const ad = normalizeSidebarAd(post);
+
+    // Clear previous
+    box.innerHTML = "";
+
+    // Label
+    const label = document.createElement("div");
+    label.className = "ad-label";
+    label.textContent = "ADVERTISEMENT";
+
+    // Slot (fixed 300x300 as requested)
+    const slot = document.createElement("div");
+    slot.setAttribute(
+      "style",
+      "height:300px; display:flex; align-items:center; justify-content:center; margin:0 auto;"
+    );
+
+    // No placement selected -> show placeholder text
+    if (!ad || !ad.image || !ad.url) {
+      slot.textContent = "広告スペース";
+      box.appendChild(label);
+      box.appendChild(slot);
+      box.style.display = "";
+      return;
+    }
+
+    // 1 placement selected -> show linked image (no class on <a>)
+    const a = document.createElement("a");
+    a.href = String(ad.url);
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.setAttribute("aria-label", ad.title ? ad.title : "広告");
+
+    const img = document.createElement("img");
+    img.src = resolveUrlMaybeRelative(ad.image);
+    img.alt = ad.title ? ad.title : "広告";
+    img.loading = "lazy";
+    img.style.maxWidth = "100%";
+    img.style.maxHeight = "100%";
+    img.style.objectFit = "contain";
+    img.style.display = "block";
+
+    a.appendChild(img);
+    slot.appendChild(a);
+
+    box.appendChild(label);
+    box.appendChild(slot);
+    box.style.display = "";
+  }
+
+
 
   // =========================================================
   // Member-only gating (per post flag)
@@ -1810,6 +1898,9 @@ function renderDetail(post) {
 
       // ✅ Article tags
       renderArticleTags(post);
+
+      // ✅ Sidebar ad (single placement per post)
+      renderSidebarAd(post);
       return;
     }
 
@@ -1832,6 +1923,9 @@ function renderDetail(post) {
 
     // ✅ Article tags
     renderArticleTags(post);
+
+    // ✅ Sidebar ad (single placement per post)
+    renderSidebarAd(post);
   }
 
   // =========================================================

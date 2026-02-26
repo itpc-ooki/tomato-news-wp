@@ -167,6 +167,22 @@ add_action('acf/init', function () {
         'ui' => 1,
         'default_value' => 0,
       ],
+
+      // 記事ごとのサイドバー広告（広告枠=ad_item から1つ選択）
+      [
+        'key' => 'field_post_sidebar_ad_item',
+        'label' => 'サイドバー広告（記事ごとに1枠）',
+        'name' => 'sidebar_ad_item',
+        'type' => 'post_object',
+        'instructions' => "この記事の右サイドバーに表示する広告枠（広告枠CPT）を1つ選択してください。\n未選択の場合は表示しません。",
+        'required' => 0,
+        'post_type' => ['ad_item'],
+        'taxonomy' => '',
+        'allow_null' => 1,
+        'multiple' => 0,
+        'return_format' => 'id',
+        'ui' => 1,
+      ],
     ],
     'location' => [
       [
