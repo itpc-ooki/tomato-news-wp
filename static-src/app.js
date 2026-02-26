@@ -14,6 +14,64 @@
   "use strict";
 
   /* =====================================================================
+   * Mobile menu globals (must be defined early)
+   * - header.html uses inline onclick="toggleMobileMenu()"
+   * - If any later logic throws, we still want the mobile menu to work.
+   * ===================================================================== */
+  (function ensureMobileMenuGlobals(){
+    function getEls(){
+      return {
+        menu: document.getElementById("mobileMenu"),
+        overlay: document.getElementById("mobileMenuOverlay"),
+      };
+    }
+
+    if (typeof window.toggleMobileMenu !== "function") {
+      window.toggleMobileMenu = function toggleMobileMenu(){
+        const els = getEls();
+        if (!els.menu || !els.overlay) return;
+        els.menu.classList.toggle("active");
+        els.overlay.classList.toggle("active");
+        // Prevent background scroll when menu is open
+        if (els.menu.classList.contains("active")) {
+          document.body.style.overflow = "hidden";
+        } else {
+          document.body.style.overflow = "";
+        }
+      };
+    }
+
+    if (typeof window.closeMobileMenu !== "function") {
+      window.closeMobileMenu = function closeMobileMenu(){
+        const els = getEls();
+        if (!els.menu || !els.overlay) return;
+        els.menu.classList.remove("active");
+        els.overlay.classList.remove("active");
+        document.body.style.overflow = "";
+      };
+    }
+
+    // Safe bindings (only if elements exist)
+    function bind(){
+      const els = getEls();
+      if (els.overlay) {
+        els.overlay.addEventListener("click", window.closeMobileMenu);
+      }
+      if (els.menu) {
+        const closeBtn = els.menu.querySelector(".mobile-menu-close");
+        if (closeBtn) closeBtn.addEventListener("click", window.closeMobileMenu);
+      }
+      document.addEventListener("keydown", function(e){
+        if (e.key === "Escape") window.closeMobileMenu();
+      });
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+    else bind();
+  })();
+
+
+  /* =====================================================================
    * WEBセミナー: Video modal globals (must be defined early)
    * - Some pages don't have certain DOM nodes used elsewhere in app.js.
    * - If any earlier logic throws, inline onclick="openVideoModal(...)" would break.
