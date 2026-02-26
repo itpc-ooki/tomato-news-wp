@@ -493,6 +493,72 @@
     return new URLSearchParams(window.location.search).get(name);
   }
 
+  // =========================================================
+  // List page: Filter tab active state
+  // - list.html (no query)            -> "すべて" active
+  // - list.html?article_type=栽培技術 -> "栽培技術" active
+  // - list.html?article_type=市場動向 -> "市場動向" active
+  // - list.html?article_type=コラム   -> "コラム" active
+  // - Also tolerates accidental trailing "S" like "?article_type=市場動向S"
+  // =========================================================
+  function normalizeArticleType(value) {
+    let s = String(value || "").trim();
+    if (!s) return "";
+    // tolerate accidental trailing ASCII 'S'
+    if (s.endsWith("S")) s = s.slice(0, -1);
+    return s.trim();
+  }
+
+  function updateListFilterTabsActive(requestedArticleType) {
+    const tabs = document.querySelectorAll(".filter-tabs .filter-tab");
+    if (!tabs || tabs.length === 0) return;
+
+    const wanted = normalizeArticleType(requestedArticleType);
+
+    tabs.forEach((tab) => tab.classList.remove("active"));
+
+    let match = null;
+
+    tabs.forEach((tab, idx) => {
+      const a = tab.querySelector("a");
+      if (!a) return;
+
+      const href = a.getAttribute("href") || "";
+      try {
+        const u = new URL(href, window.location.href);
+        const tabType = normalizeArticleType(u.searchParams.get("article_type"));
+        const path = (u.pathname || "").toLowerCase();
+
+        // "すべて": ONLY list.html without article_type
+        if (!wanted) {
+          const isList =
+            path.endsWith("/list.html") || path.endsWith("list.html");
+          if (isList && !tabType) match = tab;
+          return;
+        }
+
+        // Exact match (after normalization)
+        if (wanted && tabType === wanted) match = tab;
+      } catch (_e) {
+        // Fallback: simple heuristic
+        if (!wanted) {
+          // ONLY list.html without article_type (avoid matching other pages like pest-control.html)
+          const isList =
+            /(^|\/)(list\.html)(\?|$)/i.test(href) || /^\.\/list\.html$/i.test(href);
+          const hasType = href.indexOf("article_type=") !== -1;
+          if (isList && !hasType) match = tab;
+          return;
+        }
+
+        if (wanted && href.indexOf("article_type=" + encodeURIComponent(wanted)) !== -1) match = tab;
+      }
+    });
+
+    // Default to the first tab ("すべて") if no match found
+    (match || tabs[0]).classList.add("active");
+  }
+
+
   function setQueryParam(name, value) {
     const url = new URL(window.location.href);
     if (value === null || value === undefined || value === "") {
@@ -2356,6 +2422,9 @@ async function loadAndRenderPlacementsJson(paper) {
       // Optional filter by Article Type (taxonomy: article_type)
       // Example: list.html?article_type=トマトNEWS
       const requestedArticleType = getQueryParam("article_type");
+
+      // Update active state of category filter tabs based on current URL
+      updateListFilterTabsActive(requestedArticleType);
       const all = Array.isArray(posts) ? posts : [];
       const filtered = requestedArticleType
         ? all.filter((p) => String((p && p.article_type) || "") === String(requestedArticleType))
