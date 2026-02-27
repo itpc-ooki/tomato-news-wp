@@ -354,6 +354,10 @@ add_action('acf/init', function () {
         'default_value' => 'large',
         'return_format' => 'value',
         'ui' => 1,
+        'required' => 1,
+        'wrapper' => [
+          'class' => 'acf-required-label',
+        ],
       ],
       [
         'key' => 'field_variety_company',
@@ -362,6 +366,10 @@ add_action('acf/init', function () {
         'type' => 'text',
         'default_value' => '',
         'placeholder' => '例: サカタのタネ',
+        'required' => 1,
+        'wrapper' => [
+          'class' => 'acf-required-label',
+        ],
       ],
       [
         'key' => 'field_variety_image',
@@ -380,15 +388,7 @@ add_action('acf/init', function () {
         'default_value' => '',
         'placeholder' => '例: https://example.com/variety-page',
       ],
-      [
-        'key' => 'field_variety_tomv',
-        'label' => 'ToMV（例: Tm-2a）',
-        'name' => 'tomvType',
-        'type' => 'text',
-        'default_value' => '',
-        'placeholder' => '例: Tm-2a',
-      ],
-      [
+[
         'key' => 'field_variety_description',
         'label' => '品種の特徴',
         'name' => 'description',
@@ -583,4 +583,28 @@ add_action('acf/init', function () {
 
 
 
+});
+
+
+/**
+ * Admin UI: show red asterisk for required fields (品種マスタ: カテゴリ / 種苗会社)
+ */
+add_action('admin_head', function () {
+  if (!function_exists('get_current_screen')) return;
+  $screen = get_current_screen();
+  if (!$screen || ($screen->post_type ?? '') !== 'variety') return;
+
+  echo '<style>
+    /* Show required mark only once (before label) for selected fields */
+    .acf-field.acf-required-label > .acf-label label:before{
+      content:"*";
+      color:#e11d48;
+      margin-right:2px;
+      font-weight:700;
+    }
+    /* Hide ACF default required asterisk (after label) */
+    .acf-field.acf-required-label > .acf-label .acf-required{
+      display:none !important;
+    }
+  </style>';
 });

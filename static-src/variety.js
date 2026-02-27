@@ -169,6 +169,13 @@
     for (const k of keys) {
       if (res[k] != null && res[k] !== "") return res[k];
     }
+
+
+  // Use ToMV value under `res` as the source of truth (ignore root-level `tomvType`)
+  function getTomvType(v) {
+    const val = getRes(v, ["tomvType", "ToMV"]);
+    return (val ?? "").toString().trim();
+  }
     return "";
   }
 
@@ -646,7 +653,6 @@ function render() {
       company: v.company ?? "",
       description: v.description ?? v.features ?? "",
       image: v.image ?? "",
-      tomvType: v.tomvType ?? "",
       res: (v && typeof v.res === "object" && v.res) ? v.res : {},
     }));
 

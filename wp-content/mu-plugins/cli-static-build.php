@@ -615,8 +615,7 @@ private static function sync_uploads_assets(): void {
         $company  = function_exists('get_field') ? (string) get_field('company', $id) : '';
         $image    = function_exists('get_field') ? get_field('image', $id) : '';
         $link     = function_exists('get_field') ? (string) get_field('link', $id) : '';
-        $tomvType = function_exists('get_field') ? (string) get_field('tomvType', $id) : '';
-        $desc     = function_exists('get_field') ? (string) get_field('description', $id) : '';
+$desc     = function_exists('get_field') ? (string) get_field('description', $id) : '';
         $res      = function_exists('get_field') ? get_field('res', $id) : null;
         $sort     = function_exists('get_field') ? (int) get_field('sort_order', $id) : 0;
 
@@ -642,8 +641,7 @@ private static function sync_uploads_assets(): void {
           'company' => $company,
           'image' => $image_rel ?: '',
           'link' => $link_norm,
-          'tomvType' => $tomvType,
-          'description' => $desc,
+'description' => $desc,
           'res' => $res,
           // internal sort key (removed later)
           '__sort' => $sort,
