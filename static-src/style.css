@@ -2666,8 +2666,7 @@ header img, nav img, footer img{aspect-ratio: auto; height: auto; object-fit: co
     padding-bottom: 0 !important;
     padding-top: 0 !important;}
   #vcolA .vtile:not(.ad-half-vertical):not(.ad-rect-vertical), #vcolB .vtile:not(.ad-half-vertical):not(.ad-rect-vertical){width: 100vw !important;
-    margin: 0 !important;
-    margin-bottom: 0 !important;
+    margin: 8px 0 !important;
     padding: 0 !important;
     display: block !important;
     height: auto !important;

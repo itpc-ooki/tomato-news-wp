@@ -2533,6 +2533,81 @@ function renderDetail(post) {
     }
   }
 
+
+  // Ensure the SP (small screen) wrapper markup matches the ad size class.
+  // - ad-half-vertical  -> .halfpage-ad-wrapper > .halfpage-inner > .ad-badge + <img>
+  // - ad-rect-vertical  -> .mpu-ad-wrapper      > .mpu-inner      > .ad-badge + <img>
+  // The SP wrapper is expected to be the nextElementSibling of the PC slot.
+  function ensureSpWrapperForSlot(slot, sizeClass, title, imgUrl, href) {
+    if (!slot) return null;
+
+    const wantHalf = sizeClass === "ad-half-vertical";
+    const wantMpu = sizeClass === "ad-rect-vertical" || !sizeClass;
+
+    const existing = slot.nextElementSibling;
+    const existingIsHalf = !!(existing && existing.classList && existing.classList.contains("halfpage-ad-wrapper"));
+    const existingIsMpu = !!(existing && existing.classList && existing.classList.contains("mpu-ad-wrapper"));
+
+    // If the existing wrapper matches, just update its contents/handlers and return it
+    if ((wantHalf && existingIsHalf) || (wantMpu && existingIsMpu)) {
+      const wrapperImg = existing.querySelector("img");
+      if (wrapperImg && imgUrl) wrapperImg.src = imgUrl;
+      if (wrapperImg) wrapperImg.alt = title || "";
+
+      if (href) {
+        existing.style.cursor = "pointer";
+        existing.onclick = () => window.open(href, "_blank", "noopener");
+      } else {
+        existing.style.cursor = "";
+        existing.onclick = null;
+      }
+      return existing;
+    }
+
+    // If the existing element is a known SP wrapper but the wrong type, replace it
+    if (existing && (existingIsHalf || existingIsMpu)) {
+      existing.remove();
+    }
+
+    // Build the correct wrapper
+    const wrapper = document.createElement("div");
+    const inner = document.createElement("div");
+    const badge = document.createElement("div");
+    const img = document.createElement("img");
+
+    badge.className = "ad-badge";
+    badge.textContent = "広告";
+
+    if (wantHalf) {
+      wrapper.className = "halfpage-ad-wrapper";
+      inner.className = "halfpage-inner";
+    } else {
+      // default to MPU
+      wrapper.className = "mpu-ad-wrapper";
+      inner.className = "mpu-inner";
+    }
+
+    if (imgUrl) img.src = imgUrl;
+    img.alt = title || "広告";
+
+    inner.appendChild(badge);
+    inner.appendChild(img);
+    wrapper.appendChild(inner);
+
+    if (href) {
+      wrapper.style.cursor = "pointer";
+      wrapper.onclick = () => window.open(href, "_blank", "noopener");
+    }
+
+    // Insert right after the slot
+    if (slot.parentNode) {
+      if (slot.nextSibling) slot.parentNode.insertBefore(wrapper, slot.nextSibling);
+      else slot.parentNode.appendChild(wrapper);
+    }
+
+    return wrapper;
+  }
+
   function applyAdToSlot(slot, item) {
     if (!slot || !item) return;
 
@@ -2565,21 +2640,9 @@ function renderDetail(post) {
       slot.onclick = null;
     }
 
-    // Also update SP wrapper image if present
-    const next = slot.nextElementSibling;
-    if (next && (next.classList.contains("mpu-ad-wrapper") || next.classList.contains("halfpage-ad-wrapper"))) {
-      const wrapperImg = next.querySelector("img");
-      if (wrapperImg && imgUrl) wrapperImg.src = imgUrl;
-      if (wrapperImg) wrapperImg.alt = title;
+    // SP wrapper must match the selected size class (medium=halfpage, small=mpu)
+    ensureSpWrapperForSlot(slot, sizeClass, title, imgUrl, href);
 
-      if (href) {
-        next.style.cursor = "pointer";
-        next.onclick = () => window.open(href, "_blank", "noopener");
-      } else {
-        next.style.cursor = "";
-        next.onclick = null;
-      }
-    }
   }
 
   function renderSideAdsIntoDom(placements) {
