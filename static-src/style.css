@@ -8125,7 +8125,6 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
   justify-content: space-between;
   margin-bottom: 10px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f3f4f6;
 }
 
 .variety-info {
@@ -8479,7 +8478,6 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
     display: flex;
     margin-bottom: 6px;
     padding-bottom: 5px;
-    border-bottom: 1px solid #f3f4f6;
   }
   
   .variety-info {
