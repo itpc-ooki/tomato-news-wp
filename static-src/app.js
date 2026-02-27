@@ -1615,7 +1615,66 @@ async function renderNewsSection(posts, paper) {
     return null;
   }
 
-  function renderSidebarAd(post) {
+  
+  // =============================
+  // Columnists (コラムニスト紹介) on detail.html
+  // - Reads post.columnists from /static/{paper}/posts/{id}.json
+  // - Up to 4 items
+  // - If none: hide the whole section
+  // =============================
+  function renderColumnists(post) {
+    const section = document.getElementById("columnists-section");
+    const grid = document.getElementById("columnists-grid");
+    if (!section || !grid) return;
+
+    const items = (post && Array.isArray(post.columnists)) ? post.columnists : [];
+    const picks = items.slice(0, 4);
+
+    if (!picks.length) {
+      section.style.display = "none";
+      grid.innerHTML = "";
+      return;
+    }
+
+    const gradients = [
+      "linear-gradient(135deg, #e0523d 0%, #ff9a7d 100%)",
+      "linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)",
+      "linear-gradient(135deg, #10b981 0%, #34d399 100%)",
+      "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)",
+    ];
+
+    function esc(s) {
+      return escapeHtml(String(s ?? ""));
+    }
+
+    grid.innerHTML = picks.map((c, idx) => {
+      const name = esc(c && (c.name || c.title) || "");
+      const prof = esc(c && (c.profession || c.affiliation) || "");
+      const bio = esc(c && (c.description || c.bio) || "");
+      const bg = gradients[idx % gradients.length];
+
+      // Optional image (if you want later): currently the UI uses an icon circle, so we keep the SVG.
+      return `
+        <div class="columnist-card">
+          <div class="columnist-icon" style="background: ${bg};">
+            <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="30" cy="22" r="10" fill="white"/>
+              <path d="M15 50C15 41.7157 21.7157 35 30 35C38.2843 35 45 41.7157 45 50V52H15V50Z" fill="white"/>
+            </svg>
+          </div>
+          <div class="columnist-info">
+            <h3 class="columnist-name">${name}</h3>
+            <p class="columnist-affiliation">${prof}</p>
+            <p class="columnist-bio">${bio}</p>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    section.style.display = "";
+  }
+
+function renderSidebarAd(post) {
     const box = document.getElementById("sidebar-ads");
     if (!box) return;
 
@@ -2037,6 +2096,9 @@ function renderDetail(post) {
 
       // ✅ Article tags
       renderArticleTags(post);
+
+      // ✅ Columnists (コラムニスト紹介)
+      renderColumnists(post);
 
       // ✅ Sidebar ad (single placement per post)
       renderSidebarAd(post);

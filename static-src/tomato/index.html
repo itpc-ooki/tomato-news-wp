@@ -56,7 +56,7 @@
       <p class="market-date">2025年11月26日現在 / 日農平均価格（円/kg）</p>
     </div>
     
-    <div class="market-grid">
+    <div class="market-grid" id="market-grid-sp">
       <!-- 大玉トマト -->
       <div class="market-card" data-variety="large">
         <div class="card-header">
@@ -184,6 +184,13 @@
           </div>
         </div>
       </div>
+    </div>
+    
+    <!-- ページインジケーター（ドット）SP版 -->
+    <div class="market-indicators">
+      <button class="indicator-dot active" onclick="goToMarketPageSP(0)" aria-label="1ページ目"></button>
+      <button class="indicator-dot" onclick="goToMarketPageSP(1)" aria-label="2ページ目"></button>
+      <button class="indicator-dot" onclick="goToMarketPageSP(2)" aria-label="3ページ目"></button>
     </div>
     
     <div class="market-footer">

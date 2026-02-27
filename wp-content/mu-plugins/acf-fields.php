@@ -168,6 +168,20 @@ add_action('acf/init', function () {
         'default_value' => 0,
       ],
 
+      // 記事ごとのコラムニスト（最大4名）
+      [
+        'key' => 'field_post_columnists',
+        'label' => 'コラムニスト（最大4名）',
+        'name' => 'columnists',
+        'type' => 'post_object',
+        'instructions' => "この記事に紐づけるコラムニストを最大4名まで選択してください。\n未選択の場合はコラムニスト紹介セクションは表示しません。",
+        'required' => 0,
+        'post_type' => ['tomato_columnist'],
+        'multiple' => 1,
+        'return_format' => 'id',
+        'ui' => 1,
+      ],
+
       // 記事ごとのサイドバー広告（広告枠=ad_item から1つ選択）
       [
         'key' => 'field_post_sidebar_ad_item',

@@ -2101,6 +2101,36 @@ header img, nav img, footer img{aspect-ratio: auto; height: auto; object-fit: co
       font-size: 0.85rem;}
 }
 @media (max-width: 768px){
+  /* コラムニスト紹介：SP表示（768px以下でも適用） */
+  .columnists-section{
+      margin: 40px 0 30px 0;
+      padding: 40px 15px;}
+  .columnists-title{
+      font-size: 1.5rem;
+      margin-bottom: 32px;
+      padding: 0 0 16px 0;}
+  .columnists-title::after{
+      width: 80px;
+      height: 3px;}
+  .columnists-grid{
+      grid-template-columns: 1fr;
+      gap: 24px;
+      padding: 0;}
+  .columnist-card{
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 24px;}
+  .columnist-icon{
+      width: 80px;
+      height: 80px;}
+  .columnist-name{
+      font-size: 1.15rem;}
+  .columnist-affiliation{
+      font-size: 0.9rem;}
+  .columnist-bio{
+      font-size: 0.85rem;}
+
   .right-gallery{
       display: block !important;
       width: 100vw !important;
@@ -2524,7 +2554,7 @@ header img, nav img, footer img{aspect-ratio: auto; height: auto; object-fit: co
 }
 @media (max-width:1179px){
   #highlight .tomato-market-data{
-    display:block !important;}
+    display:none !important;}
 }
 @media (max-width:768px){
   .sp-lanes{ 
@@ -5596,7 +5626,7 @@ a{ color:inherit; text-decoration:none}
   }
   
   /* Card Header - 画像の上に重ねて透過グラデーション背景 */
-  .card-header{
+  .variety-card .card-header{
     margin-top:-280px;
     padding:1.25rem 1.25rem 0;
     position:relative;
@@ -11877,4 +11907,71 @@ body.page-feature .pest-name{
 
 .related-links a:hover {
   opacity: 0.7;
+}
+
+/* =====================================================
+   FIX: SP market cards - prevent global .card-header overlay styles
+   from collapsing .market-card content on small screens
+   ===================================================== */
+@media (max-width: 767px){
+  .tomato-market-data.sp-only-market .market-card .card-header{
+    margin-top: 0 !important;
+    padding: 0 0 8px 0 !important;
+    position: static !important;
+    z-index: auto !important;
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 6px !important;
+    padding-bottom: 5px !important;
+    border-bottom: 1px solid #f3f4f6 !important;
+  }
+  .tomato-market-data.sp-only-market .market-card .card-body{
+    margin-top: 0 !important;
+  }
+}
+/* =====================================================
+   Columnists responsive override (ensure SP layout wins)
+   - The file contains multiple duplicated blocks, so we
+     place this at the end to guarantee cascade order.
+   ===================================================== */
+@media (max-width: 768px){
+  .columnists-section{
+    margin: 40px 0 30px 0 !important;
+    padding: 40px 15px !important;
+  }
+
+  .columnists-title{
+    font-size: 1.5rem !important;
+    margin-bottom: 32px !important;
+    padding: 0 0 16px 0 !important;
+  }
+
+  .columnists-title::after{
+    width: 80px !important;
+    height: 3px !important;
+  }
+
+  .columnists-grid{
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    padding: 0 !important;
+  }
+
+  .columnist-card{
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 24px !important;
+  }
+
+  .columnist-icon{
+    width: 80px !important;
+    height: 80px !important;
+  }
+
+  .columnist-name{ font-size: 1.15rem !important; }
+  .columnist-affiliation{ font-size: 0.9rem !important; }
+  .columnist-bio{ font-size: 0.85rem !important; }
 }

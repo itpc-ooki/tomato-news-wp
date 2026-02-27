@@ -860,6 +860,47 @@ $list[] = [
           $writer_name = get_post_meta($post_id, 'writer_name', true);
         }
 
+        // Columnists (up to 4 selected per post)
+        // - ACF field: columnists (post_object multiple return_format=id)
+        // - Fallback to post meta: columnists (array or comma-separated)
+        $columnist_ids_raw = self::get_acf_field_value('columnists', $post_id);
+        if (!is_array($columnist_ids_raw)) {
+          $mv = get_post_meta($post_id, 'columnists', true);
+          if (is_array($mv)) $columnist_ids_raw = $mv;
+          elseif (is_string($mv) && $mv !== '') $columnist_ids_raw = array_map('trim', explode(',', $mv));
+          else $columnist_ids_raw = [];
+        }
+
+        $columnist_ids = [];
+        foreach ((array)$columnist_ids_raw as $v) {
+          if ($v instanceof WP_Post) $v = $v->ID;
+          if (is_string($v) && $v !== '' && is_numeric($v)) $v = (int)$v;
+          if (is_int($v) && $v > 0) $columnist_ids[] = $v;
+        }
+        $columnist_ids = array_values(array_unique($columnist_ids));
+        $columnist_ids = array_slice($columnist_ids, 0, 4);
+
+        $columnists = [];
+        if (!empty($columnist_ids)) {
+          $c_posts = get_posts([
+            'post_type' => 'tomato_columnist',
+            'post__in' => $columnist_ids,
+            'orderby' => 'post__in',
+            'posts_per_page' => 4,
+            'post_status' => 'publish',
+          ]);
+          foreach ($c_posts as $cp) {
+            $c_id = (int)$cp->ID;
+            $columnists[] = [
+              'id' => $c_id,
+              'name' => get_the_title($cp),
+              'profession' => (string)get_post_meta($c_id, '_tomato_columnist_profession', true),
+              'description' => (string)get_post_meta($c_id, '_tomato_columnist_description', true),
+              'featured_image' => get_the_post_thumbnail_url($c_id, 'full') ?: '',
+            ];
+          }
+        }
+
         // Sidebar placement (single ad_item selected per post)
         // - ACF field: sidebar_ad_item (post_object return_format=id)
         // - Fallback to post meta: sidebar_ad_item
@@ -926,6 +967,8 @@ $list[] = [
           'free_viewable' => $free_viewable ? 1 : 0,
           'reference_materials' => is_string($reference_materials) ? trim($reference_materials) : '',
           'writer_name' => is_string($writer_name) ? trim($writer_name) : '',
+          'columnists' => $columnists,
+
           'sidebar_ad' => $sidebar_ad,
         ];
 
