@@ -476,6 +476,7 @@
       loginLogoutBtn: loginHref,
       mobileLoginBtn: loginHref,
       registerBtn: registerHref,
+      heroRegisterBtn: registerHref,
       mobileRegisterBtn: registerHref,
       mypageBtn: mypageHref,
       mobileMypageBtn: mypageHref,
