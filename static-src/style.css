@@ -8782,6 +8782,7 @@ body.page-feature .articles-section{
     margin: 0 auto;
     padding: 0 20px 40px;
     background: #fff;
+    border-top: none;
   }
 @media (max-width: 768px) {body.page-feature .articles-section{
       padding: 0 16px 32px;

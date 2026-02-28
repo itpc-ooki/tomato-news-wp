@@ -705,8 +705,37 @@ function render() {
     });
   }
 
+
+  /* =====================================================================
+   * SP: 「品種選びのポイント」アコーディオン
+   * - Mockup (TOMATO_VARIETY_20260123_modified.html) と同じ挙動に合わせる
+   * - 画面幅 < 768px のときだけ .point-card に open をトグル
+   * ===================================================================== */
+  function bindPointCardAccordion() {
+    const cards = Array.from(document.querySelectorAll('.point-card'));
+    if (!cards.length) return;
+
+    cards.forEach((card) => {
+      const title = card.querySelector('.point-title');
+      if (!title) return;
+
+      // avoid duplicate binding
+      if (title.dataset && title.dataset.accBound === '1') return;
+      if (title.dataset) title.dataset.accBound = '1';
+
+      title.addEventListener('click', function (e) {
+        if (window.innerWidth < 768) {
+          e.preventDefault();
+          card.classList.toggle('open');
+        }
+      });
+    });
+  }
+
+
   // init
   bindEvents();
+  bindPointCardAccordion();
   setView("list");
   loadData().catch((err) => {
     console.error(err);

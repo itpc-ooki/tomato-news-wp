@@ -539,7 +539,10 @@
     if (headerEl) roots.push(headerEl);
     if (footerEl) roots.push(footerEl);
 
-    function shouldSkipHref(href) {
+        const mobileMenuEl = document.getElementById("mobileMenu");
+    if (mobileMenuEl) roots.push(mobileMenuEl);
+
+function shouldSkipHref(href) {
       if (!href) return true;
       const h = String(href).trim();
       if (!h) return true;
