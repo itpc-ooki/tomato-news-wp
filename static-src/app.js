@@ -346,6 +346,21 @@
     }
   })();
 
+  // Load keyword bar component
+  (async function() {
+    try {
+      const response = await fetch('/static/components/kw-bar.html', { cache: 'no-store' });
+      const html = await response.text();
+      const kwContainer = document.getElementById('kwbar-container');
+      if (kwContainer) {
+        kwContainer.innerHTML = html;
+        window.dispatchEvent(new CustomEvent('kwLoaded'));
+      }
+    } catch (error) {
+      console.error('Error loading kw-bar:', error);
+    }
+  })();
+
   // Load footer component
   (async function() {
     try {
@@ -411,6 +426,14 @@
     window.addEventListener("headerLoaded", function () {
       updateOffsets();
       // Images/fonts may change header height after injection
+      setTimeout(updateOffsets, 0);
+      setTimeout(updateOffsets, 250);
+    });
+
+    // Run after kw-bar is injected
+    window.addEventListener("kwLoaded", function () {
+      updateOffsets();
+      // Layout may settle after injection
       setTimeout(updateOffsets, 0);
       setTimeout(updateOffsets, 250);
     });
