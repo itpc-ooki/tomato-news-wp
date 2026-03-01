@@ -361,7 +361,102 @@
     }
   })();
 
-  // Load footer component
+  
+
+  // --------------------------------------------------
+  // Keyword bar: build kw pills dynamically from 記事タイプ (article_type)
+  // - Source: /static/{paper}/posts.json (unique article_type values)
+  // - Link: list.html?article_type={term name}
+  // --------------------------------------------------
+  function getKwPaper() {
+    // Prefer /static/{paper}/... from path
+    try {
+      var parts = window.location.pathname.split("/").filter(Boolean);
+      var idx = parts.indexOf("static");
+      if (idx !== -1 && parts.length >= idx + 2) {
+        var p = parts[idx + 1];
+        if (p && p !== "account") return p;
+      }
+    } catch (_e) {}
+
+    // Fallback: query param ?paper=
+    try {
+      var sp = new URLSearchParams(window.location.search || "");
+      var qp = sp.get("paper");
+      return qp ? String(qp) : null;
+    } catch (_e2) {
+      return null;
+    }
+  }
+
+  async function renderKwBarDynamic() {
+    var track = document.getElementById("kwTrack");
+    if (!track) return;
+
+    var paper = getKwPaper();
+    if (!paper) return;
+
+    var posts = [];
+    try {
+      posts = await fetchJson(`/static/${encodeURIComponent(paper)}/posts.json`);
+    } catch (e) {
+      // posts.json might not exist on some pages/environments
+      console.warn("[kw-bar] posts.json load failed:", e);
+      return;
+    }
+
+    var set = new Set();
+    (Array.isArray(posts) ? posts : []).forEach(function (p) {
+      var t = p && p.article_type;
+      if (typeof t !== "string") return;
+      t = t.trim();
+      if (!t) return;
+      set.add(t);
+    });
+
+    var types = Array.from(set);
+
+    // Make order stable/predictable (Japanese locale)
+    try {
+      types.sort(function (a, b) {
+        return String(a).localeCompare(String(b), "ja");
+      });
+    } catch (_e3) {
+      types.sort();
+    }
+
+    // Clear existing (hardcoded) pills and rebuild
+    track.innerHTML = "";
+
+    function appendType(typeName) {
+      var a = document.createElement("a");
+      a.className = "kw-pill";
+      a.textContent = typeName;
+      a.setAttribute("href", "list.html?article_type=" + encodeURIComponent(typeName));
+      track.appendChild(a);
+    }
+
+    // First pass
+    types.forEach(appendType);
+
+    // Duplicate once for seamless scroll animation
+    types.forEach(appendType);
+  }
+
+  // When kw-bar HTML is injected, build pills
+  window.addEventListener("kwLoaded", function () {
+    renderKwBarDynamic();
+  });
+
+  // Safety: if kw-bar exists directly in HTML (not injected)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      renderKwBarDynamic();
+    });
+  } else {
+    renderKwBarDynamic();
+  }
+// Load footer component
   (async function() {
     try {
       const response = await fetch('/static/components/footer.html', { cache: 'no-store' });

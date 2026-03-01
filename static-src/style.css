@@ -1646,17 +1646,25 @@ footer{
       padding-right: 15px;}
   .page-title{ font-size:1.5rem; margin-bottom:6px;}
   .controls{ grid-template-columns:1fr; gap:12px; padding:12px 15px; margin-bottom:15px;}
+
+  /* ✅ SP: list.html tile grid should be 2 equal columns */
   .grid{ 
-      grid-template-columns:1fr !important; 
+      grid-template-columns:repeat(2, 1fr) !important; 
       gap:1px !important;
       padding:0 !important;}
-  .large{ grid-column:span 12; grid-row:span 1;}
-  .medium{ grid-column:span 6;}
-  .small{ grid-column:span 4;}
-  .medium:nth-of-type(5){ display: none;}
+
+  /* Make all tiles equal-sized squares on SP */
+  .large,
+  .medium,
+  .small{
+      grid-column:span 1 !important;
+      grid-row:auto !important;
+  }
+
   .tile-content{ padding:8px;}
   .tile-title{ font-size:0.7rem;}
-  .large .tile-title{ font-size:1.1rem;}
+  .large .tile-title{ font-size:0.7rem;}
+
   .sp-lanes{ 
       display:block !important; 
       overflow-x:auto !important;
@@ -2562,7 +2570,7 @@ header img, nav img, footer img{aspect-ratio: auto; height: auto; object-fit: co
     display: block !important;
     background: white !important;}
   .lane-track{ gap:1px; padding:0}
-  .tile{ width:calc(100vw / 3) !important; box-shadow:none !important}
+  .tile{ width:calc(100vw / 2) !important; box-shadow:none !important}
   .tile .cap{ padding:6px; font-size:0.75rem}
   .cat{ width:100vw; padding:20px 0}
   .cat h2{ padding:0 10px}
@@ -11961,4 +11969,31 @@ body.page-feature .pest-name{
   .columnist-name{ font-size: 1.15rem !important; }
   .columnist-affiliation{ font-size: 0.9rem !important; }
   .columnist-bio{ font-size: 0.85rem !important; }
+}
+
+
+/* =====================================================
+   FIX: list.html SP grid must be 2 columns (override global .grid,.masonry 1-column rule)
+   - Keep all tiles equal size squares (existing rules already force span 1)
+   ===================================================== */
+@media (max-width:768px){
+  .main .grid{
+    grid-template-columns:repeat(2, 1fr) !important;
+  }
+}
+
+/* =====================================================
+   DETAIL PAGE – Center CTA buttons on larger screens
+   ===================================================== */
+@media (min-width: 769px){
+  .cta-section{
+    text-align: center;
+  }
+
+  .hero-actions{
+    display: flex;
+    justify-content: center;   /* Center horizontally */
+    align-items: center;
+    gap: 16px;
+  }
 }
