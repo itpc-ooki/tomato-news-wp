@@ -6856,6 +6856,51 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
   }
 
 
+/* =====================================================
+   WEBセミナー（SP版）: <div class="seminar-item"> layout
+   - Match TOMATO_WEBSEMINAR_20260123.html mockup
+   ===================================================== */
+@media (max-width: 768px){
+  .past-seminars-section{
+    padding: 0;
+  }
+
+  .seminar-item{
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-bottom: 20px;
+    box-shadow: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .seminar-video,
+  .seminar-video-wrapper,
+  .seminar-video-wrapper img{
+    border-radius: 0;
+  }
+
+  .play-icon{
+    width: 64px;
+    height: 64px;
+  }
+
+  .seminar-article{
+    padding: 16px;
+    background: #fff;
+  }
+
+  .article-thumbnail{
+    border-radius: 0;
+    margin-bottom: 12px;
+  }
+
+  .article-excerpt{
+    -webkit-line-clamp: 4;
+  }
+}
+
+
+
 .ad{
     display:flex; align-items:center; justify-content:center;
     background:#f8fafc; border:1px dashed #cbd5e1; color:#475569;
