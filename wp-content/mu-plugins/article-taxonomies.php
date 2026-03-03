@@ -79,6 +79,55 @@ add_action('init', function () {
     'rewrite'           => ['slug' => 'season'],
   ]);
 
+  // Region（産地）
+  register_taxonomy('region', ['post'], [
+    'labels' => [
+      'name'              => '産地',
+      'singular_name'     => '産地',
+      'menu_name'         => '産地',
+      'all_items'         => 'すべての産地',
+      'add_new_item'      => '新しい産地を追加',
+      'edit_item'         => '産地を編集',
+      'update_item'       => '産地を更新',
+      'search_items'      => '産地を検索',
+    ],
+    'public'            => true,
+    'show_ui'           => true,
+    'show_admin_column' => true,
+    'hierarchical'      => true,  // チェックボックス表示
+    'meta_box_cb'       => 'tn_region_meta_box', // チェックボックスUI
+    // NOTE:
+    // Block Editor (Gutenberg) renders taxonomy panels via REST.
+    // For Region we need a strict single-select UI + dependent Prefecture filtering.
+    // Disabling REST for these taxonomies hides the Gutenberg panels and ensures
+    // the classic meta boxes (meta_box_cb) are used.
+    'show_in_rest'      => false,
+    'rewrite'           => ['slug' => 'region'],
+  ]);
+
+  // Prefecture（都道府県）
+  register_taxonomy('prefecture', ['post'], [
+    'labels' => [
+      'name'              => '都道府県',
+      'singular_name'     => '都道府県',
+      'menu_name'         => '産地（都道府県）',
+      'all_items'         => 'すべての都道府県',
+      'add_new_item'      => '新しい都道府県を追加',
+      'edit_item'         => '都道府県を編集',
+      'update_item'       => '都道府県を更新',
+      'search_items'      => '都道府県を検索',
+    ],
+    'public'            => true,
+    'show_ui'           => true,
+    'show_admin_column' => true,
+    'hierarchical'      => true,  // チェックボックス表示
+    'meta_box_cb'       => 'post_categories_meta_box', // チェックボックスUI
+    // See Region taxonomy note above.
+    'show_in_rest'      => true,
+    'rewrite'           => ['slug' => 'prefecture'],
+  ]);
+
+
 }, 10);
 
 // --------------------------------------------------
@@ -101,6 +150,382 @@ add_action('init', function () {
   }
 }, 11);
 
+
+// --------------------------------------------------
+// Ensure default Region / Prefecture terms exist
+// - Prefecture terms store their Region name in term meta: region_name
+//   (used by cli-static-build.php to derive region when needed)
+// --------------------------------------------------
+add_action('init', function () {
+  // Region terms
+  if (taxonomy_exists('region')) {
+    $regions = [
+      ['name' => '北海道', 'slug' => 'hokkaido'],
+      ['name' => '東北',   'slug' => 'tohoku'],
+      ['name' => '関東',   'slug' => 'kanto'],
+      ['name' => '中部',   'slug' => 'chubu'],
+      ['name' => '近畿',   'slug' => 'kinki'],
+      ['name' => '中国',   'slug' => 'chugoku'],
+      ['name' => '四国',   'slug' => 'shikoku'],
+      ['name' => '九州',   'slug' => 'kyushu'],
+    ];
+
+    foreach ($regions as $t) {
+      if (!term_exists($t['slug'], 'region')) {
+        wp_insert_term($t['name'], 'region', ['slug' => $t['slug']]);
+      }
+    }
+  }
+
+  // Prefecture terms (47)
+  if (taxonomy_exists('prefecture')) {
+    $pref_map = [
+      '北海道' => [
+        ['name' => '北海道', 'slug' => 'hokkaido'],
+      ],
+      '東北' => [
+        ['name' => '青森県', 'slug' => 'aomori'],
+        ['name' => '岩手県', 'slug' => 'iwate'],
+        ['name' => '宮城県', 'slug' => 'miyagi'],
+        ['name' => '秋田県', 'slug' => 'akita'],
+        ['name' => '山形県', 'slug' => 'yamagata'],
+        ['name' => '福島県', 'slug' => 'fukushima'],
+      ],
+      '関東' => [
+        ['name' => '茨城県', 'slug' => 'ibaraki'],
+        ['name' => '栃木県', 'slug' => 'tochigi'],
+        ['name' => '群馬県', 'slug' => 'gunma'],
+        ['name' => '埼玉県', 'slug' => 'saitama'],
+        ['name' => '千葉県', 'slug' => 'chiba'],
+        ['name' => '東京都', 'slug' => 'tokyo'],
+        ['name' => '神奈川県', 'slug' => 'kanagawa'],
+      ],
+      '中部' => [
+        ['name' => '新潟県', 'slug' => 'niigata'],
+        ['name' => '富山県', 'slug' => 'toyama'],
+        ['name' => '石川県', 'slug' => 'ishikawa'],
+        ['name' => '福井県', 'slug' => 'fukui'],
+        ['name' => '山梨県', 'slug' => 'yamanashi'],
+        ['name' => '長野県', 'slug' => 'nagano'],
+        ['name' => '岐阜県', 'slug' => 'gifu'],
+        ['name' => '静岡県', 'slug' => 'shizuoka'],
+        ['name' => '愛知県', 'slug' => 'aichi'],
+      ],
+      '近畿' => [
+        ['name' => '三重県', 'slug' => 'mie'],
+        ['name' => '滋賀県', 'slug' => 'shiga'],
+        ['name' => '京都府', 'slug' => 'kyoto'],
+        ['name' => '大阪府', 'slug' => 'osaka'],
+        ['name' => '兵庫県', 'slug' => 'hyogo'],
+        ['name' => '奈良県', 'slug' => 'nara'],
+        ['name' => '和歌山県', 'slug' => 'wakayama'],
+      ],
+      '中国' => [
+        ['name' => '鳥取県', 'slug' => 'tottori'],
+        ['name' => '島根県', 'slug' => 'shimane'],
+        ['name' => '岡山県', 'slug' => 'okayama'],
+        ['name' => '広島県', 'slug' => 'hiroshima'],
+        ['name' => '山口県', 'slug' => 'yamaguchi'],
+      ],
+      '四国' => [
+        ['name' => '徳島県', 'slug' => 'tokushima'],
+        ['name' => '香川県', 'slug' => 'kagawa'],
+        ['name' => '愛媛県', 'slug' => 'ehime'],
+        ['name' => '高知県', 'slug' => 'kochi'],
+      ],
+      '九州' => [
+        ['name' => '福岡県', 'slug' => 'fukuoka'],
+        ['name' => '佐賀県', 'slug' => 'saga'],
+        ['name' => '長崎県', 'slug' => 'nagasaki'],
+        ['name' => '熊本県', 'slug' => 'kumamoto'],
+        ['name' => '大分県', 'slug' => 'oita'],
+        ['name' => '宮崎県', 'slug' => 'miyazaki'],
+        ['name' => '鹿児島県', 'slug' => 'kagoshima'],
+        ['name' => '沖縄県', 'slug' => 'okinawa'],
+      ],
+    ];
+
+    foreach ($pref_map as $region_name => $prefs) {
+      foreach ($prefs as $t) {
+        $term = term_exists($t['slug'], 'prefecture');
+        if (!$term) {
+          $term = wp_insert_term($t['name'], 'prefecture', ['slug' => $t['slug']]);
+        }
+        if (!is_wp_error($term) && isset($term['term_id'])) {
+          update_term_meta((int) $term['term_id'], 'region_name', $region_name);
+        }
+      }
+    }
+  }
+}, 11);
+
+
+
+
+// --------------------------------------------------
+// Custom meta box: Region (single select) + Prefecture filter by Region
+// --------------------------------------------------
+
+/**
+ * Render Region taxonomy as single-select (radio buttons).
+ * This replaces the default checkbox meta box for 'region'.
+ */
+function tn_region_meta_box($post, $box) {
+  $taxonomy = isset($box['args']['taxonomy']) ? $box['args']['taxonomy'] : 'region';
+  $tax = get_taxonomy($taxonomy);
+  if (!$tax) return;
+
+  // Nonce for save handler
+  wp_nonce_field('tn_region_metabox', 'tn_region_metabox_nonce');
+
+  // Desired display order (by term name)
+  $desired_order = ['北海道', '東北', '関東', '中部', '近畿', '中国', '四国', '九州'];
+
+  $terms = get_terms([
+    'taxonomy'   => $taxonomy,
+    'hide_empty' => false,
+  ]);
+
+  if (!is_wp_error($terms) && !empty($terms)) {
+    usort($terms, function($a, $b) use ($desired_order) {
+      $ai = array_search($a->name, $desired_order, true);
+      $bi = array_search($b->name, $desired_order, true);
+      $ai = ($ai === false) ? 999 : $ai;
+      $bi = ($bi === false) ? 999 : $bi;
+      if ($ai === $bi) {
+        // Fallback stable ordering
+        return strcmp((string)$a->name, (string)$b->name);
+      }
+      return $ai - $bi;
+    });
+  }
+
+  $current_ids = wp_get_post_terms($post->ID, $taxonomy, ['fields' => 'ids']);
+  $current_ids = (!is_wp_error($current_ids) && !empty($current_ids)) ? array_map('intval', (array)$current_ids) : [];
+
+  echo '<div id="taxonomy-' . esc_attr($taxonomy) . '" class="categorydiv">';
+  echo '<p style="margin:6px 0 10px; font-size:12px; color:#50575e;">複数選択できます（解除するにはチェックを外してください）。</p>';
+  echo '<ul id="' . esc_attr($taxonomy) . 'checklist" class="categorychecklist form-no-clear">';
+
+  if (!is_wp_error($terms) && !empty($terms)) {
+    foreach ($terms as $t) {
+      $tid = (int)$t->term_id;
+      $checked = in_array($tid, $current_ids, true) ? ' checked="checked"' : '';
+      echo '<li id="' . esc_attr($taxonomy) . '-' . esc_attr($tid) . '"><label class="selectit">';
+      echo '<input type="checkbox" name="tax_input[' . esc_attr($taxonomy) . '][]" value="' . esc_attr($tid) . '"' . $checked . ' /> ';
+      echo esc_html($t->name);
+      echo '</label></li>';
+    }
+  }
+
+  echo '</ul></div>';
+}
+
+/**
+ * Enforce:
+ * - Region: single term only
+ * - Prefecture: only terms belonging to selected Region
+ */
+add_action('save_post', function ($post_id, $post, $update) {
+  // Only for posts (same as taxonomy registration)
+  if (!is_object($post) || $post->post_type !== 'post') return;
+
+  // Autosave / permissions
+  if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+  if (!current_user_can('edit_post', $post_id)) return;
+
+  // Nonce check (only if our meta box was present)
+  if (isset($_POST['tn_region_metabox_nonce']) && !wp_verify_nonce($_POST['tn_region_metabox_nonce'], 'tn_region_metabox')) {
+    return;
+  }
+
+  // --- Region (multi) ---
+  $region_ids = [];
+  if (isset($_POST['tax_input']['region']) && is_array($_POST['tax_input']['region'])) {
+    $region_ids = array_map('intval', $_POST['tax_input']['region']);
+    $region_ids = array_values(array_filter($region_ids, function ($v) { return $v > 0; }));
+  }
+
+  if (!empty($region_ids)) {
+    wp_set_object_terms($post_id, $region_ids, 'region', false);
+  } else {
+    wp_set_object_terms($post_id, [], 'region', false);
+  }
+
+  // Resolve selected region names for prefecture filtering
+  $region_names = [];
+  if (!empty($region_ids)) {
+    $r_terms = get_terms([
+      'taxonomy'   => 'region',
+      'hide_empty' => false,
+      'include'    => $region_ids,
+    ]);
+    if (!is_wp_error($r_terms) && !empty($r_terms)) {
+      foreach ($r_terms as $rt) {
+        if (isset($rt->name) && $rt->name !== '') $region_names[] = $rt->name;
+      }
+    }
+  }
+  $region_names = array_values(array_unique($region_names));
+
+  // --- Prefecture (multi, filtered) ---
+  if (!isset($_POST['tax_input']['prefecture']) || !is_array($_POST['tax_input']['prefecture'])) {
+    // If no input, do nothing (WP will clear via its own handler when metabox is present)
+    return;
+  }
+
+  $raw_ids = array_map('intval', $_POST['tax_input']['prefecture']);
+  $raw_ids = array_values(array_filter($raw_ids, function ($v) { return $v > 0; }));
+
+  // If no region selected, do NOT allow prefecture selection (clear)
+  if (empty($region_names)) {
+    wp_set_object_terms($post_id, [], 'prefecture', false);
+    return;
+  }
+
+  $allowed_ids = [];
+  foreach ($raw_ids as $pid) {
+    $p_region = get_term_meta($pid, 'region_name', true);
+    if ($p_region && in_array($p_region, $region_names, true)) {
+      $allowed_ids[] = $pid;
+    }
+  }
+
+  wp_set_object_terms($post_id, $allowed_ids, 'prefecture', false);
+
+}, 10, 3);
+
+
+/**
+ * Admin UI: filter Prefecture checklist based on selected Region (radio)
+ * - hides/disables prefectures not in the selected region
+ */
+add_action('admin_footer-post.php', 'tn_region_prefecture_admin_script');
+add_action('admin_footer-post-new.php', 'tn_region_prefecture_admin_script');
+function tn_region_prefecture_admin_script() {
+  $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+  if (!$screen || $screen->base !== 'post') return;
+  if ($screen->post_type !== 'post') return;
+
+  // Build mapping: region term_id -> region name
+  $region_terms = get_terms(['taxonomy' => 'region', 'hide_empty' => false]);
+  $regionIdToName = [];
+  if (!is_wp_error($region_terms)) {
+    foreach ($region_terms as $rt) {
+      $regionIdToName[(string)$rt->term_id] = $rt->name;
+    }
+  }
+
+  // Build mapping: region name -> allowed prefecture term_ids
+  $pref_terms = get_terms(['taxonomy' => 'prefecture', 'hide_empty' => false]);
+  $regionNameToPrefIds = [];
+  if (!is_wp_error($pref_terms)) {
+    foreach ($pref_terms as $pt) {
+      $rname = get_term_meta($pt->term_id, 'region_name', true);
+      if (!$rname) continue;
+      if (!isset($regionNameToPrefIds[$rname])) $regionNameToPrefIds[$rname] = [];
+      $regionNameToPrefIds[$rname][] = (int)$pt->term_id;
+    }
+  }
+
+  ?>
+<script>
+(function(){
+  var prefChecklist = document.getElementById('prefecturechecklist');
+  if(!prefChecklist) return;
+
+  var regionIdToName = <?php echo wp_json_encode($regionIdToName); ?>;
+  var regionNameToPrefIds = <?php echo wp_json_encode($regionNameToPrefIds); ?>;
+
+  function ensureNotice(){
+    var existing = document.getElementById('tn-prefecture-note');
+    if(existing) return existing;
+    var note = document.createElement('div');
+    note.id = 'tn-prefecture-note';
+    note.style.margin = '8px 0';
+    note.style.padding = '8px 10px';
+    note.style.border = '1px solid #dcdcde';
+    note.style.background = '#fff';
+    note.style.borderRadius = '4px';
+    note.style.fontSize = '12px';
+    note.style.color = '#50575e';
+    note.textContent = 'まず「産地」を選択してください。選択した産地に属する都道府県のみ表示されます（複数選択可）。';
+    prefChecklist.parentNode.insertBefore(note, prefChecklist);
+    return note;
+  }
+
+  function getSelectedRegionIds(){
+    var els = document.querySelectorAll('input[name="tax_input[region][]"]:checked');
+    if(!els || !els.length) return [];
+    var ids = [];
+    els.forEach(function(el){
+      var v = parseInt(el.value, 10);
+      if(v) ids.push(v);
+    });
+    return ids;
+  }
+
+  function computeAllowedPrefectureIds(regionIds){
+    var allowed = [];
+    regionIds.forEach(function(rid){
+      var rname = regionIdToName[String(rid)];
+      if(!rname) return;
+      var pids = regionNameToPrefIds[rname] || [];
+      pids.forEach(function(pid){
+        allowed.push(String(pid));
+      });
+    });
+    // unique
+    return Array.from(new Set(allowed));
+  }
+
+  function applyPrefFilter(){
+    var regionIds = getSelectedRegionIds();
+    var allowed = computeAllowedPrefectureIds(regionIds);
+
+    var note = ensureNotice();
+    if(regionIds.length){
+      var names = regionIds.map(function(id){ return regionIdToName[String(id)] || ''; }).filter(Boolean);
+      if(note) note.textContent = '都道府県（複数選択可）：' + names.join(' / ') + ' に属する都道府県のみ表示しています。';
+    } else {
+      if(note) note.textContent = 'まず「産地」を選択してください。選択した産地に属する都道府県のみ表示されます（複数選択可）。';
+    }
+
+    var inputs = prefChecklist.querySelectorAll('input[type="checkbox"]');
+    inputs.forEach(function(cb){
+      var termId = String(cb.value);
+      var li = cb.closest('li');
+
+      if(!regionIds.length){
+        cb.checked = false;
+        cb.disabled = true;
+        if(li) li.style.display = 'none';
+        return;
+      }
+
+      var ok = allowed.indexOf(termId) !== -1;
+      if(ok){
+        if(li) li.style.display = '';
+        cb.disabled = false;
+      } else {
+        cb.checked = false;
+        cb.disabled = true;
+        if(li) li.style.display = 'none';
+      }
+    });
+  }
+
+  document.addEventListener('change', function(e){
+    if(e.target && e.target.name === 'tax_input[region][]'){
+      applyPrefFilter();
+    }
+  });
+
+  applyPrefFilter();
+})();
+</script>
+  <?php
+}
 
 
 // --------------------------------------------------
@@ -129,7 +554,7 @@ add_action('add_meta_boxes', function () {
 // Hide Parent UI for article_tag (we want checkbox selection but no parent concept)
 // --------------------------------------------------
 add_action('admin_head-edit-tags.php', function () {
-  if (!isset($_GET['taxonomy']) || !in_array($_GET['taxonomy'], ['article_tag', 'season'], true)) {
+  if (!isset($_GET['taxonomy']) || !in_array($_GET['taxonomy'], ['article_tag', 'season', 'region', 'prefecture'], true)) {
     return;
   }
   echo '<style>

@@ -46,6 +46,234 @@ add_action('init', function () {
 });
 
 /**
+ * 1c) Taxonomy: variety_category（品種カテゴリ）
+ * - ACF「カテゴリ（variety_category）」のプルダウンを、管理画面で編集可能にするための分類
+ * - term slug を varieties.json の category 値として利用（例: large / midi / mini / rootstock）
+ */
+add_action('init', function () {
+  $tax = 'variety_category';
+
+  register_taxonomy($tax, ['variety','post'], [
+    'label' => '品種カテゴリ',
+
+    // Keep it editable in admin, but do not expose public archives/queries.
+    // NOTE: Some WP/Gutenberg setups can fail to persist taxonomy selections when public=false,
+    // even if show_in_rest=true. Using public=true + publicly_queryable=false keeps it admin-only
+    // while ensuring term assignment works reliably.
+    'public' => true,
+    'publicly_queryable' => false,
+    'query_var' => false,
+    'rewrite' => false,
+
+    'show_ui' => true,
+    'show_in_menu' => true,
+    'show_admin_column' => true,
+
+    // IMPORTANT:
+    // - hierarchical=true makes it behave like Categories (no "Add Tag" UI)
+    // - show_in_rest=true is required for Gutenberg to show the taxonomy panel in the post sidebar
+    'hierarchical' => true,
+    'show_in_rest' => true,
+    'rest_base' => $tax,
+    'rest_controller_class' => 'WP_REST_Terms_Controller',
+  ]);
+
+  // Seed default terms (only if missing)
+  // NOTE: Admin can freely add/edit/delete terms later from WP admin.
+  $defaults = [
+    'large'     => '大玉トマト',
+    'midi'      => 'ミディトマト',
+    'mini'      => 'ミニトマト',
+    'rootstock' => '台木用トマト',
+  ];
+
+  foreach ($defaults as $slug => $name) {
+    if (!term_exists($slug, $tax)) {
+      wp_insert_term($name, $tax, ['slug' => $slug]);
+    }
+  }
+});
+
+
+
+/**
+ * 1d) Meta box: 品種カテゴリ (variety_category) dropdown on Post edit screen
+ * - Places a single-select dropdown in the sidebar so editors can choose ONE 品種カテゴリ for a post.
+ * - We remove the default tags-style meta box and replace it with a dropdown.
+ */
+add_action('add_meta_boxes', function () {
+  $post_types = ['post', 'variety'];
+  $tax = 'variety_category';
+
+  foreach ($post_types as $pt) {
+    // If the block editor is enabled for this post type, Gutenberg will render the taxonomy UI
+    // in the right sidebar (because show_in_rest=true). In that case, DO NOT add a custom meta box
+    // (Gutenberg does not reliably submit meta-box POST fields, so selections may not persist).
+    if (function_exists('use_block_editor_for_post_type') && use_block_editor_for_post_type($pt)) {
+      // Still remove any legacy meta boxes if present.
+      remove_meta_box('tagsdiv-' . $tax, $pt, 'side');
+      remove_meta_box($tax . 'div', $pt, 'side');
+      continue;
+    }
+
+    // Default non-hierarchical taxonomy box id is "tagsdiv-{$tax}" (tags UI). Remove if present.
+    remove_meta_box('tagsdiv-' . $tax, $pt, 'side');
+    // (Just in case) hierarchical-style id would be "{$tax}div"
+    remove_meta_box($tax . 'div', $pt, 'side');
+
+    add_meta_box(
+      'tn-' . $tax . '-dropdown',
+      '品種カテゴリ',
+      function ($post) use ($tax) {
+        $terms = get_terms([
+          'taxonomy' => $tax,
+          'hide_empty' => false,
+          'orderby' => 'name',
+          'order' => 'ASC',
+        ]);
+
+        $current_terms = wp_get_post_terms($post->ID, $tax, ['fields' => 'ids']);
+        $current = (!is_wp_error($current_terms) && !empty($current_terms)) ? intval($current_terms[0]) : 0;
+
+        $nonce_key = 'tn_' . $tax . '_nonce';
+        wp_nonce_field('tn_save_' . $tax, $nonce_key);
+
+        echo '<select name="tn_' . esc_attr($tax) . '_term" style="width:100%;">';
+        echo '<option value="0">— 選択してください —</option>';
+
+        if (!is_wp_error($terms) && !empty($terms)) {
+          foreach ($terms as $t) {
+            if (!isset($t->term_id)) continue;
+            $tid = intval($t->term_id);
+            $name = isset($t->name) ? $t->name : '';
+            printf(
+              '<option value="%d"%s>%s</option>',
+              $tid,
+              selected($current, $tid, false),
+              esc_html($name)
+            );
+          }
+        }
+
+        echo '</select>';
+        echo '<p class="description" style="margin-top:8px;">※ 1つだけ選択できます。</p>';
+      },
+      $pt,
+      'side',
+      'default'
+    );
+  }
+}, 30);
+
+
+/**
+ * Save handler for 品種カテゴリ dropdown
+ */
+add_action('save_post', function ($post_id) {
+
+  $tax = 'variety_category';
+
+  // Only for supported post types
+  $pt = get_post_type($post_id);
+  if (!in_array($pt, ['post','variety'], true)) return;
+
+  // Autosave / revisions
+  if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+  if (wp_is_post_revision($post_id)) return;
+
+  // Permission
+  if (!current_user_can('edit_post', $post_id)) return;
+
+  // Nonce
+  $nonce_key = 'tn_' . $tax . '_nonce';
+  if (!isset($_POST[$nonce_key]) || !wp_verify_nonce($_POST[$nonce_key], 'tn_save_' . $tax)) return;
+
+  // Value
+  $term_key = 'tn_' . $tax . '_term';
+  if (!isset($_POST[$term_key])) return;
+
+  $term_id = intval($_POST[$term_key]);
+
+  if ($term_id > 0) {
+    wp_set_object_terms($post_id, [$term_id], $tax, false);
+  } else {
+    // Clear selection
+    wp_set_object_terms($post_id, [], $tax, false);
+  }
+}, 20);
+
+
+
+
+/**
+ * 1e) Gutenberg/REST save support for variety_category (品種カテゴリ)
+ * Gutenberg saves taxonomies through the REST API. In some environments (mu-plugins load order / custom meta-box logic),
+ * the taxonomy selection can appear in the sidebar but not persist after saving.
+ *
+ * This hook ensures the selected term IDs sent by REST are actually assigned to the post.
+ */
+add_action('rest_after_insert_post', function ($post, $request, $creating) {
+  if (!is_object($post) || !isset($post->ID)) return;
+  if (!isset($post->post_type) || !in_array($post->post_type, ['post','variety'], true)) return;
+
+  $tax = 'variety_category';
+  if (!taxonomy_exists($tax)) return;
+
+  if (!is_object($request) || !method_exists($request, 'get_param')) return;
+
+  // Gutenberg/REST usually sends the taxonomy terms as an array of term IDs under the taxonomy rest_base.
+  // Some setups instead send it under tax_input.{taxonomy}. Support both.
+  $param = $request->get_param($tax);
+
+  if ($param === null) {
+    $tax_input = $request->get_param('tax_input');
+    if (is_array($tax_input) && isset($tax_input[$tax])) {
+      $param = $tax_input[$tax];
+    }
+  }
+
+  // If the param is not present, do not touch existing terms.
+  if ($param === null) return;
+
+  // Normalize to a flat array.
+  $raw = [];
+  if (is_array($param)) {
+    $raw = $param;
+  } elseif (is_string($param) && $param !== '') {
+    $raw = array_map('trim', explode(',', $param));
+  } elseif (is_int($param)) {
+    $raw = [$param];
+  }
+
+  $term_ids = [];
+
+  foreach ((array)$raw as $v) {
+    // Support numeric IDs, slugs, or names.
+    if (is_int($v) || (is_string($v) && ctype_digit($v))) {
+      $tid = intval($v);
+      if ($tid > 0) $term_ids[] = $tid;
+      continue;
+    }
+
+    if (is_string($v) && $v !== '') {
+      $t = get_term_by('slug', $v, $tax);
+      if (!$t) {
+        $t = get_term_by('name', $v, $tax);
+      }
+      if ($t && !is_wp_error($t) && isset($t->term_id)) {
+        $term_ids[] = intval($t->term_id);
+      }
+    }
+  }
+
+  $term_ids = array_values(array_unique(array_filter($term_ids, function ($x) { return $x > 0; })));
+
+  // Assign (or clear) the terms.
+  wp_set_object_terms($post->ID, $term_ids, $tax, false);
+}, 10, 3);
+
+
+/**
  * 2) ACF Field Groups
  * - 新聞マスタ設定
  * - 広告枠（ad_item）設定
@@ -345,12 +573,9 @@ add_action('acf/init', function () {
         'label' => 'カテゴリ',
         'name' => 'variety_category',
         'type' => 'select',
-        'choices' => [
-          'large' => '大玉トマト',
-          'midi' => 'ミディトマト',
-          'mini' => 'ミニトマト',
-          'rootstock' => '台木用トマト',
-        ],
+        // choices are populated dynamically from taxonomy terms (variety_category)
+        // so admin users can edit/add options from WP admin.
+        'choices' => [],
         'default_value' => 'large',
         'return_format' => 'value',
         'ui' => 1,
@@ -583,6 +808,51 @@ add_action('acf/init', function () {
 
 
 
+});
+
+
+/**
+ * ACF: Populate 品種マスタ「カテゴリ（variety_category）」 choices from taxonomy terms.
+ * - key/value: { term_slug => term_name }
+ * - This keeps the stored value as the slug (compatible with existing varieties.json export).
+ */
+add_filter('acf/load_field/name=variety_category', function ($field) {
+  $tax = 'variety_category';
+  if (!taxonomy_exists($tax)) return $field;
+
+  $terms = get_terms([
+    'taxonomy' => $tax,
+    'hide_empty' => false,
+    'orderby' => 'name',
+    'order' => 'ASC',
+  ]);
+
+  $choices = [];
+  if (!is_wp_error($terms) && is_array($terms)) {
+    foreach ($terms as $t) {
+      if (!isset($t->slug) || !isset($t->name)) continue;
+      $choices[(string) $t->slug] = (string) $t->name;
+    }
+  }
+
+  // If no terms exist for some reason, keep the field usable.
+  if (count($choices) === 0) {
+    $choices = [
+      'large'     => '大玉トマト',
+      'midi'      => 'ミディトマト',
+      'mini'      => 'ミニトマト',
+      'rootstock' => '台木用トマト',
+    ];
+  }
+
+  $field['choices'] = $choices;
+
+  // Default value safety
+  if (empty($field['default_value']) || !isset($choices[$field['default_value']])) {
+    $field['default_value'] = array_key_first($choices);
+  }
+
+  return $field;
 });
 
 

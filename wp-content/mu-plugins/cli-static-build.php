@@ -770,9 +770,80 @@ $desc     = function_exists('get_field') ? (string) get_field('description', $id
       ]],
     ]);
 
-    $list = [];
+    
+$list = [];
+
+    // Region/Prefecture mapping (used to derive region from prefecture when region is not selected)
+    $prefecture_to_region = [
+      '北海道' => '北海道',
+
+      '青森県' => '東北',
+      '岩手県' => '東北',
+      '宮城県' => '東北',
+      '秋田県' => '東北',
+      '山形県' => '東北',
+      '福島県' => '東北',
+
+      '茨城県' => '関東',
+      '栃木県' => '関東',
+      '群馬県' => '関東',
+      '埼玉県' => '関東',
+      '千葉県' => '関東',
+      '東京都' => '関東',
+      '神奈川県' => '関東',
+
+      '新潟県' => '中部',
+      '富山県' => '中部',
+      '石川県' => '中部',
+      '福井県' => '中部',
+      '山梨県' => '中部',
+      '長野県' => '中部',
+      '岐阜県' => '中部',
+      '静岡県' => '中部',
+      '愛知県' => '中部',
+
+      '三重県' => '近畿',
+      '滋賀県' => '近畿',
+      '京都府' => '近畿',
+      '大阪府' => '近畿',
+      '兵庫県' => '近畿',
+      '奈良県' => '近畿',
+      '和歌山県' => '近畿',
+
+      '鳥取県' => '中国',
+      '島根県' => '中国',
+      '岡山県' => '中国',
+      '広島県' => '中国',
+      '山口県' => '中国',
+
+      '徳島県' => '四国',
+      '香川県' => '四国',
+      '愛媛県' => '四国',
+      '高知県' => '四国',
+
+      '福岡県' => '九州',
+      '佐賀県' => '九州',
+      '長崎県' => '九州',
+      '熊本県' => '九州',
+      '大分県' => '九州',
+      '宮崎県' => '九州',
+      '鹿児島県' => '九州',
+      '沖縄県' => '九州',
+    ];
+
+    $region_name_to_slug = [
+      '北海道' => 'hokkaido',
+      '東北'   => 'tohoku',
+      '関東'   => 'kanto',
+      '中部'   => 'chubu',
+      '近畿'   => 'kinki',
+      '中国'   => 'chugoku',
+      '四国'   => 'shikoku',
+      '九州'   => 'kyushu',
+    ];
 
     if ($q->have_posts()) {
+
       foreach ($q->posts as $p) {
         if (!($p instanceof WP_Post)) continue;
 
@@ -821,6 +892,146 @@ $desc     = function_exists('get_field') ? (string) get_field('description', $id
           $season = isset($st->name) ? $st->name : null;
           $season_slug = isset($st->slug) ? $st->slug : null;
         }
+        // variety_category (taxonomy: variety_category / 品種カテゴリ)
+        // Multi-select in admin. We export both:
+        // - variety_categories / variety_category_slugs (arrays)
+        // - variety_category / variety_category_slug (first item, backward compatible)
+        // e.g. "大玉トマト" / "ミディトマト" / "ミニトマト" / "台木用トマト"
+        $variety_category_terms = wp_get_post_terms($post_id, 'variety_category', ['fields' => 'all']);
+        $variety_categories = [];
+        $variety_category_slugs = [];
+        $variety_category = null;
+        $variety_category_slug = null;
+
+        if (!is_wp_error($variety_category_terms) && !empty($variety_category_terms)) {
+          foreach ($variety_category_terms as $vt) {
+            if (!isset($vt->name) || !isset($vt->slug)) continue;
+            $variety_categories[] = $vt->name;
+            $variety_category_slugs[] = $vt->slug;
+          }
+        } else {
+          // Fallbacks:
+          // - In some setups the selected value may be stored via ACF (taxonomy field) or post meta.
+          // - Keep export resilient so posts.json always contains the chosen value.
+          $fallback = null;
+
+          // ACF taxonomy field (if exists) may return term object / term_id / array
+          $acf_val = self::get_acf_field_value('variety_category', $post_id);
+          if (!empty($acf_val)) {
+            $fallback = $acf_val;
+          } else {
+            // Generic post meta fallback (could be slug, name, or term_id)
+            $meta_val = get_post_meta($post_id, 'variety_category', true);
+            if (!empty($meta_val)) {
+              $fallback = $meta_val;
+            }
+          }
+
+          // Normalize fallback into a list
+          $fallback_list = [];
+          if (is_array($fallback)) {
+            $fallback_list = $fallback;
+          } elseif (!empty($fallback)) {
+            $fallback_list = [$fallback];
+          }
+
+          foreach ($fallback_list as $fb) {
+            $term_obj = null;
+            if (is_object($fb) && isset($fb->term_id)) {
+              $term_obj = $fb; // likely WP_Term
+            } elseif (is_numeric($fb)) {
+              $term_obj = get_term(intval($fb), 'variety_category');
+            } elseif (is_string($fb)) {
+              $maybe = sanitize_title($fb);
+              $term_obj = get_term_by('slug', $maybe, 'variety_category');
+              if (!$term_obj) {
+                $term_obj = get_term_by('name', $fb, 'variety_category');
+              }
+            }
+
+            if ($term_obj && !is_wp_error($term_obj) && isset($term_obj->name) && isset($term_obj->slug)) {
+              $variety_categories[] = $term_obj->name;
+              $variety_category_slugs[] = $term_obj->slug;
+            }
+          }
+        }
+
+        // De-duplicate and set backward-compatible first values
+        if (!empty($variety_categories)) {
+          $variety_categories = array_values(array_unique($variety_categories));
+        }
+        if (!empty($variety_category_slugs)) {
+          $variety_category_slugs = array_values(array_unique($variety_category_slugs));
+        }
+        if (!empty($variety_categories)) {
+          $variety_category = $variety_categories[0];
+        }
+        if (!empty($variety_category_slugs)) {
+          $variety_category_slug = $variety_category_slugs[0];
+        }
+
+        // region (taxonomy: region / 産地)
+        // Multi-select in admin. We export both:
+        // - regions / region_slugs (arrays)
+        // - region / region_slug (first item, backward compatible)
+        $region_terms = wp_get_post_terms($post_id, 'region', ['fields' => 'all']);
+        $regions = [];
+        $region_slugs = [];
+        $region = null;
+        $region_slug = null;
+        if (!is_wp_error($region_terms) && !empty($region_terms)) {
+          foreach ($region_terms as $rt) {
+            if (!isset($rt->name) || !isset($rt->slug)) continue;
+            $regions[] = $rt->name;
+            $region_slugs[] = $rt->slug;
+          }
+          if (!empty($region_terms[0])) {
+            $region = isset($region_terms[0]->name) ? $region_terms[0]->name : null;
+            $region_slug = isset($region_terms[0]->slug) ? $region_terms[0]->slug : null;
+          }
+        }
+
+        // prefecture (taxonomy: prefecture / 都道府県)
+        // Multi-select in admin. We export both:
+        // - prefectures / prefecture_slugs (arrays)
+        // - prefecture / prefecture_slug (first item, backward compatible)
+        $pref_terms = wp_get_post_terms($post_id, 'prefecture', ['fields' => 'all']);
+        $prefectures = [];
+        $prefecture_slugs = [];
+        $prefecture = null;
+        $prefecture_slug = null;
+        if (!is_wp_error($pref_terms) && !empty($pref_terms)) {
+          foreach ($pref_terms as $pt) {
+            if (!isset($pt->name) || !isset($pt->slug)) continue;
+            $prefectures[] = $pt->name;
+            $prefecture_slugs[] = $pt->slug;
+          }
+          if (!empty($pref_terms[0])) {
+            $prefecture = isset($pref_terms[0]->name) ? $pref_terms[0]->name : null;
+            $prefecture_slug = isset($pref_terms[0]->slug) ? $pref_terms[0]->slug : null;
+          }
+        }
+
+        // Derive region(s) from prefecture if region is not selected
+        if ((empty($regions) || !$region || $region === '') && !empty($prefectures)) {
+          $derived_regions = [];
+          foreach ($prefectures as $pn) {
+            if (isset($prefecture_to_region[$pn])) {
+              $derived_regions[] = $prefecture_to_region[$pn];
+            }
+          }
+          $derived_regions = array_values(array_unique(array_filter($derived_regions)));
+          if (!empty($derived_regions)) {
+            $regions = $derived_regions;
+            $region = $derived_regions[0];
+            $region_slug = isset($region_name_to_slug[$region]) ? $region_name_to_slug[$region] : $region_slug;
+            $region_slugs = [];
+            foreach ($regions as $rn) {
+              if (isset($region_name_to_slug[$rn])) $region_slugs[] = $region_name_to_slug[$rn];
+            }
+          }
+        }
+
 
 
                 // Free viewable flag (ACF true_false) - if ON, users can read without login
@@ -844,6 +1055,12 @@ $list[] = [
           'article_tags' => $article_tags,
           'season' => $season,
           'season_slug' => $season_slug,
+          'variety_categories' => $variety_categories,
+          'variety_category_slugs' => $variety_category_slugs,
+'regions' => $regions,
+          'region_slugs' => $region_slugs,
+'prefectures' => $prefectures,
+          'prefecture_slugs' => $prefecture_slugs,
           'free_viewable' => $free_viewable ? 1 : 0,
         ];
 
@@ -962,6 +1179,14 @@ $list[] = [
           'article_tags' => $article_tags,
           'season' => $season,
           'season_slug' => $season_slug,
+          'variety_categories' => $variety_categories,
+          'variety_category_slugs' => $variety_category_slugs,
+'regions' => $regions,
+          'region_slugs' => $region_slugs,
+          'regions' => $regions,
+          'region_slugs' => $region_slugs,
+'prefectures' => $prefectures,
+          'prefecture_slugs' => $prefecture_slugs,
           'free_viewable' => $free_viewable ? 1 : 0,
           'reference_materials' => is_string($reference_materials) ? trim($reference_materials) : '',
           'writer_name' => is_string($writer_name) ? trim($writer_name) : '',
