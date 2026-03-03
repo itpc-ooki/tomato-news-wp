@@ -2799,9 +2799,65 @@ function renderDetail(post) {
       }
     });
   }
+
+
+  // =========================================================
+  // ✅ Added: placements.json rendering for SP sticky banner (index.html)
+  // - Reads placements.json "sticky_banner" and renders into #stickyAd
+  // - If sticky_banner is null/undefined -> removes #stickyAd entirely
+  // =========================================================
+  function hasStickyAdUi() {
+    return !!document.getElementById("stickyAd");
+  }
+
+  function renderStickyBannerIntoDom(placements) {
+    const root = document.getElementById("stickyAd");
+    if (!root) return;
+
+    const item = placements && placements.sticky_banner ? placements.sticky_banner : null;
+
+    if (!item) {
+      // Not selected -> remove whole banner
+      root.remove();
+      return;
+    }
+
+    const title = stripHtml(item && item.title ? item.title : "");
+    const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+    const href = item && item.url ? String(item.url) : "";
+
+    // If required data is missing, hide safely
+    if (!href || !imgUrl) {
+      root.remove();
+      return;
+    }
+
+    // Build markup (same structure as static-src hardcode)
+    root.innerHTML = `
+      <div class="sticky-inner">
+        <div class="sticky-thumb"><img src="${imgUrl}" alt="${title}"></div>
+        <div>
+          <div style="font-weight:600">${title}</div>
+          <div class="meta">タップして詳しく見る</div>
+        </div>
+        <a class="btn accent" href="${href}" target="_blank" rel="noopener">詳しく</a>
+        <button class="sticky-close" aria-label="広告を閉じる">閉じる</button>
+      </div>
+    `.trim();
+
+    root.classList.add("active");
+
+    const closeBtn = root.querySelector(".sticky-close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function () {
+        root.classList.remove("active");
+      });
+    }
+  }
+
 async function loadAndRenderPlacementsJson(paper) {
     // Only for pages that actually have placements UI
-    if (!hasSponsorAdsUi() && !hasNewspaperAdsUi() && !hasSideAdsUi()) return;
+    if (!hasSponsorAdsUi() && !hasNewspaperAdsUi() && !hasSideAdsUi() && !hasStickyAdUi()) return;
 
     const url = `/static/${paper}/placements.json`;
     try {
@@ -2809,6 +2865,7 @@ async function loadAndRenderPlacementsJson(paper) {
       renderSponsorVideosIntoDom(placements);
       renderNewspaperSponsorAdsIntoDom(placements);
       renderSideAdsIntoDom(placements);
+      renderStickyBannerIntoDom(placements);
     } catch (e) {
       // Do not break the page; keep hard-coded fallback
       console.warn("[placements.json] failed:", e && e.message ? e.message : e);

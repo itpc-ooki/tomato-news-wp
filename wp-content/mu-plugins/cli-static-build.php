@@ -454,6 +454,7 @@ private static function sync_uploads_assets(): void {
       'pr' => [],
       'sponsor_ads' => [],
       'sponsor_videos' => [],
+      'sticky_banner' => null,
       'menu_hidden' => $menu_hidden,
     ];
 
@@ -562,6 +563,68 @@ private static function sync_uploads_assets(): void {
       }
       wp_reset_postdata();
     }
+
+    // ---------------------------------------------------------
+    // Sticky banner (SP 固定バナー / index.html)
+    // - Source: ad_item with ACF true_false `show_on_index_sticky` = 1
+    // - Only ONE per paper (enforced on save via mu-plugin)
+    // ---------------------------------------------------------
+    try {
+      $sq = new WP_Query([
+        'post_type'      => 'ad_item',
+        'post_status'    => 'publish',
+        'posts_per_page' => 1,
+        'orderby'        => 'menu_order',
+        'order'          => 'ASC',
+        'tax_query'      => [
+          [
+            'taxonomy' => 'paper',
+            'field'    => 'slug',
+            'terms'    => [$paper],
+          ],
+        ],
+        'meta_query'     => [
+          [
+            'key'     => 'show_on_index_sticky',
+            'value'   => '1',
+            'compare' => '=',
+          ],
+        ],
+      ]);
+
+      if ($sq->have_posts() && !empty($sq->posts) && ($sq->posts[0] instanceof WP_Post)) {
+        $sp = $sq->posts[0];
+        $sid = (int) $sp->ID;
+
+        $surl = '';
+        $acf_url = self::get_acf_field_value('link_url', $sid);
+        if (is_string($acf_url) && $acf_url !== '') {
+          $surl = $acf_url;
+        } else {
+          $meta_url = get_post_meta($sid, 'link_url', true);
+          if (is_string($meta_url) && $meta_url !== '') $surl = $meta_url;
+        }
+
+        $simg = null;
+        $acf_image = self::get_acf_field_value('image', $sid);
+        $img_url = self::resolve_media_to_url($acf_image);
+        if (!$img_url) {
+          $img_url = self::get_featured_image_url($sid);
+        }
+        $simg = self::to_relative_path($img_url ? (string) $img_url : null);
+
+        $out['sticky_banner'] = [
+          'id'    => $sid,
+          'title' => get_the_title($sid),
+          'url'   => $surl,
+          'image' => $simg,
+        ];
+      }
+      wp_reset_postdata();
+    } catch (Exception $e) {
+      // ignore
+    }
+
 
     $path = $static_paper_root . '/placements.json';
     file_put_contents($path, wp_json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));

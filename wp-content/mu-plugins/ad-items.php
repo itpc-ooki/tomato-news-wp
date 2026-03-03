@@ -321,6 +321,69 @@ add_action('save_post_ad_item', function ($post_id, $post, $update) {
 }, 10, 3);
 
 //
+
+// -----------------------------------------------------------------------------
+// 2.5) Ensure only ONE "SP固定バナーに表示（index.html）" per paper
+// - Field: show_on_index_sticky (ACF true_false)
+// - When this is turned ON for a post, all other ad_item in the same paper are forced OFF
+// -----------------------------------------------------------------------------
+add_action('acf/save_post', function ($post_id) {
+
+  // Guard
+  static $running = false;
+  if ($running) return;
+
+  $pid = (int) $post_id;
+  if ($pid <= 0) return;
+
+  if (wp_is_post_revision($pid) || wp_is_post_autosave($pid)) return;
+  if (get_post_type($pid) !== 'ad_item') return;
+
+  if (!function_exists('get_field') || !function_exists('update_field')) return;
+
+  $show = get_field('show_on_index_sticky', $pid);
+  if (!$show) return;
+
+  // Paper slug
+  $paper_slugs = wp_get_object_terms($pid, 'paper', ['fields' => 'slugs']);
+  $paper_slug = (is_array($paper_slugs) && !empty($paper_slugs)) ? sanitize_title((string) $paper_slugs[0]) : '';
+  if ($paper_slug === '') return;
+
+  $q = new WP_Query([
+    'post_type'      => 'ad_item',
+    'post_status'    => 'any',
+    'posts_per_page' => -1,
+    'fields'         => 'ids',
+    'post__not_in'   => [$pid],
+    'tax_query'      => [
+      [
+        'taxonomy' => 'paper',
+        'field'    => 'slug',
+        'terms'    => [$paper_slug],
+      ],
+    ],
+    'meta_query'     => [
+      [
+        'key'     => 'show_on_index_sticky',
+        'value'   => '1',
+        'compare' => '=',
+      ],
+    ],
+  ]);
+
+  if (!empty($q->posts)) {
+    $running = true;
+    foreach ($q->posts as $other_id) {
+      $oid = (int) $other_id;
+      if ($oid <= 0) continue;
+      // Turn OFF (store as 0)
+      update_field('show_on_index_sticky', 0, $oid);
+    }
+    $running = false;
+  }
+
+}, 20);
+
 // -----------------------------------------------------------------------------
 // 3) Validation: enforce limit on publish (paper x ad_type)
 // - If over limit, force status back to draft and show admin notice

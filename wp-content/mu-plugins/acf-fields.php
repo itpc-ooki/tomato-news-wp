@@ -544,6 +544,23 @@ add_action('acf/init', function () {
       ],
 
 
+      // SP 固定バナーに表示（index.html）
+      [
+        'key' => 'field_ad_item_show_on_index_sticky',
+        'label' => 'SP固定バナーに表示（index.html）',
+        'name' => 'show_on_index_sticky',
+        'type' => 'true_false',
+        'instructions' => 'ONにした広告枠が、スマホ下部の固定バナーとして index.html に表示されます（紙ごとに1つのみ）。',
+        'required' => 0,
+        'wrapper' => ['width' => '50'],
+        'message' => '表示する',
+        'default_value' => 0,
+        'ui' => 1,
+        'ui_on_text' => 'ON',
+        'ui_off_text' => 'OFF',
+      ],
+
+
     ],
     'location' => [
       [
