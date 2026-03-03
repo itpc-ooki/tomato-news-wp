@@ -1119,6 +1119,41 @@ header .btn, header .hamb{ border-radius:999px !important; box-shadow:0 10px 24p
   .article-content{
       padding:20px 0;}
 }
+
+
+/* =====================================================
+   Detail page: Related items layout
+   - In the mockup, .related-item cards live inside a 12-col grid (.content-grid).
+   - In the current detail.html, .related-item cards are direct children of body,
+     so grid-column doesn't apply and they become huge.
+   - Scope fixes to .page-detail only to avoid affecting other pages.
+   ===================================================== */
+.page-detail{ text-align:center; }
+.page-detail main,
+.page-detail #header-container,
+.page-detail #kwbar-container,
+.page-detail #footer-container{ text-align:left; }
+
+.page-detail > .cta-section,
+.page-detail > .section-title{
+  width:min(1400px, 92vw);
+  margin-left:auto;
+  margin-right:auto;
+}
+
+.page-detail > .related-item{
+  display:inline-block;
+  vertical-align:top;
+  width:calc((min(1400px, 92vw) - 6px) / 4);
+  margin:0 2px 2px 0;
+}
+
+@media (max-width:768px){
+  .page-detail > .related-item{
+    width:min(1400px, 92vw);
+    margin-right:0;
+  }
+}
 .related-thumb{
     position:absolute;
     top:0;
@@ -7993,6 +8028,15 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
   background: #ffffff;
   color: #000;
   box-shadow:var(--shadow)
+}
+
+/* ===============================
+   Detail page: remove top border on PC
+   =============================== */
+@media (min-width:1180px){
+  .page-detail nav{
+    border-top: none !important;
+  }
 }
 
 @media (max-width:768px){
