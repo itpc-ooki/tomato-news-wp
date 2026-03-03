@@ -1154,6 +1154,27 @@ header .btn, header .hamb{ border-radius:999px !important; box-shadow:0 10px 24p
     margin-right:0;
   }
 }
+
+/* =====================================================
+   Detail page: dynamic related/tokushu lists (match mockup)
+   - #detail-related-list and #detail-tokushu-list wrap cards injected by JS.
+   - Use display: contents so the cards behave like direct .content-grid children.
+   ===================================================== */
+.page-detail .content-grid > #detail-related-list,
+.page-detail .content-grid > #detail-tokushu-list{
+  display: contents;
+}
+
+.page-detail .content-grid .section-title{
+  grid-column: span 12;
+  padding: 20px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  width: auto;
+  margin: 0;
+  border-bottom: none !important;
+}
+
 .related-thumb{
     position:absolute;
     top:0;

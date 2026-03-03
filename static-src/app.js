@@ -2251,6 +2251,135 @@ function renderDetail(post) {
     renderSidebarAd(post);
   }
 
+
+// =========================================================
+// ✅ Detail: dynamic "関連記事" (8) and "おすすめ特集" (3)
+// - Replaces the hard-coded mock cards in detail.html with dynamic cards from posts.json
+// - "おすすめ特集" shows posts where article_type === "トマト特集"
+// =========================================================
+function buildDetailRelatedCard(post) {
+  const root = document.createElement("div");
+  root.className = "related-item";
+  root.style.cursor = "pointer";
+
+  const href =
+    (post && post.url) ? String(post.url) :
+    (post && post.id) ? `detail.html?id=${encodeURIComponent(post.id)}` :
+    "#";
+
+  root.addEventListener("click", function () {
+    if (href && href !== "#") window.location.href = href;
+  });
+
+  const thumb = document.createElement("div");
+  thumb.className = "related-thumb";
+
+  const img = document.createElement("img");
+  const title = stripHtml((post && post.title) || "");
+  const imgUrl = resolveUrlMaybeRelative((post && post.featured_image) || "");
+  img.src = imgUrl || "https://placehold.co/400x400?text=No+Image";
+  img.alt = title;
+  img.loading = "lazy";
+  thumb.appendChild(img);
+
+  const info = document.createElement("div");
+  info.className = "related-info";
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+
+  const cat = document.createElement("span");
+  cat.className = "category";
+  cat.textContent = String((post && post.article_type) || "").trim();
+
+  const date = document.createElement("span");
+  date.textContent = formatDateYmdToDots((post && (post.date_ymd || post.date)) || "");
+
+  meta.appendChild(cat);
+  if (date.textContent) meta.appendChild(date);
+
+  const h4 = document.createElement("h4");
+  h4.textContent = title;
+
+  info.appendChild(meta);
+  info.appendChild(h4);
+
+  root.appendChild(thumb);
+  root.appendChild(info);
+
+  return root;
+}
+
+function sharedTagCount(a, b) {
+  try {
+    const at = normalizeArticleTags(a).map((x) => x && x.name ? String(x.name) : "").filter(Boolean);
+    const bt = normalizeArticleTags(b).map((x) => x && x.name ? String(x.name) : "").filter(Boolean);
+    if (!at.length || !bt.length) return 0;
+    const set = new Set(at);
+    let n = 0;
+    bt.forEach((t) => { if (set.has(t)) n += 1; });
+    return n;
+  } catch (_e) {
+    return 0;
+  }
+}
+
+async function renderDetailRelatedAndTokushu(paper, currentPost) {
+  const relatedRoot = document.getElementById("detail-related-list");
+  const tokushuRoot = document.getElementById("detail-tokushu-list");
+  if (!relatedRoot && !tokushuRoot) return;
+
+  let posts = [];
+  try {
+    posts = await fetchJson(`/static/${encodeURIComponent(paper)}/posts.json`);
+  } catch (_e) {
+    return;
+  }
+
+  const all = Array.isArray(posts) ? posts : [];
+  const currentId = currentPost && currentPost.id ? String(currentPost.id) : "";
+  const currentType = String((currentPost && currentPost.article_type) || "").trim();
+
+  // おすすめ特集（記事タイプ: トマト特集）3件
+  if (tokushuRoot) {
+    const tokushu = all
+      .filter((p) => p && String(p.id) !== currentId)
+      .filter((p) => String((p && p.article_type) || "").trim() === "トマト特集")
+      .slice()
+      .sort((a, b) => safeTimeValue(b) - safeTimeValue(a))
+      .slice(0, 3);
+
+    tokushuRoot.innerHTML = "";
+    tokushu.forEach((p) => tokushuRoot.appendChild(buildDetailRelatedCard(p)));
+  }
+
+  // 関連記事（8件）
+  if (relatedRoot) {
+    const candidates = all
+      .filter((p) => p && String(p.id) !== currentId)
+      // keep 特集 out of 関連記事 (it's shown in おすすめ特集)
+      .filter((p) => String((p && p.article_type) || "").trim() !== "トマト特集");
+
+    const scored = candidates
+      .map((p) => {
+        const t = String((p && p.article_type) || "").trim();
+        const sameType = currentType && t && t === currentType;
+        const shared = sharedTagCount(currentPost, p);
+        const score = (sameType ? 100 : 0) + (shared * 5);
+        return { p, score };
+      })
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return safeTimeValue(b.p) - safeTimeValue(a.p);
+      })
+      .map((x) => x.p)
+      .slice(0, 8);
+
+    relatedRoot.innerHTML = "";
+    scored.forEach((p) => relatedRoot.appendChild(buildDetailRelatedCard(p)));
+  }
+}
+
   // =========================================================
   // ✅ Added: Market.json rendering for index.html
   // - Updates existing DOM ids in index.html (PC + SP)
@@ -3124,6 +3253,8 @@ async function loadAndRenderPlacementsJson(paper) {
       const url = `/static/${paper}/posts/${id}.json`;
       const post = await fetchJson(url);
       renderDetail(post);
+      // ✅ Detail: dynamic 関連記事 / おすすめ特集
+      renderDetailRelatedAndTokushu(paper, post).catch(() => {});
       // 人気記事（most accessed 5）
       renderPopularSidebar(paper, id).catch(() => {});
       return;
