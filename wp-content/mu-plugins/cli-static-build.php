@@ -926,9 +926,25 @@ $list = [];
         $featured_image = self::get_featured_image_url($post_id);
 
         // article type (taxonomy: article_type)
-        // e.g. "ニュース" (uses term name)
-        $article_type_names = wp_get_post_terms($post_id, 'article_type', ['fields' => 'names']);
-        $article_type = (!is_wp_error($article_type_names) && !empty($article_type_names)) ? $article_type_names[0] : null;
+        // - Export both the first item (backward compatible) and the full arrays.
+        // - survey.json must not depend on only the first selected term.
+        $article_type_terms = wp_get_post_terms($post_id, 'article_type', ['fields' => 'all']);
+        $article_types = [];
+        $article_type_slugs = [];
+        $article_type = null;
+        if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
+          foreach ($article_type_terms as $att) {
+            if (isset($att->name) && $att->name !== '') $article_types[] = (string) $att->name;
+            if (isset($att->slug) && $att->slug !== '') $article_type_slugs[] = (string) $att->slug;
+          }
+          if (!empty($article_types)) {
+            $article_types = array_values(array_unique($article_types));
+            $article_type = $article_types[0];
+          }
+          if (!empty($article_type_slugs)) {
+            $article_type_slugs = array_values(array_unique($article_type_slugs));
+          }
+        }
 
         // article tags (taxonomy: article_tag)
         // Returns array of objects: [{name, slug}, ...]
@@ -954,6 +970,18 @@ $list = [];
           $st = $season_terms[0];
           $season = isset($st->name) ? $st->name : null;
           $season_slug = isset($st->slug) ? $st->slug : null;
+        }
+
+        // survey_year (taxonomy: survey_year / アンケート年度)
+        // Single-select in admin.
+        // Used by JA部会アンケート detail posts so survey.html can filter correctly by year.
+        $survey_year_terms = wp_get_post_terms($post_id, 'survey_year', ['fields' => 'all']);
+        $survey_year = null;
+        $survey_year_slug = null;
+        if (!is_wp_error($survey_year_terms) && !empty($survey_year_terms)) {
+          $yt = $survey_year_terms[0];
+          $survey_year = isset($yt->name) ? $yt->name : null;
+          $survey_year_slug = isset($yt->slug) ? $yt->slug : null;
         }
         // variety_category (taxonomy: variety_category / 品種カテゴリ)
         // Multi-select in admin. We export both:
@@ -1115,9 +1143,13 @@ $list[] = [
           'url'      => 'detail.html?id=' . $post_id,
           'featured_image' => $featured_image,
           'article_type' => $article_type,
+          'article_types' => $article_types,
+          'article_type_slugs' => $article_type_slugs,
           'article_tags' => $article_tags,
           'season' => $season,
           'season_slug' => $season_slug,
+          'survey_year' => $survey_year,
+          'survey_year_slug' => $survey_year_slug,
           'variety_categories' => $variety_categories,
           'variety_category_slugs' => $variety_category_slugs,
 'regions' => $regions,
@@ -1239,14 +1271,16 @@ $list[] = [
           'categories' => [$paper],
           'featured_image' => $featured_image,
           'article_type' => $article_type,
+          'article_types' => $article_types,
+          'article_type_slugs' => $article_type_slugs,
           'article_tags' => $article_tags,
           'season' => $season,
           'season_slug' => $season_slug,
+          'survey_year' => $survey_year,
+          'survey_year_slug' => $survey_year_slug,
           'variety_categories' => $variety_categories,
           'variety_category_slugs' => $variety_category_slugs,
 'regions' => $regions,
-          'region_slugs' => $region_slugs,
-          'regions' => $regions,
           'region_slugs' => $region_slugs,
 'prefectures' => $prefectures,
           'prefecture_slugs' => $prefecture_slugs,
@@ -1268,17 +1302,289 @@ $list[] = [
     $posts_json_path = $static_paper_root . '/posts.json';
     file_put_contents($posts_json_path, wp_json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 
+    // survey.json
+    // - Dedicated dataset for JA部会アンケート page
+    // - Source: normal posts whose 記事タイプ contains "JA部会アンケート"
+    $survey_list = [];
+    foreach ($list as $item) {
+      if (!is_array($item)) continue;
+
+      $article_type_name = isset($item['article_type']) ? trim((string) $item['article_type']) : '';
+      $article_type_names = isset($item['article_types']) && is_array($item['article_types'])
+        ? array_values(array_filter(array_map('strval', $item['article_types'])))
+        : [];
+      $article_type_slugs = isset($item['article_type_slugs']) && is_array($item['article_type_slugs'])
+        ? array_values(array_filter(array_map('strval', $item['article_type_slugs'])))
+        : [];
+
+      $is_survey = false;
+      if ($article_type_name === 'JA部会アンケート') {
+        $is_survey = true;
+      } elseif (in_array('JA部会アンケート', $article_type_names, true)) {
+        $is_survey = true;
+      } elseif (in_array('survey', $article_type_slugs, true)) {
+        $is_survey = true;
+      }
+
+      if (!$is_survey) continue;
+
+      $survey_prefectures = [];
+      if (isset($item['prefectures']) && is_array($item['prefectures'])) {
+        $survey_prefectures = array_values(array_filter(array_map('strval', $item['prefectures'])));
+      }
+
+      $survey_prefecture_slugs = [];
+      if (isset($item['prefecture_slugs']) && is_array($item['prefecture_slugs'])) {
+        $survey_prefecture_slugs = array_values(array_filter(array_map('strval', $item['prefecture_slugs'])));
+      }
+
+      if (empty($survey_prefectures) && !empty($item['prefecture'])) {
+        $survey_prefectures = [(string) $item['prefecture']];
+      }
+      if (empty($survey_prefecture_slugs) && !empty($item['prefecture_slug'])) {
+        $survey_prefecture_slugs = [(string) $item['prefecture_slug']];
+      }
+
+      $survey_list[] = [
+        'id' => isset($item['id']) ? intval($item['id']) : 0,
+        'title' => isset($item['title']) ? (string) $item['title'] : '',
+        'date' => isset($item['date']) ? (string) $item['date'] : '',
+        'date_ymd' => isset($item['date_ymd']) ? (string) $item['date_ymd'] : '',
+        'excerpt' => isset($item['excerpt']) ? (string) $item['excerpt'] : '',
+        'slug' => isset($item['slug']) ? (string) $item['slug'] : '',
+        'url' => isset($item['url']) ? (string) $item['url'] : '',
+        'featured_image' => isset($item['featured_image']) ? (string) $item['featured_image'] : '',
+        'prefectures' => $survey_prefectures,
+        'prefecture_slugs' => $survey_prefecture_slugs,
+        'regions' => isset($item['regions']) && is_array($item['regions']) ? array_values(array_filter(array_map('strval', $item['regions']))) : [],
+        'region_slugs' => isset($item['region_slugs']) && is_array($item['region_slugs']) ? array_values(array_filter(array_map('strval', $item['region_slugs']))) : [],
+        'survey_year' => isset($item['survey_year']) ? (string) $item['survey_year'] : '',
+        'survey_year_slug' => isset($item['survey_year_slug']) ? (string) $item['survey_year_slug'] : '',
+        'season' => isset($item['season']) ? (string) $item['season'] : '',
+        'season_slug' => isset($item['season_slug']) ? (string) $item['season_slug'] : '',
+      ];
+    }
+
+    usort($survey_list, function($a, $b) {
+      $at = isset($a['date']) ? strtotime((string)$a['date']) : 0;
+      $bt = isset($b['date']) ? strtotime((string)$b['date']) : 0;
+      return $bt <=> $at;
+    });
+
+    $survey_json_path = $static_paper_root . '/survey.json';
+    file_put_contents($survey_json_path, wp_json_encode($survey_list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
     // placements.json (ads/pr/sponsor)
     self::build_placements_json($paper);
 
     // varieties.json (variety master data)
     self::build_varieties_json($paper);
 
+    // survey-top.json (JA部会アンケート TOP data by year/season)
+    self::build_survey_top_json($paper);
+
     // market.json (market data: price/volume + diff/trend)
     // Generated by market-data.php (Tomato_Market_Data). Safe no-op if plugin not present.
     if (class_exists('Tomato_Market_Data') && method_exists('Tomato_Market_Data', 'export_json_for_paper')) {
       Tomato_Market_Data::export_json_for_paper($paper);
     }
+  }
+
+  /**
+   * Build survey-top.json for a paper.
+   *
+   * Source:
+   * - CPT: ja_survey_top
+   * - Paper selector: ACF/meta field `survey_target_paper`
+   * - Taxonomy: survey_year
+   * - Season selector: ACF/meta field `survey_top_season`
+   * - ACF fields: page_title, page_subtitle, hero_title, hero_description,
+   *   detail_title, detail_subtitle, detail_description,
+   *   total_producers, response_rate,
+   *   survey_graph_1 .. survey_graph_4 (JSON arrays)
+   *
+   * Output:
+   * - /static/{paper}/survey-top.json
+   */
+  private static function build_survey_top_json(string $paper): void {
+    $paper = sanitize_title($paper);
+    if ($paper === '') return;
+    if (!self::paper_exists($paper)) return;
+
+    $static_paper_root = self::static_root() . '/' . $paper;
+    self::ensure_dir($static_paper_root);
+
+    $items = [];
+
+    $q = new WP_Query([
+      'post_type'      => 'ja_survey_top',
+      'post_status'    => 'publish',
+      'posts_per_page' => -1,
+      'orderby'        => 'date',
+      'order'          => 'DESC',
+    ]);
+
+    if ($q->have_posts()) {
+      foreach ($q->posts as $post) {
+        if (!($post instanceof WP_Post)) continue;
+
+        $id = (int) $post->ID;
+
+        // JA survey TOP no longer uses duplicated category taxonomy.
+        // Use the dedicated paper field first, and keep a legacy category fallback.
+        $target_paper = self::get_acf_field_value('survey_target_paper', $id);
+        if (!is_string($target_paper) || trim($target_paper) === '') {
+          $target_paper = get_post_meta($id, 'survey_target_paper', true);
+        }
+        $target_paper = sanitize_title(is_string($target_paper) ? $target_paper : '');
+
+        if ($target_paper === '') {
+          $legacy_terms = get_the_terms($id, 'category');
+          if ($legacy_terms && !is_wp_error($legacy_terms) && isset($legacy_terms[0])) {
+            $target_paper = sanitize_title((string) $legacy_terms[0]->slug);
+          }
+        }
+
+        if ($target_paper !== $paper) {
+          continue;
+        }
+
+        $survey_year = self::get_acf_field_value('survey_top_year', $id);
+        if (!is_string($survey_year) || trim($survey_year) === '') {
+          $survey_year = get_post_meta($id, 'survey_top_year', true);
+        }
+        $survey_year = trim((string) $survey_year);
+
+        if ($survey_year === '') {
+          $year_terms = get_the_terms($id, 'survey_year');
+          if ($year_terms && !is_wp_error($year_terms) && isset($year_terms[0])) {
+            $survey_year = (string) $year_terms[0]->name;
+          }
+        }
+
+        // survey_season taxonomy was removed from the CPT to avoid duplicate admin UI.
+        // Use the ACF/meta select field and normalize to label + slug.
+        $survey_season_slug = self::get_acf_field_value('survey_top_season', $id);
+        if (!is_string($survey_season_slug) || trim($survey_season_slug) === '') {
+          $survey_season_slug = get_post_meta($id, 'survey_top_season', true);
+        }
+        $survey_season_slug = sanitize_title(is_string($survey_season_slug) ? $survey_season_slug : '');
+
+        $survey_season = '';
+        if ($survey_season_slug === 'winter') {
+          $survey_season = '冬春';
+        } elseif ($survey_season_slug === 'summer') {
+          $survey_season = '夏秋';
+        }
+
+        // Legacy fallback: support old survey_season taxonomy data if present.
+        if ($survey_season_slug === '' || $survey_season === '') {
+          $season_terms = get_the_terms($id, 'survey_season');
+          if ($season_terms && !is_wp_error($season_terms) && isset($season_terms[0])) {
+            $survey_season = (string) $season_terms[0]->name;
+            $survey_season_slug = sanitize_title((string) $season_terms[0]->slug);
+          }
+        }
+
+        $graphs = [];
+        $graph_defs = [
+          ['field' => 'survey_graph_1', 'id' => 'graph1', 'title' => '困っている害虫', 'section_title_field' => 'detail_section_1_title', 'section_text_field' => 'detail_section_1_text', 'section_highlight_field' => 'detail_section_1_highlight'],
+          ['field' => 'survey_graph_2', 'id' => 'graph2', 'title' => '困っている病害', 'section_title_field' => 'detail_section_2_title', 'section_text_field' => 'detail_section_2_text', 'section_highlight_field' => 'detail_section_2_highlight'],
+          ['field' => 'survey_graph_3', 'id' => 'graph3', 'title' => '困っている生理障害', 'section_title_field' => 'detail_section_3_title', 'section_text_field' => 'detail_section_3_text', 'section_highlight_field' => 'detail_section_3_highlight'],
+          ['field' => 'survey_graph_4', 'id' => 'graph4', 'title' => '導入したい資機材', 'section_title_field' => 'detail_section_4_title', 'section_text_field' => 'detail_section_4_text', 'section_highlight_field' => 'detail_section_4_highlight'],
+        ];
+
+        foreach ($graph_defs as $def) {
+          $raw = self::get_acf_field_value($def['field'], $id);
+          if (!is_string($raw)) {
+            $raw = get_post_meta($id, $def['field'], true);
+          }
+          $raw = is_string($raw) ? trim($raw) : '';
+
+          $items_for_graph = [];
+          if ($raw !== '') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+              foreach ($decoded as $row) {
+                if (!is_array($row)) continue;
+                $label = isset($row['label']) ? trim((string) $row['label']) : (isset($row['name']) ? trim((string) $row['name']) : '');
+                $value_raw = $row['value'] ?? ($row['percent'] ?? null);
+                $value = is_numeric($value_raw) ? (float) $value_raw : 0;
+                if ($label === '') continue;
+                $items_for_graph[] = [
+                  'label' => $label,
+                  'value' => $value,
+                ];
+              }
+            }
+          }
+
+          $section_title = self::get_acf_field_value($def['section_title_field'], $id);
+          if (!is_string($section_title)) {
+            $section_title = get_post_meta($id, $def['section_title_field'], true);
+          }
+
+          $section_text = self::get_acf_field_value($def['section_text_field'], $id);
+          if (!is_string($section_text)) {
+            $section_text = get_post_meta($id, $def['section_text_field'], true);
+          }
+
+          $section_highlight = self::get_acf_field_value($def['section_highlight_field'], $id);
+          if (!is_string($section_highlight)) {
+            $section_highlight = get_post_meta($id, $def['section_highlight_field'], true);
+          }
+
+          $graphs[] = [
+            'id' => $def['id'],
+            'title' => $def['title'],
+            'section_title' => is_string($section_title) ? trim($section_title) : '',
+            'section_text' => is_string($section_text) ? trim($section_text) : '',
+            'section_highlight' => is_string($section_highlight) ? trim($section_highlight) : '',
+            'items' => $items_for_graph,
+          ];
+        }
+
+        $items[] = [
+          'id' => $id,
+          'title' => get_the_title($post),
+          'page_title' => (string) self::get_acf_field_value('page_title', $id),
+          'page_subtitle' => (string) self::get_acf_field_value('page_subtitle', $id),
+          'hero_title' => (string) self::get_acf_field_value('hero_title', $id),
+          'hero_description' => (string) self::get_acf_field_value('hero_description', $id),
+          'detail_title' => (string) self::get_acf_field_value('detail_title', $id),
+          'detail_subtitle' => (string) self::get_acf_field_value('detail_subtitle', $id),
+          'detail_description' => (string) self::get_acf_field_value('detail_description', $id),
+          'total_producers' => (string) self::get_acf_field_value('total_producers', $id),
+          'response_rate' => (string) self::get_acf_field_value('response_rate', $id),
+          'survey_target_paper' => $target_paper,
+          'survey_year' => $survey_year,
+          'survey_season' => $survey_season,
+          'survey_season_slug' => $survey_season_slug,
+          'graphs' => $graphs,
+        ];
+      }
+    }
+    wp_reset_postdata();
+
+    usort($items, function($a, $b) {
+      $ya = isset($a['survey_year']) ? (string) $a['survey_year'] : '';
+      $yb = isset($b['survey_year']) ? (string) $b['survey_year'] : '';
+      if ($ya !== $yb) {
+        return strcmp($yb, $ya);
+      }
+
+      $season_order = ['winter' => 0, 'summer' => 1];
+      $sa = $season_order[$a['survey_season_slug'] ?? ''] ?? 99;
+      $sb = $season_order[$b['survey_season_slug'] ?? ''] ?? 99;
+      if ($sa !== $sb) {
+        return $sa <=> $sb;
+      }
+
+      return ((int)($b['id'] ?? 0)) <=> ((int)($a['id'] ?? 0));
+    });
+
+    $path = $static_paper_root . '/survey-top.json';
+    file_put_contents($path, wp_json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
   }
 
   /** Build all papers that exist under /static-src */
@@ -1303,22 +1609,52 @@ $list[] = [
     }
   }
 
-  /** Return papers (category slugs) for a post that have templates in /static-src */
+  /** Return papers for a post that have templates in /static-src */
   public static function get_papers_for_post(int $post_id): array {
     $post = get_post($post_id);
     if (!($post instanceof WP_Post)) return [];
-    if ($post->post_type !== 'post') return [];
-
-    $terms = get_the_terms($post_id, 'category');
-    if (!$terms || is_wp_error($terms)) return [];
+    if (!in_array($post->post_type, ['post', 'ja_survey_top'], true)) return [];
 
     $papers = [];
-    foreach ($terms as $t) {
-      $slug = sanitize_title($t->slug);
-      if ($slug && self::paper_exists($slug)) {
-        $papers[] = $slug;
+
+    // Normal posts use the existing category taxonomy as paper selector.
+    if ($post->post_type === 'post') {
+      $terms = get_the_terms($post_id, 'category');
+      if ($terms && !is_wp_error($terms)) {
+        foreach ($terms as $t) {
+          $slug = sanitize_title($t->slug);
+          if ($slug && self::paper_exists($slug)) {
+            $papers[] = $slug;
+          }
+        }
+      }
+      return array_values(array_unique($papers));
+    }
+
+    // JA survey TOP no longer uses duplicated category taxonomy.
+    // Use the dedicated ACF/meta field instead.
+    $paper = self::get_acf_field_value('survey_target_paper', $post_id);
+    if (!is_string($paper) || trim($paper) === '') {
+      $paper = get_post_meta($post_id, 'survey_target_paper', true);
+    }
+    $paper = sanitize_title(is_string($paper) ? $paper : '');
+    if ($paper !== '' && self::paper_exists($paper)) {
+      $papers[] = $paper;
+    }
+
+    // Legacy fallback: if an older post still has category terms, keep supporting it.
+    if (empty($papers)) {
+      $terms = get_the_terms($post_id, 'category');
+      if ($terms && !is_wp_error($terms)) {
+        foreach ($terms as $t) {
+          $slug = sanitize_title($t->slug);
+          if ($slug && self::paper_exists($slug)) {
+            $papers[] = $slug;
+          }
+        }
       }
     }
+
     return array_values(array_unique($papers));
   }
 
@@ -1384,7 +1720,7 @@ add_action('tomato_static_build_paper', function ($paper) {
 add_action('save_post', function ($post_id, $post, $update) {
   if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) return;
   if (!($post instanceof WP_Post)) return;
-  if ($post->post_type !== 'post') return;
+  if (!in_array($post->post_type, ['post', 'ja_survey_top'], true)) return;
 
   if ($post->post_status !== 'publish') return;
 
@@ -1397,7 +1733,7 @@ add_action('save_post', function ($post_id, $post, $update) {
 // On status transition: if becoming non-publish from publish, cleanup detail json & rebuild list
 add_action('transition_post_status', function ($new_status, $old_status, $post) {
   if (!($post instanceof WP_Post)) return;
-  if ($post->post_type !== 'post') return;
+  if (!in_array($post->post_type, ['post', 'ja_survey_top'], true)) return;
 
   $post_id = (int) $post->ID;
 
@@ -1430,7 +1766,7 @@ add_action('set_object_terms', function ($object_id, $terms, $tt_ids, $taxonomy,
   }
 
   $post = get_post($post_id);
-  if (!($post instanceof WP_Post) || $post->post_type !== 'post') {
+  if (!($post instanceof WP_Post) || !in_array($post->post_type, ['post', 'ja_survey_top'], true)) {
     return;
   }
 
@@ -1498,7 +1834,7 @@ add_action('set_object_terms', function ($object_id, $terms, $tt_ids, $taxonomy,
 // Trash/delete -> cleanup detail and rebuild list
 add_action('trashed_post', function ($post_id) {
   $post = get_post((int) $post_id);
-  if (!($post instanceof WP_Post) || $post->post_type !== 'post') {
+  if (!($post instanceof WP_Post) || !in_array($post->post_type, ['post', 'ja_survey_top'], true)) {
     return;
   }
   $papers = Tomato_Static_Builder_ModeB::get_papers_for_post((int) $post_id);
@@ -1510,7 +1846,7 @@ add_action('trashed_post', function ($post_id) {
 
 add_action('before_delete_post', function ($post_id) {
   $post = get_post((int) $post_id);
-  if (!($post instanceof WP_Post) || $post->post_type !== 'post') {
+  if (!($post instanceof WP_Post) || !in_array($post->post_type, ['post', 'ja_survey_top'], true)) {
     return;
   }
   $papers = Tomato_Static_Builder_ModeB::get_papers_for_post((int) $post_id);

@@ -1,387 +1,251 @@
 <!DOCTYPE html>
 <html lang="ja">
- <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>
-   トマト新聞
-  </title>
-  <link href="../style.css" rel="stylesheet"/>
- </head>
- <body class="page-survey">
-  <!-- Common Header -->
-  <div id="header-container"></div>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>トマト新聞</title>
+<link href="../style.css" rel="stylesheet"/>
+</head>
 
-  <div id="kwbar-container"></div>
+<body class="page-survey" data-survey-year="2025" data-survey-season="winter">
 
-  <main>
-  <div class="article-container">
-  <div class="article-header">
-  <span class="article-category">JA部会アンケート</span>
-  <h1 class="article-title">JA部会アンケート結果</h1>
-  <p class="article-subtitle">
-          全国のトマト生産部会から寄せられた貴重なデータを公開。コナジラミ症状、資材費高騰、生理障害など、現場のリアルな声をお届けします。
-        </p>
-  </div>
-  </div>
-  <div class="hero-banner">
-  <div class="hero-content">
-  <h2>2025年 冬春トマト アンケート調査</h2>
-  <p>
-          今年も全国の生産者から「コナジラミ症状」「薬剤や資材費の高騰」など、現場の課題や今後の展望についてお聞きしました。昨年と比較して、病害虫対策や資材導入の意向にどのような変化があったのか、詳細な分析結果をご覧いただけます。
-        </p>
-  </div>
-  </div>
+<div id="header-container"></div>
+<div id="kwbar-container"></div>
+
+<main>
+
+<div class="article-container">
+<div class="article-header">
+<span class="article-category">JA部会アンケート</span>
+<h1 class="article-title" id="surveyPageTitle">JA部会アンケート結果</h1>
+
+<p class="article-subtitle" id="surveyPageSubtitle">
+全国のトマト生産部会から寄せられた貴重なデータを公開。コナジラミ症状、資材費高騰、生理障害など、現場のリアルな声をお届けします。
+</p>
+</div>
+</div>
+
+
+<div class="hero-banner">
+<div class="hero-content">
+
+<h2 id="surveyHeroTitle">2025年 冬春トマト アンケート調査</h2>
+
+<p id="surveyHeroDescription">
+今年も全国の生産者から「コナジラミ症状」「薬剤や資材費の高騰」など、現場の課題や今後の展望についてお聞きしました。
+</p>
+
+</div>
+</div>
+
+
+<!-- ===========================
+YEAR / SEASON SELECTOR
+=========================== -->
+
+<div class="selector-container">
+
+<div class="selector-group">
+<div class="selector-label">YEAR</div>
+
+<div class="selector-tabs" id="surveyYearTabs">
+
+<button class="selector-tab active" data-year="2025">2025年</button>
+<button class="selector-tab" data-year="2026">2026年</button>
+<button class="selector-tab" data-year="2027">2027年</button>
+
+</div>
+</div>
+
+
+<div class="selector-group">
+<div class="selector-label">SEASON</div>
+
+<div class="selector-tabs" id="surveySeasonTabs">
+
+<button class="selector-tab active" data-season="winter">冬春</button>
+<button class="selector-tab" data-season="summer">夏秋</button>
+
+</div>
+
+</div>
+
+</div>
+
   <div class="stats-overview">
   <div class="stat-card">
   <div class="stat-icon">
   <svg viewbox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"></path></svg>
   </div>
-  <div class="stat-value">47</div>
+  <div class="stat-value" id="surveyPrefectureCount">0</div>
   <div class="stat-label">参加都道府県</div>
   </div>
   <div class="stat-card">
   <div class="stat-icon">
   <svg viewbox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"></path></svg>
   </div>
-  <div class="stat-value">256</div>
+  <div class="stat-value" id="surveyAssociationCount">0</div>
   <div class="stat-label">回答部会数</div>
   </div>
   <div class="stat-card">
   <div class="stat-icon">
   <svg viewbox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>
   </div>
-  <div class="stat-value">12,400</div>
+  <div class="stat-value" id="surveyTotalProducers">12,400</div>
   <div class="stat-label">総生産者数</div>
   </div>
   <div class="stat-card">
   <div class="stat-icon">
   <svg viewbox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"></path></svg>
   </div>
-  <div class="stat-value">95%</div>
+  <div class="stat-value" id="surveyResponseRate">95%</div>
   <div class="stat-label">回答率</div>
   </div>
   </div>
   <div class="search-section">
   <h2 class="search-title">
-  <div class="search-icon">
-  <svg viewbox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
-  </div>
-        都道府県から部会を検索
-      </h2>
+    <div class="search-icon">
+      <svg viewbox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
+    </div>
+    都道府県から部会を検索
+  </h2>
   <p class="search-subtitle">都道府県を選択すると、該当地域の部会アンケート結果が表示されます</p>
   <div class="filter-group">
-  <label class="filter-label">都道府県を選択</label>
-  <select class="filter-select" id="prefectureSelect" onchange="loadAssociations()">
-  <option value="">すべての都道府県</option>
-  <option value="hokkaido">北海道 (12部会)</option>
-  <option value="aomori">青森県 (8部会)</option>
-  <option value="kumamoto">熊本県 (32部会)</option>
-  <option value="tochigi">栃木県 (18部会)</option>
-  <option value="ibaraki">茨城県 (15部会)</option>
-  <option value="fukushima">福島県 (14部会)</option>
-  <option value="chiba">千葉県 (11部会)</option>
-  <option value="aichi">愛知県 (22部会)</option>
-  <option value="shizuoka">静岡県 (19部会)</option>
-  </select>
+    <label class="filter-label" for="prefectureSelect">都道府県を選択</label>
+    <select class="filter-select" id="prefectureSelect">
+      <option value="">すべての都道府県</option>
+    </select>
   </div>
-  <button class="btn-search" onclick="loadAssociations()">部会を検索</button>
+  <button class="btn-search" id="surveySearchButton" type="button">部会を検索</button>
+</div>
+
+<div class="survey-detail">
+  <div class="container" id="surveyTopDynamicContent">
+    <div class="survey-detail-header">
+      <h2 class="survey-detail-title" id="surveyDetailTitle">部会アンケート詳細</h2>
+      <p class="survey-detail-subtitle" id="surveyDetailSubtitle">困りごと最多は今年も「コナジラミ類」</p>
+      <p class="survey-detail-description" id="surveyDetailDescription">裂果や黄化葉巻病対策が課題に</p>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-header">
+        <div class="detail-section-icon">
+          <svg viewbox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"></path></svg>
+        </div>
+        <h3 class="detail-section-title">害虫　コナジラミ類対策に苦戦</h3>
+      </div>
+      <div class="detail-content has-text">
+        <div class="detail-text">
+          <p>今年もトマト部会を悩ませた<strong>「コナジラミ類」</strong>。全体の72%の部会で被害症状が確認されました。特に夏場の高温期における薬剤抵抗性の発達が深刻で、従来の農薬では十分な効果が得られないケースも増加しています。</p>
+          <div class="detail-highlight">
+            <p><strong>主な対策：</strong>複数の系統の薬剤をローテーション使用し、天敵資材（オンシツツヤコバチやタバコカスミカメ等）との併用が効果的とされています。早期発見・早期防除が鉄則です。</p>
+          </div>
+          <p>調査では、黄色粘着シートやUVカットフィルムの導入、栽培終了後のハウス密閉による蒸し込み処理など、総合的な防除体系を確立している部会ほど被害を抑制できています。</p>
+        </div>
+        <div class="detail-chart">
+          <p class="chart-title-small">グラフ1「困っている害虫」</p>
+          <div class="simple-bar-chart">
+            <div class="simple-bar-item"><div class="simple-bar-label">コナジラミ類</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:72%">72%</div></div></div>
+            <div class="simple-bar-item"><div class="simple-bar-label">トマトキバガ</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:45%">45%</div></div></div>
+            <div class="simple-bar-item"><div class="simple-bar-label">ハモグリバエ</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:38%">38%</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-header">
+        <div class="detail-section-icon">
+          <svg viewbox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"></path></svg>
+        </div>
+        <h3 class="detail-section-title">病害　黄化葉巻病 天敵導入の動きも</h3>
+      </div>
+      <div class="detail-content has-text">
+        <div class="detail-text">
+          <p><strong>黄化葉巻病</strong>は、コナジラミ類が媒介するウイルス病で、一度感染すると治療法がない厄介な病害です。回答部会の58%が被害を経験しており、特に暖冬の影響で越冬したコナジラミによる早期感染が問題となっています。</p>
+          <div class="detail-highlight">
+            <p><strong>注目の対策：</strong>近年、天敵導入の動きが広がっており、タバコカスミカメやスワルスキーカブリダニなどを活用した生物的防除への関心が高まっています。</p>
+          </div>
+          <p>耐病性品種の導入や、感染株の早期抜き取り、ハウス周辺の雑草管理など、予防的な対策を徹底している部会では発生を抑えられる傾向が見られました。</p>
+        </div>
+        <div class="detail-chart">
+          <p class="chart-title-small">グラフ2「困っている病害」</p>
+          <div class="simple-bar-chart">
+            <div class="simple-bar-item"><div class="simple-bar-label">黄化葉巻病</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:58%">58%</div></div></div>
+            <div class="simple-bar-item"><div class="simple-bar-label">灰色かび病</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:42%">42%</div></div></div>
+            <div class="simple-bar-item"><div class="simple-bar-label">疫病</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:31%">31%</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-header">
+        <div class="detail-section-icon">
+          <svg viewbox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>
+        </div>
+        <h3 class="detail-section-title">生理障害　高温・かん水管理が課題</h3>
+      </div>
+      <div class="detail-content has-text">
+        <div class="detail-text">
+          <p>生理障害では<strong>裂果</strong>や<strong>尻腐れ果</strong>が多く、高温期の温度変動や急激なかん水量の変化が主な要因として挙げられました。果実肥大期の環境制御と水分管理が安定生産の鍵となっています。</p>
+          <div class="detail-highlight">
+            <p><strong>主な対策：</strong>遮光資材の活用、こまめなかん水制御、カルシウム資材の適切な施用など、栽培管理を複合的に見直すことが重要です。</p>
+          </div>
+          <p>高温ストレスを受けやすい時期ほど、ハウス内環境の見える化と日々のデータ確認が有効です。</p>
+        </div>
+        <div class="detail-chart">
+          <p class="chart-title-small">グラフ3「困っている生理障害」</p>
+          <div class="simple-bar-chart">
+            <div class="simple-bar-item"><div class="simple-bar-label">裂果</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:68%">68%</div></div></div>
+            <div class="simple-bar-item"><div class="simple-bar-label">尻腐れ果</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:52%">52%</div></div></div>
+            <div class="simple-bar-item"><div class="simple-bar-label">空洞果</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:41%">41%</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-header">
+        <div class="detail-section-icon">
+          <svg viewbox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>
+        </div>
+        <h3 class="detail-section-title">導入したい資機材　現場ニーズの高い設備</h3>
+      </div>
+      <div class="detail-content has-text">
+        <div class="detail-text">
+          <p>導入したい資機材では、環境制御装置や防除関連資材のほか、作業負担を軽減する省力化機器への関心が高く見られました。特に人手不足への対応を背景に、導入効果が明確な設備に注目が集まっています。</p>
+          <div class="detail-highlight">
+            <p><strong>注目ポイント：</strong>初期投資だけでなく、維持管理コストや補助事業の活用可能性も比較しながら導入を検討する傾向があります。</p>
+          </div>
+          <p>部会全体での共同導入や実証試験を通じて、現場に合う設備を見極める動きも進んでいます。</p>
+        </div>
+        <div class="detail-chart">
+          <p class="chart-title-small">グラフ4「導入したい資機材」</p>
+          <div class="simple-bar-chart">
+            <div class="simple-bar-item"><div class="simple-bar-label">天敵資材</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:74%">74%</div></div></div>
+            <div class="simple-bar-item"><div class="simple-bar-label">環境制御機器</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:62%">62%</div></div></div>
+            <div class="simple-bar-item"><div class="simple-bar-label">バイオスティミュラント</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:48%">48%</div></div></div>
+            <div class="simple-bar-item"><div class="simple-bar-label">高機能培養土</div><div class="simple-bar-track"><div class="simple-bar-fill" style="width:35%">35%</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="survey-detail">
-  <div class="container">
-  <div class="survey-detail-header">
-  <h2 class="survey-detail-title">部会アンケート詳細</h2>
-  <p class="survey-detail-subtitle">困りごと最多は今年も「コナジラミ類」</p>
-  <p class="survey-detail-description">裂果や黄化葉巻病対策が課題に</p>
-  </div>
-  <!-- 害虫セクション -->
-  <div class="detail-section">
-  <div class="detail-section-header">
-  <div class="detail-section-icon">
-  <svg viewbox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"></path></svg>
-  </div>
-  <h3 class="detail-section-title">害虫　コナジラミ類対策に苦戦</h3>
-  </div>
-  <div class="detail-content">
-  <div class="detail-text">
-  <p>今年もトマト部会を悩ませた<strong>「コナジラミ類」</strong>。全体の72%の部会で被害症状が確認されました。特に夏場の高温期における薬剤抵抗性の発達が深刻で、従来の農薬では十分な効果が得られないケースも増加しています。</p>
-  <div class="detail-highlight">
-  <p><strong>主な対策：</strong>複数の系統の薬剤をローテーション使用し、天敵資材（オンシツツヤコバチやタバコカスミカメ等）との併用が効果的とされています。早期発見・早期防除が鉄則です。</p>
-  </div>
-  <p>調査では、黄色粘着シートやUVカットフィルムの導入、栽培終了後のハウス密閉による蒸し込み処理など、総合的な防除体系を確立している部会ほど被害を抑制できています。</p>
-  </div>
-  <div class="detail-chart">
-  <p class="chart-title-small">グラフ1「困っている害虫」</p>
-  <div class="simple-bar-chart">
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">コナジラミ類</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:72%">72%</div>
-  </div>
-  </div>
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">トマトキバガ</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:45%">45%</div>
-  </div>
-  </div>
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">ハモグリバエ</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:38%">38%</div>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  <!-- 病害セクション -->
-  <div class="detail-section">
-  <div class="detail-section-header">
-  <div class="detail-section-icon">
-  <svg viewbox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"></path></svg>
-  </div>
-  <h3 class="detail-section-title">病害　黄化葉巻病 天敵導入の動きも</h3>
-  </div>
-  <div class="detail-content">
-  <div class="detail-text">
-  <p><strong>黄化葉巻病</strong>は、コナジラミ類が媒介するウイルス病で、一度発病すると治療法がありません。本年度の調査では全体の58%の部会で発生が確認され、深刻な収量低下につながっています。</p>
-  <p>抵抗性品種の導入と、媒介虫であるコナジラミ類の徹底防除が基本対策となります。近年は、化学農薬への依存度を下げるため、天敵資材を活用した<strong>IPM（総合的病害虫管理）</strong>の導入が進んでいます。</p>
-  <div class="detail-highlight">
-  <p><strong>注目の対策：</strong>オンシツツヤコバチやタバコカスミカメなどの天敵資材を定期的に放飼し、コナジラミ密度を低く抑える予防的防除が効果を上げています。</p>
-  </div>
-  </div>
-  <div class="detail-chart">
-  <p class="chart-title-small">グラフ2「困っている病害」</p>
-  <div class="simple-bar-chart">
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">黄化葉巻病</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:58%">58%</div>
-  </div>
-  </div>
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">灰色かび病</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:42%">42%</div>
-  </div>
-  </div>
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">疫病</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:35%">35%</div>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  <!-- 生理障害セクション -->
-  <div class="detail-section">
-  <div class="detail-section-header">
-  <div class="detail-section-icon">
-  <svg viewbox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path></svg>
-  </div>
-  <h3 class="detail-section-title">生理障害「裂果」高温対策・かん水管理が鍵</h3>
-  </div>
-  <div class="detail-content">
-  <div class="detail-text">
-  <p>生理障害では<strong>「裂果」</strong>が最多の68%で発生しています。特に夏場の高温・多湿条件下や、かん水の急激な変化により発生が助長されます。商品価値が大きく低下するため、経済的損失は深刻です。</p>
-  <div class="detail-highlight">
-  <p><strong>効果的な対策：</strong>
-  <br/>・遮光資材や細霧冷房による温度管理
-                  <br/>・点滴チューブを使った少量多回数のかん水
-                  <br/>・土壌水分センサーによる適正水分管理
-                  <br/>・耐裂果性品種の選択</p>
-  </div>
-  <p>最近では、環境制御機器の導入により、ハウス内の温度・湿度・CO2濃度を最適に保つことで、裂果発生を大幅に抑制している事例も増えています。</p>
-  </div>
-  <div class="detail-chart">
-  <p class="chart-title-small">グラフ3「困っている生理障害」</p>
-  <div class="simple-bar-chart">
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">裂果</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:68%">68%</div>
-  </div>
-  </div>
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">高温障害</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:52%">52%</div>
-  </div>
-  </div>
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">尻腐れ</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:41%">41%</div>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  <!-- 資材セクション -->
-  <div class="detail-section">
-  <div class="detail-section-header">
-  <div class="detail-section-icon">
-  <svg viewbox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.20.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"></path></svg>
-  </div>
-  <h3 class="detail-section-title">今後取り入れたい資材　1位は新品種</h3>
-  </div>
-  <div class="detail-content">
-  <div class="detail-text">
-  <p>今後導入したい資材では<strong>「新品種」</strong>が75%でトップとなりました。耐病虫性や食味の向上、収量性の改善など、品種に求める期待は多様化しています。</p>
-  <p>2位の環境制御機器（62%）は、温度・湿度・CO2濃度を自動で最適化し、収量と品質の向上を実現します。初期投資は大きいものの、長期的には人件費削減と安定生産により投資回収が見込めます。</p>
-  <div class="detail-highlight">
-  <p><strong>資材選定のポイント：</strong>
-  <br/>・自農園の課題に合った資材選択
-                  <br/>・費用対効果の試算
-                  <br/>・補助事業の活用検討
-                  <br/>・先進事例の視察</p>
-  </div>
-  </div>
-  <div class="detail-chart">
-  <p class="chart-title-small">グラフ4「今後取り入れたい資材」</p>
-  <div class="simple-bar-chart">
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">新品種</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:75%">75%</div>
-  </div>
-  </div>
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">環境制御機器</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:62%">62%</div>
-  </div>
-  </div>
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">バイオスティミュラント</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:48%">48%</div>
-  </div>
-  </div>
-  <div class="simple-bar-item">
-  <div class="simple-bar-label">高機能培養土</div>
-  <div class="simple-bar-track">
-  <div class="simple-bar-fill" style="width:35%">35%</div>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  <div class="survey-section">
+</div></div>
+
+<div class="survey-section">
   <h2 class="section-title">地域別部会一覧</h2>
   <p style="color:var(--muted); margin-bottom:32px">都道府県を選択すると、該当地域の部会情報が表示されます</p>
-  <div class="prefecture-list" id="prefectureList">
-  <div class="prefecture-card" onclick="filterByPrefecture('kumamoto')">
-  <div class="prefecture-name">熊本県</div>
-  <div class="prefecture-count">32 部会</div>
-  </div>
-  <div class="prefecture-card" onclick="filterByPrefecture('aichi')">
-  <div class="prefecture-name">愛知県</div>
-  <div class="prefecture-count">22 部会</div>
-  </div>
-  <div class="prefecture-card" onclick="filterByPrefecture('shizuoka')">
-  <div class="prefecture-name">静岡県</div>
-  <div class="prefecture-count">19 部会</div>
-  </div>
-  <div class="prefecture-card" onclick="filterByPrefecture('tochigi')">
-  <div class="prefecture-name">栃木県</div>
-  <div class="prefecture-count">18 部会</div>
-  </div>
-  <div class="prefecture-card" onclick="filterByPrefecture('ibaraki')">
-  <div class="prefecture-name">茨城県</div>
-  <div class="prefecture-count">15 部会</div>
-  </div>
-  <div class="prefecture-card" onclick="filterByPrefecture('fukushima')">
-  <div class="prefecture-name">福島県</div>
-  <div class="prefecture-count">14 部会</div>
-  </div>
-  <div class="prefecture-card" onclick="filterByPrefecture('hokkaido')">
-  <div class="prefecture-name">北海道</div>
-  <div class="prefecture-count">12 部会</div>
-  </div>
-  <div class="prefecture-card" onclick="filterByPrefecture('chiba')">
-  <div class="prefecture-name">千葉県</div>
-  <div class="prefecture-count">11 部会</div>
-  </div>
-  <div class="prefecture-card" onclick="filterByPrefecture('aomori')">
-  <div class="prefecture-name">青森県</div>
-  <div class="prefecture-count">8 部会</div>
-  </div>
-  </div>
-  </div>
-  <div class="survey-section" id="associationSection" style="display:none">
-  <h2 class="section-title" id="selectedPrefectureTitle">栃木県の部会一覧</h2>
-  <div class="association-grid" id="associationList">
-  <!-- 栃木県: JAしもつけ -->
-  <a class="association-tile" data-prefecture="tochigi" href="./TOMATO_JASURVEY_DETAIL_20251222.html" style="text-decoration:none; color:inherit;">
-  <div class="association-tile-img">
-  <img alt="JAしもつけ トマト部会" loading="lazy" src="./ja_shimotsuke.png"/>
-  </div>
-  <div class="association-tile-overlay">
-  <div class="association-tile-prefecture">栃木県</div>
-  <div class="association-tile-name">JAしもつけ トマト部会</div>
-  </div>
-  </a>
-  <!-- 熊本県: JAくまもと -->
-  <a class="association-tile" data-prefecture="kumamoto" href="./TOMATO_JASURVEY_DETAIL_20251222.html" style="text-decoration:none; color:inherit;">
-  <div class="association-tile-img">
-  <img alt="JAくまもと トマト部会" loading="lazy" src="./ja_shimotsuke.png"/>
-  </div>
-  <div class="association-tile-overlay">
-  <div class="association-tile-prefecture">熊本県</div>
-  <div class="association-tile-name">JAくまもと トマト部会</div>
-  </div>
-  </a>
-  <!-- 愛知県: JAあいち中央 -->
-  <a class="association-tile" data-prefecture="aichi" href="./TOMATO_JASURVEY_DETAIL_20251222.html" style="text-decoration:none; color:inherit;">
-  <div class="association-tile-img">
-  <img alt="JAあいち中央 トマト部会" loading="lazy" src="./ja_shimotsuke.png"/>
-  </div>
-  <div class="association-tile-overlay">
-  <div class="association-tile-prefecture">愛知県</div>
-  <div class="association-tile-name">JAあいち中央 トマト部会</div>
-  </div>
-  </a>
-  <!-- 北海道: JAとまこまい広域 -->
-  <a class="association-tile" data-prefecture="hokkaido" href="./TOMATO_JASURVEY_DETAIL_20251222.html" style="text-decoration:none; color:inherit;">
-  <div class="association-tile-img">
-  <img alt="JAとまこまい広域 トマト部会" loading="lazy" src="./ja_shimotsuke.png"/>
-  </div>
-  <div class="association-tile-overlay">
-  <div class="association-tile-prefecture">北海道</div>
-  <div class="association-tile-name">JAとまこまい広域 トマト部会</div>
-  </div>
-  </a>
-  <!-- 静岡県: JAとぴあ浜松 -->
-  <a class="association-tile" data-prefecture="shizuoka" href="./TOMATO_JASURVEY_DETAIL_20251222.html" style="text-decoration:none; color:inherit;">
-  <div class="association-tile-img">
-  <img alt="JAとぴあ浜松 トマト部会" loading="lazy" src="./ja_shimotsuke.png"/>
-  </div>
-  <div class="association-tile-overlay">
-  <div class="association-tile-prefecture">静岡県</div>
-  <div class="association-tile-name">JAとぴあ浜松 トマト部会</div>
-  </div>
-  </a>
-  <!-- 茨城県: JA茨城旭村 -->
-  <a class="association-tile" data-prefecture="ibaraki" href="./TOMATO_JASURVEY_DETAIL_20251222.html" style="text-decoration:none; color:inherit;">
-  <div class="association-tile-img">
-  <img alt="JA茨城旭村 トマト部会" loading="lazy" src="./ja_shimotsuke.png"/>
-  </div>
-  <div class="association-tile-overlay">
-  <div class="association-tile-prefecture">茨城県</div>
-  <div class="association-tile-name">JA茨城旭村 トマト部会</div>
-  </div>
-  </a>
-  </div>
-  </div>
-  </main>
+  <div class="prefecture-list" id="prefectureList"></div>
+</div>
+
+<div class="survey-section" id="associationSection" style="display:none">
+  <h2 class="section-title" id="selectedPrefectureTitle">部会一覧</h2>
+  <div class="association-grid" id="associationList"></div>
+  <p class="survey-empty-message" id="associationEmptyMessage" hidden>該当する部会アンケートはありません。</p>
+</div>
+</main>
 
   <!-- Common Footer -->
   <div id="footer-container">

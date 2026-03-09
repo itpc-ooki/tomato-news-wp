@@ -895,3 +895,310 @@ add_action('admin_head', function () {
     }
   </style>';
 });
+
+/**
+ * JA部会アンケート TOP 用CPT / taxonomy / ACF
+ */
+add_action('init', function () {
+  register_post_type('ja_survey_top', [
+    'label' => 'JA部会アンケートTOP',
+    'public' => false,
+    'show_ui' => true,
+    'show_in_menu' => true,
+    'menu_position' => 22,
+    'supports' => ['title', 'thumbnail'],
+    'has_archive' => false,
+    'show_in_rest' => true,
+  ]);
+
+  // survey_year taxonomy is defined in article-taxonomies.php.
+  // Here we only attach that existing taxonomy to ja_survey_top.
+  // Re-registering the same taxonomy here would override the object type
+  // and cause the sidebar panel to disappear from normal posts.
+  if (taxonomy_exists('survey_year')) {
+    register_taxonomy_for_object_type('survey_year', 'ja_survey_top');
+  }
+
+  $year_terms = ['2024' => '2024', '2025' => '2025', '2026' => '2026', '2027' => '2027'];
+  foreach ($year_terms as $slug => $name) {
+    if (!term_exists($slug, 'survey_year')) {
+      wp_insert_term($name, 'survey_year', ['slug' => $slug]);
+    }
+  }
+
+  // JA部会アンケートTOP は TOPサマリー専用のため、既存の投稿側にある
+  // カテゴリー / SEASON と重複する taxonomy を持たせない。
+  if (function_exists('unregister_taxonomy_for_object_type')) {
+    unregister_taxonomy_for_object_type('category', 'ja_survey_top');
+    unregister_taxonomy_for_object_type('season', 'ja_survey_top');
+    unregister_taxonomy_for_object_type('survey_season', 'ja_survey_top');
+    unregister_taxonomy_for_object_type('post_tag', 'ja_survey_top');
+  }
+}, 20);
+
+add_action('admin_menu', function () {
+  remove_submenu_page('edit.php?post_type=ja_survey_top', 'edit-tags.php?taxonomy=category&amp;post_type=ja_survey_top');
+  remove_submenu_page('edit.php?post_type=ja_survey_top', 'edit-tags.php?taxonomy=category&post_type=ja_survey_top');
+  remove_submenu_page('edit.php?post_type=ja_survey_top', 'edit-tags.php?taxonomy=season&amp;post_type=ja_survey_top');
+  remove_submenu_page('edit.php?post_type=ja_survey_top', 'edit-tags.php?taxonomy=season&post_type=ja_survey_top');
+  remove_submenu_page('edit.php?post_type=ja_survey_top', 'edit-tags.php?taxonomy=survey_season&amp;post_type=ja_survey_top');
+  remove_submenu_page('edit.php?post_type=ja_survey_top', 'edit-tags.php?taxonomy=survey_season&post_type=ja_survey_top');
+  remove_submenu_page('edit.php?post_type=ja_survey_top', 'edit-tags.php?taxonomy=post_tag&amp;post_type=ja_survey_top');
+  remove_submenu_page('edit.php?post_type=ja_survey_top', 'edit-tags.php?taxonomy=post_tag&post_type=ja_survey_top');
+}, 99);
+
+add_action('acf/init', function () {
+  if (!function_exists('acf_add_local_field_group')) return;
+
+  acf_add_local_field_group([
+    'key' => 'group_ja_survey_top_fields',
+    'title' => 'JA部会アンケートTOP設定',
+    'fields' => [
+      [
+        'key' => 'field_ja_survey_page_title',
+        'label' => 'ページタイトル',
+        'name' => 'page_title',
+        'type' => 'text',
+        'default_value' => 'JA部会アンケート結果',
+      ],
+      [
+        'key' => 'field_ja_survey_page_subtitle',
+        'label' => 'ページサブタイトル',
+        'name' => 'page_subtitle',
+        'type' => 'textarea',
+        'rows' => 3,
+      ],
+      [
+        'key' => 'field_ja_survey_hero_title',
+        'label' => 'ヒーロータイトル',
+        'name' => 'hero_title',
+        'type' => 'text',
+      ],
+      [
+        'key' => 'field_ja_survey_hero_description',
+        'label' => 'ヒーロー説明文',
+        'name' => 'hero_description',
+        'type' => 'textarea',
+        'rows' => 4,
+      ],
+      [
+        'key' => 'field_ja_survey_detail_title',
+        'label' => 'グラフセクションタイトル',
+        'name' => 'detail_title',
+        'type' => 'text',
+        'default_value' => '部会アンケート詳細',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_subtitle',
+        'label' => 'グラフセクションサブタイトル',
+        'name' => 'detail_subtitle',
+        'type' => 'text',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_description',
+        'label' => 'グラフセクション説明',
+        'name' => 'detail_description',
+        'type' => 'textarea',
+        'rows' => 3,
+      ],
+      [
+        'key' => 'field_ja_survey_total_producers',
+        'label' => '総生産者数',
+        'name' => 'total_producers',
+        'type' => 'text',
+        'instructions' => '例: 12400',
+      ],
+      [
+        'key' => 'field_ja_survey_response_rate',
+        'label' => '回答率',
+        'name' => 'response_rate',
+        'type' => 'text',
+        'instructions' => '例: 95',
+      ],
+      [
+        'key' => 'field_ja_survey_target_paper',
+        'label' => '対象紙面',
+        'name' => 'survey_target_paper',
+        'type' => 'select',
+        'choices' => [
+          'tomato' => 'tomato',
+          'leek' => 'leek',
+          'strawberry' => 'strawberry',
+        ],
+        'default_value' => 'tomato',
+        'ui' => 1,
+        'return_format' => 'value',
+        'instructions' => 'JA部会アンケートTOPを出力する紙面を選択してください。',
+      ],
+      [
+        'key' => 'field_ja_survey_top_year',
+        'label' => 'アンケート年度（出力用）',
+        'name' => 'survey_top_year',
+        'type' => 'select',
+        'choices' => [
+          '2024' => '2024',
+          '2025' => '2025',
+          '2026' => '2026',
+          '2027' => '2027',
+        ],
+        'default_value' => '2025',
+        'ui' => 1,
+        'return_format' => 'value',
+        'instructions' => 'フロントの YEAR 切替に使う年度です。未設定時はアンケート年度 taxonomy を参照します。',
+      ],
+      [
+        'key' => 'field_ja_survey_top_season',
+        'label' => 'アンケートシーズン',
+        'name' => 'survey_top_season',
+        'type' => 'select',
+        'choices' => [
+          'winter' => '冬春',
+          'summer' => '夏秋',
+        ],
+        'default_value' => 'summer',
+        'ui' => 1,
+        'return_format' => 'value',
+        'instructions' => 'TOPサマリーに表示するシーズンを選択してください。',
+      ],
+      [
+        'key' => 'field_ja_survey_graph_1',
+        'label' => 'survey_graph_1（困っている害虫）',
+        'name' => 'survey_graph_1',
+        'type' => 'textarea',
+        'rows' => 8,
+        'instructions' => 'JSON配列で入力してください。例: [{"label":"コナジラミ類","value":72},{"label":"トマトキバガ","value":45}]',
+      ],
+      [
+        'key' => 'field_ja_survey_graph_2',
+        'label' => 'survey_graph_2（困っている病害）',
+        'name' => 'survey_graph_2',
+        'type' => 'textarea',
+        'rows' => 8,
+        'instructions' => 'JSON配列で入力してください。',
+      ],
+      [
+        'key' => 'field_ja_survey_graph_3',
+        'label' => 'survey_graph_3（困っている生理障害）',
+        'name' => 'survey_graph_3',
+        'type' => 'textarea',
+        'rows' => 8,
+        'instructions' => 'JSON配列で入力してください。',
+      ],
+      [
+        'key' => 'field_ja_survey_graph_4',
+        'label' => 'survey_graph_4（導入したい資機材）',
+        'name' => 'survey_graph_4',
+        'type' => 'textarea',
+        'rows' => 8,
+        'instructions' => 'JSON配列で入力してください。',
+      ],
+
+      [
+        'key' => 'field_ja_survey_detail_section_1_title',
+        'label' => '詳細セクション1タイトル（困っている害虫）',
+        'name' => 'detail_section_1_title',
+        'type' => 'text',
+        'default_value' => '害虫　コナジラミ類対策に苦戦',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_1_text',
+        'label' => '詳細セクション1本文（困っている害虫）',
+        'name' => 'detail_section_1_text',
+        'type' => 'textarea',
+        'rows' => 8,
+        'instructions' => '改行で段落を分けて入力してください。',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_1_highlight',
+        'label' => '詳細セクション1強調ボックス（困っている害虫）',
+        'name' => 'detail_section_1_highlight',
+        'type' => 'textarea',
+        'rows' => 4,
+        'instructions' => 'オレンジの強調ボックスに表示する文章です。改行可。',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_2_title',
+        'label' => '詳細セクション2タイトル（困っている病害）',
+        'name' => 'detail_section_2_title',
+        'type' => 'text',
+        'default_value' => '病害　黄化葉巻病 天敵導入の動きも',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_2_text',
+        'label' => '詳細セクション2本文（困っている病害）',
+        'name' => 'detail_section_2_text',
+        'type' => 'textarea',
+        'rows' => 8,
+        'instructions' => '改行で段落を分けて入力してください。',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_2_highlight',
+        'label' => '詳細セクション2強調ボックス（困っている病害）',
+        'name' => 'detail_section_2_highlight',
+        'type' => 'textarea',
+        'rows' => 4,
+        'instructions' => 'オレンジの強調ボックスに表示する文章です。改行可。',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_3_title',
+        'label' => '詳細セクション3タイトル（困っている生理障害）',
+        'name' => 'detail_section_3_title',
+        'type' => 'text',
+        'default_value' => '生理障害　高温・かん水管理が課題',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_3_text',
+        'label' => '詳細セクション3本文（困っている生理障害）',
+        'name' => 'detail_section_3_text',
+        'type' => 'textarea',
+        'rows' => 8,
+        'instructions' => '改行で段落を分けて入力してください。',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_3_highlight',
+        'label' => '詳細セクション3強調ボックス（困っている生理障害）',
+        'name' => 'detail_section_3_highlight',
+        'type' => 'textarea',
+        'rows' => 4,
+        'instructions' => 'オレンジの強調ボックスに表示する文章です。改行可。',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_4_title',
+        'label' => '詳細セクション4タイトル（導入したい資機材）',
+        'name' => 'detail_section_4_title',
+        'type' => 'text',
+        'default_value' => '導入したい資機材　現場ニーズの高い設備',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_4_text',
+        'label' => '詳細セクション4本文（導入したい資機材）',
+        'name' => 'detail_section_4_text',
+        'type' => 'textarea',
+        'rows' => 8,
+        'instructions' => '改行で段落を分けて入力してください。',
+      ],
+      [
+        'key' => 'field_ja_survey_detail_section_4_highlight',
+        'label' => '詳細セクション4強調ボックス（導入したい資機材）',
+        'name' => 'detail_section_4_highlight',
+        'type' => 'textarea',
+        'rows' => 4,
+        'instructions' => 'オレンジの強調ボックスに表示する文章です。改行可。',
+      ],
+    ],
+    'location' => [
+      [
+        [
+          'param' => 'post_type',
+          'operator' => '==',
+          'value' => 'ja_survey_top',
+        ],
+      ],
+    ],
+    'position' => 'normal',
+    'style' => 'default',
+    'label_placement' => 'top',
+    'instruction_placement' => 'label',
+    'active' => true,
+  ]);
+});

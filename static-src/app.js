@@ -13,6 +13,703 @@
 (function () {
   "use strict";
 
+
+  /* =====================================================================
+   * JA部会アンケート: early-safe initializer
+   * - page-survey is data-driven from /static/{paper}/survey.json
+   * - define this early so later unrelated runtime errors do not block survey
+   * ===================================================================== */
+  (function ensureJaSurveyPageEarly() {
+    if (!document.body || !document.body.classList.contains("page-survey")) return;
+    if (window.__JA_SURVEY_EARLY_BOUND__) return;
+    window.__JA_SURVEY_EARLY_BOUND__ = true;
+
+    const REGION_ORDER = ["北海道", "東北", "関東", "中部", "近畿", "中国", "四国", "九州"];
+    const PREF_TO_REGION = {
+      "北海道":"北海道",
+      "青森県":"東北","岩手県":"東北","宮城県":"東北","秋田県":"東北","山形県":"東北","福島県":"東北",
+      "茨城県":"関東","栃木県":"関東","群馬県":"関東","埼玉県":"関東","千葉県":"関東","東京都":"関東","神奈川県":"関東",
+      "新潟県":"中部","富山県":"中部","石川県":"中部","福井県":"中部","山梨県":"中部","長野県":"中部","岐阜県":"中部","静岡県":"中部","愛知県":"中部",
+      "三重県":"近畿","滋賀県":"近畿","京都府":"近畿","大阪府":"近畿","兵庫県":"近畿","奈良県":"近畿","和歌山県":"近畿",
+      "鳥取県":"中国","島根県":"中国","岡山県":"中国","広島県":"中国","山口県":"中国",
+      "徳島県":"四国","香川県":"四国","愛媛県":"四国","高知県":"四国",
+      "福岡県":"九州","佐賀県":"九州","長崎県":"九州","熊本県":"九州","大分県":"九州","宮崎県":"九州","鹿児島県":"九州","沖縄県":"九州"
+    };
+
+    function getPaperLocal() {
+      try {
+        const parts = window.location.pathname.split("/").filter(Boolean);
+        const idx = parts.indexOf("static");
+        if (idx !== -1 && parts[idx + 1]) return parts[idx + 1];
+      } catch (_e) {}
+      return "tomato";
+    }
+
+    async function fetchJsonLocal(url) {
+      const res = await fetch(url, { cache: "no-store" });
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      if (/^\s*</.test(text)) throw new Error(`HTML returned instead of JSON for ${url}`);
+      return JSON.parse(text);
+    }
+
+    function stripHtmlLocal(text) {
+      const tmp = document.createElement("div");
+      tmp.innerHTML = String(text || "");
+      return (tmp.textContent || tmp.innerText || "").trim();
+    }
+
+    function escapeHtmlLocal(text) {
+      return String(text || "").replace(/[&<>"']/g, function(ch) {
+        return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[ch];
+      });
+    }
+
+    function resolveImageUrlLocal(path) {
+      if (!path) return "";
+      if (/^https?:\/\//i.test(path)) return path;
+      try {
+        return new URL(String(path), window.location.origin).href;
+      } catch (_e) {
+        return String(path);
+      }
+    }
+
+    function normalizePrefectureName(name) {
+      return String(name || "").trim();
+    }
+
+    function getPostPrefectures(post) {
+      const fromArray = Array.isArray(post && post.prefectures)
+        ? post.prefectures.map(normalizePrefectureName).filter(Boolean)
+        : [];
+      if (fromArray.length) return Array.from(new Set(fromArray));
+      const fallback = normalizePrefectureName(post && post.prefecture);
+      return fallback ? [fallback] : [];
+    }
+
+    function getRegionName(prefecture, post) {
+      const normalized = normalizePrefectureName(prefecture);
+      if (normalized && PREF_TO_REGION[normalized]) return PREF_TO_REGION[normalized];
+      const regions = Array.isArray(post && post.regions)
+        ? post.regions.map(function(v){ return String(v || "").trim(); }).filter(Boolean)
+        : [];
+      if (regions.length) return regions[0];
+      return "その他";
+    }
+
+    function getDetailHref(post) {
+      if (post && post.url) return String(post.url);
+      if (post && post.id) return `detail.html?id=${encodeURIComponent(post.id)}`;
+      return "#";
+    }
+
+    function buildAssociationTile(post, prefectureName) {
+      const a = document.createElement("a");
+      a.className = "association-tile";
+      a.href = getDetailHref(post);
+
+      const image = resolveImageUrlLocal(post && post.featured_image);
+      const title = stripHtmlLocal(post && post.title);
+      const excerpt = stripHtmlLocal(post && post.excerpt);
+
+      a.innerHTML =
+        `<div class="association-tile-img">${
+          image
+            ? `<img src="${escapeHtmlLocal(image)}" alt="${escapeHtmlLocal(title)}" loading="lazy">`
+            : `<div class="association-tile-placeholder">JA部会アンケート</div>`
+        }</div>` +
+        `<div class="association-tile-overlay">` +
+          `<div class="association-tile-prefecture">${escapeHtmlLocal(prefectureName)}</div>` +
+          `<h3 class="association-tile-name">${escapeHtmlLocal(title || "名称未設定")}</h3>` +
+          (excerpt ? `<p class="association-tile-excerpt">${escapeHtmlLocal(excerpt)}</p>` : ``) +
+        `</div>`;
+
+      return a;
+    }
+
+    function sortPrefectures(names) {
+      return names.slice().sort(function(a, b) {
+        return String(a).localeCompare(String(b), "ja");
+      });
+    }
+
+    async function loadSurveyData() {
+      const paper = getPaperLocal();
+      const candidates = [
+        `/static/${encodeURIComponent(paper)}/survey.json`,
+        `./survey.json`,
+        `survey.json`
+      ];
+
+      let data = null;
+      let lastError = null;
+      for (const url of candidates) {
+        try {
+          data = await fetchJsonLocal(url);
+          if (Array.isArray(data)) return data;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      throw lastError || new Error("survey.json could not be loaded");
+    }
+
+    function buildPrefectureIndex(posts) {
+      const map = new Map();
+      (Array.isArray(posts) ? posts : []).forEach(function(post) {
+        const prefs = getPostPrefectures(post);
+        prefs.forEach(function(prefName) {
+          const current = map.get(prefName) || [];
+          current.push(post);
+          map.set(prefName, current);
+        });
+      });
+      return map;
+    }
+
+    function renderPrefectureGroups(prefectureMap, onSelect, selectedPrefecture) {
+      const root = document.getElementById("prefectureList");
+      if (!root) return;
+
+      const grouped = {};
+      Array.from(prefectureMap.keys()).forEach(function(prefName) {
+        const regionName = getRegionName(prefName, (prefectureMap.get(prefName) || [])[0]);
+        if (!grouped[regionName]) grouped[regionName] = [];
+        grouped[regionName].push(prefName);
+      });
+
+      const outer = document.createElement("div");
+      outer.className = "survey-region-groups";
+
+      const orderedRegions = REGION_ORDER
+        .filter(function(name){ return Array.isArray(grouped[name]) && grouped[name].length; })
+        .concat(
+          Object.keys(grouped)
+            .filter(function(name){ return !REGION_ORDER.includes(name); })
+            .sort(function(a, b){ return a.localeCompare(b, "ja"); })
+        );
+
+      orderedRegions.forEach(function(regionName) {
+        const section = document.createElement("section");
+        section.className = "survey-region-group";
+
+        const title = document.createElement("h3");
+        title.className = "survey-region-title";
+        title.textContent = regionName;
+        section.appendChild(title);
+
+        const grid = document.createElement("div");
+        grid.className = "prefecture-list";
+
+        sortPrefectures(grouped[regionName]).forEach(function(prefName) {
+          const count = (prefectureMap.get(prefName) || []).length;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "prefecture-card" + (selectedPrefecture === prefName ? " selected is-active" : "");
+          btn.setAttribute("data-prefecture", prefName);
+          btn.innerHTML =
+            `<div class="prefecture-name">${escapeHtmlLocal(prefName)}</div>` +
+            `<div class="prefecture-count">${count}部会</div>`;
+          btn.addEventListener("click", function() {
+            onSelect(prefName);
+          });
+          grid.appendChild(btn);
+        });
+
+        section.appendChild(grid);
+        outer.appendChild(section);
+      });
+
+      root.innerHTML = "";
+      root.appendChild(outer);
+    }
+
+    function renderSelectOptions(prefectureMap, selectedPrefecture) {
+      const select = document.getElementById("prefectureSelect");
+      if (!select) return;
+
+      const prefectures = sortPrefectures(Array.from(prefectureMap.keys()));
+      select.innerHTML = `<option value="">すべての都道府県</option>`;
+      prefectures.forEach(function(prefName) {
+        const option = document.createElement("option");
+        option.value = prefName;
+        option.textContent = prefName;
+        if (prefName === selectedPrefecture) option.selected = true;
+        select.appendChild(option);
+      });
+    }
+
+    function renderAssociationList(prefectureMap, selectedPrefecture) {
+      const section = document.getElementById("associationSection");
+      const title = document.getElementById("selectedPrefectureTitle");
+      const list = document.getElementById("associationList");
+      const empty = document.getElementById("associationEmptyMessage");
+      if (!section || !title || !list || !empty) return;
+
+      if (!selectedPrefecture) {
+        section.style.display = "none";
+        list.innerHTML = "";
+        empty.hidden = true;
+        title.textContent = "部会一覧";
+        return;
+      }
+
+      const posts = prefectureMap.get(selectedPrefecture) || [];
+      title.textContent = `${selectedPrefecture}の部会一覧`;
+      list.innerHTML = "";
+
+      if (!posts.length) {
+        section.style.display = "";
+        empty.hidden = false;
+        return;
+      }
+
+      empty.hidden = true;
+      posts
+        .slice()
+        .sort(function(a, b) {
+          const at = Date.parse(String((a && (a.date || a.date_ymd)) || "")) || 0;
+          const bt = Date.parse(String((b && (b.date || b.date_ymd)) || "")) || 0;
+          return bt - at;
+        })
+        .forEach(function(post) {
+          list.appendChild(buildAssociationTile(post, selectedPrefecture));
+        });
+
+      section.style.display = "";
+    }
+
+    function updateStats(prefectureMap) {
+      const prefCountEl = document.getElementById("surveyPrefectureCount");
+      const assocCountEl = document.getElementById("surveyAssociationCount");
+
+      if (prefCountEl) prefCountEl.textContent = String(prefectureMap.size);
+
+      if (assocCountEl) {
+        const uniquePostIds = new Set();
+        Array.from(prefectureMap.values()).forEach(function(items) {
+          (Array.isArray(items) ? items : []).forEach(function(post) {
+            const key = String((post && (post.id || post.url || post.title)) || "").trim();
+            if (key) uniquePostIds.add(key);
+          });
+        });
+        assocCountEl.textContent = String(uniquePostIds.size);
+      }
+    }
+
+    function maybeSelectFromQuery(prefectureMap) {
+      try {
+        const sp = new URLSearchParams(window.location.search || "");
+        const pref = normalizePrefectureName(sp.get("prefecture") || "");
+        return pref && prefectureMap.has(pref) ? pref : "";
+      } catch (_e) {
+        return "";
+      }
+    }
+
+    function syncQuery(prefectureName) {
+      try {
+        const url = new URL(window.location.href);
+        if (prefectureName) url.searchParams.set("prefecture", prefectureName);
+        else url.searchParams.delete("prefecture");
+        window.history.replaceState({}, "", url.toString());
+      } catch (_e) {}
+    }
+
+    function scrollToAssociations() {
+      const section = document.getElementById("associationSection");
+      if (!section || section.style.display === "none") return;
+      try {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (_e) {
+        section.scrollIntoView();
+      }
+    }
+
+
+    async function loadSurveyTopData() {
+      const paper = getPaperLocal();
+      const candidates = [
+        `/static/${encodeURIComponent(paper)}/survey-top.json`,
+        `./survey-top.json`,
+        `survey-top.json`
+      ];
+
+      let data = null;
+      let lastError = null;
+      for (const url of candidates) {
+        try {
+          data = await fetchJsonLocal(url);
+          if (data) return data;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      if (lastError) throw lastError;
+      return null;
+    }
+
+    function normalizeGraphItems(items) {
+      if (!Array.isArray(items)) return [];
+      return items.map(function(item) {
+        if (!item || typeof item !== "object") return null;
+        const label = String(item.label || item.name || "").trim();
+        const raw = item.value != null ? item.value : item.percent;
+        let value = Number(raw);
+        if (!Number.isFinite(value)) value = 0;
+        value = Math.max(0, Math.min(100, value));
+        return label ? { label: label, value: value } : null;
+      }).filter(Boolean);
+    }
+
+    function normalizeSurveyTopEntry(entry) {
+      if (!entry || typeof entry !== "object") return null;
+      const graphDefaults = [
+        { id: "graph1", title: "困っている害虫" },
+        { id: "graph2", title: "困っている病害" },
+        { id: "graph3", title: "困っている生理障害" },
+        { id: "graph4", title: "導入したい資機材" }
+      ];
+
+      const rawGraphs = Array.isArray(entry.graphs) ? entry.graphs : [];
+      const graphs = graphDefaults.map(function(def, index) {
+        const source = rawGraphs[index] || entry[def.id] || {};
+        const sourceItems = Array.isArray(source.items) ? source.items : (Array.isArray(source.categories) ? source.categories : []);
+        return {
+          id: String(source.id || def.id),
+          title: String(source.title || def.title),
+          section_title: String(source.section_title || source.sectionTitle || source.title || def.title).trim(),
+          section_text: String(source.section_text || source.sectionText || "").trim(),
+          section_highlight: String(source.section_highlight || source.sectionHighlight || "").trim(),
+          items: normalizeGraphItems(sourceItems)
+        };
+      }).filter(function(graph){ return graph.items.length; });
+
+      return {
+        id: Number(entry.id || 0),
+        survey_year: String(entry.survey_year || entry.year || entry.survey_top_year || "").trim(),
+        survey_season: String(entry.survey_season || entry.season || "").trim(),
+        survey_season_slug: String(entry.survey_season_slug || entry.season_slug || "").trim(),
+        page_title: String(entry.page_title || entry.title || "").trim(),
+        page_subtitle: String(entry.page_subtitle || entry.lead_subtitle || "").trim(),
+        hero_title: String(entry.hero_title || "").trim(),
+        hero_description: String(entry.hero_description || "").trim(),
+        detail_title: String(entry.detail_title || "").trim(),
+        detail_subtitle: String(entry.detail_subtitle || "").trim(),
+        detail_description: String(entry.detail_description || "").trim(),
+        total_producers: String(entry.total_producers || entry.stats_total_producers || "").trim(),
+        response_rate: String(entry.response_rate || entry.stats_response_rate || "").trim(),
+        graphs: graphs
+      };
+    }
+
+    function getRequestedSurveyKey() {
+      let year = "";
+      let season = "";
+      try {
+        const sp = new URLSearchParams(window.location.search || "");
+        year = String(sp.get("survey_year") || "").trim();
+        season = String(sp.get("survey_season") || "").trim();
+      } catch (_e) {}
+      if (!year && document.body) year = String(document.body.getAttribute("data-survey-year") || "").trim();
+      if (!season && document.body) season = String(document.body.getAttribute("data-survey-season") || "").trim();
+      return { year: year, season: season };
+    }
+
+    function normalizeSurveySeasonValue(value) {
+      const raw = String(value || "").trim().toLowerCase();
+      if (!raw) return "";
+      if (
+        raw === "winter" ||
+        raw === "winter-spring" ||
+        raw === "winter_spring" ||
+        raw === "winter spring" ||
+        raw === "fuyu-haru" ||
+        raw === "fuyuharu" ||
+        raw === "冬春"
+      ) return "winter";
+      if (
+        raw === "summer" ||
+        raw === "summer-autumn" ||
+        raw === "summer_autumn" ||
+        raw === "summer autumn" ||
+        raw === "summer-fall" ||
+        raw === "summer_fall" ||
+        raw === "summer fall" ||
+        raw === "natsu-aki" ||
+        raw === "natsuaki" ||
+        raw === "夏秋"
+      ) return "summer";
+      return raw;
+    }
+
+    function pickSurveyTopEntry(data) {
+      const rawItems = Array.isArray(data) ? data : (Array.isArray(data && data.items) ? data.items : (data ? [data] : []));
+      const items = rawItems.map(normalizeSurveyTopEntry).filter(Boolean);
+      if (!items.length) return null;
+
+      const requested = getRequestedSurveyKey();
+      const requestedYear = String(requested.year || "").trim();
+      const requestedSeason = normalizeSurveySeasonValue(requested.season);
+
+      if (requestedYear || requestedSeason) {
+        const exact = items.find(function(item) {
+          const itemYear = String(item && item.survey_year || "").trim();
+          const itemSeason = normalizeSurveySeasonValue((item && (item.survey_season_slug || item.survey_season)) || "");
+          const sameYear = !requestedYear || itemYear === requestedYear;
+          const sameSeason = !requestedSeason || itemSeason === requestedSeason;
+          return sameYear && sameSeason;
+        });
+        if (exact) return exact;
+        return null;
+      }
+      return items[0];
+    }
+
+    function getPostSurveyYear(post) {
+      const direct = String((post && (post.survey_year || post.year)) || "").trim();
+      return direct;
+    }
+
+    function getPostSurveySeason(post) {
+      return normalizeSurveySeasonValue(
+        (post && (post.survey_season_slug || post.season_slug || post.survey_season || post.season)) || ""
+      );
+    }
+
+    function filterSurveyPostsByCurrentState(posts) {
+      const requested = getRequestedSurveyKey();
+      const requestedYear = String(requested.year || "").trim();
+      const requestedSeason = normalizeSurveySeasonValue(requested.season);
+      const list = Array.isArray(posts) ? posts : [];
+
+      return list.filter(function(post) {
+        const postYear = getPostSurveyYear(post);
+        const postSeason = getPostSurveySeason(post);
+        const sameYear = !requestedYear ? true : postYear === requestedYear;
+        const sameSeason = !requestedSeason ? true : postSeason === requestedSeason;
+        return sameYear && sameSeason;
+      });
+    }
+
+    function formatStatValue(value, suffix) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      if (/[%％]$/.test(raw) || /人$/.test(raw)) return raw;
+      if (suffix === "%") return raw + "%";
+      try {
+        const num = Number(raw.replace(/,/g, ""));
+        if (Number.isFinite(num) && suffix !== "%") return num.toLocaleString("ja-JP");
+      } catch (_e) {}
+      return raw;
+    }
+    function renderParagraphBlocks(text) {
+      const normalized = String(text || "").replaceAll("\r\n", "\n").replaceAll("\r", "\n").trim();
+      if (!normalized) return "";
+      return normalized
+        .split(/\n{2,}/)
+        .map(function(block) {
+          const html = escapeHtmlLocal(block).split("\n").join("<br>");
+          return `<p>${html}</p>`;
+        })
+        .join("");
+    }
+
+function renderGraphItems(items) {
+      return items.map(function(item) {
+        const width = Math.max(0, Math.min(100, Number(item.value) || 0));
+        const pct = `${Math.round(width)}%`;
+        return `
+          <div class="simple-bar-item">
+            <div class="simple-bar-label">${escapeHtmlLocal(item.label)}</div>
+            <div class="simple-bar-track">
+              <div class="simple-bar-fill${width === 0 ? " is-zero" : ""}" style="width:${width}%">${escapeHtmlLocal(pct)}</div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    function renderSurveyTopContent(entry) {
+      const root = document.getElementById("surveyTopDynamicContent");
+      if (!root || !entry || !entry.graphs.length) return;
+
+      const detailTitle = entry.detail_title || "部会アンケート詳細";
+      const detailSubtitle = entry.detail_subtitle || "アンケート集計結果";
+      const detailDescription = entry.detail_description || "全国の回答結果をもとに主な課題をまとめています。";
+
+      const icons = [
+        '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"></path></svg>',
+        '<svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"></path></svg>',
+        '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>'
+      ];
+
+      const sections = entry.graphs.map(function(graph, index) {
+        const sectionTitle = graph.section_title || graph.title;
+        const sectionTextHtml = renderParagraphBlocks(graph.section_text);
+        const sectionHighlightHtml = renderParagraphBlocks(graph.section_highlight);
+        const hasTextContent = Boolean(sectionTextHtml || sectionHighlightHtml);
+
+        return `
+          <div class="detail-section">
+            <div class="detail-section-header">
+              <div class="detail-section-icon">${icons[Math.min(index, icons.length - 1)] || icons[icons.length - 1]}</div>
+              <h3 class="detail-section-title">${escapeHtmlLocal(sectionTitle)}</h3>
+            </div>
+            <div class="detail-content${hasTextContent ? " has-text" : ""}">
+              <div class="detail-text${hasTextContent ? "" : " is-empty"}">
+                ${sectionTextHtml}
+                ${sectionHighlightHtml ? `<div class="detail-highlight">${sectionHighlightHtml}</div>` : ""}
+              </div>
+              <div class="detail-chart">
+                <p class="chart-title-small">グラフ${index + 1}「${escapeHtmlLocal(graph.title)}」</p>
+                <div class="simple-bar-chart">${renderGraphItems(graph.items)}</div>
+              </div>
+            </div>
+          </div>`;
+      });
+
+      root.innerHTML = `
+        <div class="survey-detail-header">
+          <h2 class="survey-detail-title">${escapeHtmlLocal(detailTitle)}</h2>
+          <p class="survey-detail-subtitle">${escapeHtmlLocal(detailSubtitle)}</p>
+          <p class="survey-detail-description">${escapeHtmlLocal(detailDescription)}</p>
+        </div>
+        ${sections.join("") || '<div class="survey-top-empty">グラフデータがありません。</div>'}`;
+    }
+
+
+    function renderSurveyTopEmptyState() {
+      const pageTitle = document.getElementById("surveyPageTitle");
+      const pageSubtitle = document.getElementById("surveyPageSubtitle");
+      const heroTitle = document.getElementById("surveyHeroTitle");
+      const heroDescription = document.getElementById("surveyHeroDescription");
+      const totalProducers = document.getElementById("surveyTotalProducers");
+      const responseRate = document.getElementById("surveyResponseRate");
+      const root = document.getElementById("surveyTopDynamicContent");
+      const requested = getRequestedSurveyKey();
+      const requestedYear = String(requested.year || "").trim();
+      const requestedSeason = normalizeSurveySeasonValue(requested.season);
+      const seasonLabel = requestedSeason === "winter" ? "冬春" : (requestedSeason === "summer" ? "夏秋" : "");
+      const heading = [requestedYear ? requestedYear + "年" : "", seasonLabel].filter(Boolean).join(" ") || "選択中の条件";
+
+      if (pageTitle) pageTitle.textContent = "JA部会アンケート結果";
+      if (pageSubtitle) pageSubtitle.textContent = heading + " のTOPデータはまだありません。";
+      if (heroTitle) heroTitle.textContent = heading + " のデータ準備中";
+      if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する JA部会アンケートTOP が見つかりませんでした。";
+      if (totalProducers) totalProducers.textContent = "—";
+      if (responseRate) responseRate.textContent = "—";
+      if (root) {
+        root.innerHTML = '<div class="survey-top-empty">選択された年度・シーズンに一致する JA部会アンケートTOP データがありません。</div>';
+      }
+    }
+
+    function applySurveyTopEntry(entry) {
+      if (!entry) return;
+      const pageTitle = document.getElementById("surveyPageTitle");
+      const pageSubtitle = document.getElementById("surveyPageSubtitle");
+      const heroTitle = document.getElementById("surveyHeroTitle");
+      const heroDescription = document.getElementById("surveyHeroDescription");
+      const totalProducers = document.getElementById("surveyTotalProducers");
+      const responseRate = document.getElementById("surveyResponseRate");
+
+      if (pageTitle && entry.page_title) pageTitle.textContent = entry.page_title;
+      if (pageSubtitle && entry.page_subtitle) pageSubtitle.textContent = entry.page_subtitle;
+      if (heroTitle && entry.hero_title) heroTitle.textContent = entry.hero_title;
+      if (heroDescription && entry.hero_description) heroDescription.textContent = entry.hero_description;
+      if (totalProducers && entry.total_producers) totalProducers.textContent = formatStatValue(entry.total_producers, "");
+      if (responseRate && entry.response_rate) responseRate.textContent = formatStatValue(entry.response_rate, "%");
+      renderSurveyTopContent(entry);
+    }
+
+    async function run() {
+      if (window.__JA_SURVEY_RENDERED__) return;
+      try {
+        const posts = await loadSurveyData();
+        const filteredPosts = filterSurveyPostsByCurrentState(posts);
+        const prefectureMap = buildPrefectureIndex(filteredPosts);
+        const select = document.getElementById("prefectureSelect");
+        const searchBtn = document.getElementById("surveySearchButton");
+
+        try {
+          const surveyTopData = await loadSurveyTopData();
+          const entry = pickSurveyTopEntry(surveyTopData);
+          if (entry) {
+            applySurveyTopEntry(entry);
+          } else if (getRequestedSurveyKey().year || getRequestedSurveyKey().season) {
+            renderSurveyTopEmptyState();
+          }
+        } catch (_e) {
+          if (getRequestedSurveyKey().year || getRequestedSurveyKey().season) {
+            renderSurveyTopEmptyState();
+          }
+        }
+
+        if (!prefectureMap.size) {
+          const empty = document.getElementById("associationEmptyMessage");
+          const section = document.getElementById("associationSection");
+          if (section) section.style.display = "";
+          if (empty) {
+            empty.hidden = false;
+            empty.textContent = "JA部会アンケートのデータがまだありません。";
+          }
+          return;
+        }
+
+        window.__JA_SURVEY_RENDERED__ = true;
+        let selectedPrefecture = maybeSelectFromQuery(prefectureMap);
+
+        function rerender() {
+          updateStats(prefectureMap);
+          renderSelectOptions(prefectureMap, selectedPrefecture);
+          renderPrefectureGroups(prefectureMap, function(prefName) {
+            selectedPrefecture = prefName;
+            syncQuery(selectedPrefecture);
+            rerender();
+            scrollToAssociations();
+          }, selectedPrefecture);
+          renderAssociationList(prefectureMap, selectedPrefecture);
+        }
+
+        if (select && !select.dataset.jaSurveyBound) {
+          select.dataset.jaSurveyBound = "1";
+          select.addEventListener("change", function() {
+            selectedPrefecture = normalizePrefectureName(this.value);
+          });
+        }
+
+        if (searchBtn && !searchBtn.dataset.jaSurveyBound) {
+          searchBtn.dataset.jaSurveyBound = "1";
+          searchBtn.addEventListener("click", function() {
+            syncQuery(selectedPrefecture);
+            rerender();
+            scrollToAssociations();
+          });
+        }
+
+        rerender();
+      } catch (error) {
+        console.error("[JA部会アンケート] render failed:", error);
+        const section = document.getElementById("associationSection");
+        const empty = document.getElementById("associationEmptyMessage");
+        if (section) section.style.display = "";
+        if (empty) {
+          empty.hidden = false;
+          empty.textContent = "JA部会アンケートの読み込みに失敗しました。survey.json を確認してください。";
+        }
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", run);
+    } else {
+      run();
+    }
+    window.addEventListener("load", run);
+    setTimeout(run, 0);
+    setTimeout(run, 300);
+  })();
+
   /* =====================================================================
    * Mobile menu globals (must be defined early)
    * - header.html uses inline onclick="toggleMobileMenu()"
@@ -259,6 +956,301 @@
       a.appendChild(more);
 
       return a;
+    }
+
+
+    async function loadSurveyTopData() {
+      const paper = getPaperLocal();
+      const candidates = [
+        `/static/${encodeURIComponent(paper)}/survey-top.json`,
+        `./survey-top.json`,
+        `survey-top.json`
+      ];
+
+      let data = null;
+      let lastError = null;
+      for (const url of candidates) {
+        try {
+          data = await fetchJsonLocal(url);
+          if (data) return data;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      if (lastError) throw lastError;
+      return null;
+    }
+
+    function normalizeGraphItems(items) {
+      if (!Array.isArray(items)) return [];
+      return items.map(function(item) {
+        if (!item || typeof item !== "object") return null;
+        const label = String(item.label || item.name || "").trim();
+        const raw = item.value != null ? item.value : item.percent;
+        let value = Number(raw);
+        if (!Number.isFinite(value)) value = 0;
+        value = Math.max(0, Math.min(100, value));
+        return label ? { label: label, value: value } : null;
+      }).filter(Boolean);
+    }
+
+    function normalizeSurveyTopEntry(entry) {
+      if (!entry || typeof entry !== "object") return null;
+      const graphDefaults = [
+        { id: "graph1", title: "困っている害虫" },
+        { id: "graph2", title: "困っている病害" },
+        { id: "graph3", title: "困っている生理障害" },
+        { id: "graph4", title: "導入したい資機材" }
+      ];
+
+      const rawGraphs = Array.isArray(entry.graphs) ? entry.graphs : [];
+      const graphs = graphDefaults.map(function(def, index) {
+        const source = rawGraphs[index] || entry[def.id] || {};
+        const sourceItems = Array.isArray(source.items) ? source.items : (Array.isArray(source.categories) ? source.categories : []);
+        return {
+          id: String(source.id || def.id),
+          title: String(source.title || def.title),
+          section_title: String(source.section_title || source.sectionTitle || source.title || def.title).trim(),
+          section_text: String(source.section_text || source.sectionText || "").trim(),
+          section_highlight: String(source.section_highlight || source.sectionHighlight || "").trim(),
+          items: normalizeGraphItems(sourceItems)
+        };
+      }).filter(function(graph){ return graph.items.length; });
+
+      return {
+        id: Number(entry.id || 0),
+        survey_year: String(entry.survey_year || entry.year || entry.survey_top_year || "").trim(),
+        survey_season: String(entry.survey_season || entry.season || "").trim(),
+        survey_season_slug: String(entry.survey_season_slug || entry.season_slug || "").trim(),
+        page_title: String(entry.page_title || entry.title || "").trim(),
+        page_subtitle: String(entry.page_subtitle || entry.lead_subtitle || "").trim(),
+        hero_title: String(entry.hero_title || "").trim(),
+        hero_description: String(entry.hero_description || "").trim(),
+        detail_title: String(entry.detail_title || "").trim(),
+        detail_subtitle: String(entry.detail_subtitle || "").trim(),
+        detail_description: String(entry.detail_description || "").trim(),
+        total_producers: String(entry.total_producers || entry.stats_total_producers || "").trim(),
+        response_rate: String(entry.response_rate || entry.stats_response_rate || "").trim(),
+        graphs: graphs
+      };
+    }
+
+    function getRequestedSurveyKey() {
+      let year = "";
+      let season = "";
+      try {
+        const sp = new URLSearchParams(window.location.search || "");
+        year = String(sp.get("survey_year") || "").trim();
+        season = String(sp.get("survey_season") || "").trim();
+      } catch (_e) {}
+      if (!year && document.body) year = String(document.body.getAttribute("data-survey-year") || "").trim();
+      if (!season && document.body) season = String(document.body.getAttribute("data-survey-season") || "").trim();
+      return { year: year, season: season };
+    }
+
+    function normalizeSurveySeasonValue(value) {
+      const raw = String(value || "").trim().toLowerCase();
+      if (!raw) return "";
+      if (
+        raw === "winter" ||
+        raw === "winter-spring" ||
+        raw === "winter_spring" ||
+        raw === "winter spring" ||
+        raw === "fuyu-haru" ||
+        raw === "fuyuharu" ||
+        raw === "冬春"
+      ) return "winter";
+      if (
+        raw === "summer" ||
+        raw === "summer-autumn" ||
+        raw === "summer_autumn" ||
+        raw === "summer autumn" ||
+        raw === "summer-fall" ||
+        raw === "summer_fall" ||
+        raw === "summer fall" ||
+        raw === "natsu-aki" ||
+        raw === "natsuaki" ||
+        raw === "夏秋"
+      ) return "summer";
+      return raw;
+    }
+
+    function pickSurveyTopEntry(data) {
+      const rawItems = Array.isArray(data) ? data : (Array.isArray(data && data.items) ? data.items : (data ? [data] : []));
+      const items = rawItems.map(normalizeSurveyTopEntry).filter(Boolean);
+      if (!items.length) return null;
+
+      const requested = getRequestedSurveyKey();
+      const requestedYear = String(requested.year || "").trim();
+      const requestedSeason = normalizeSurveySeasonValue(requested.season);
+
+      if (requestedYear || requestedSeason) {
+        const exact = items.find(function(item) {
+          const itemYear = String(item && item.survey_year || "").trim();
+          const itemSeason = normalizeSurveySeasonValue((item && (item.survey_season_slug || item.survey_season)) || "");
+          const sameYear = !requestedYear || itemYear === requestedYear;
+          const sameSeason = !requestedSeason || itemSeason === requestedSeason;
+          return sameYear && sameSeason;
+        });
+        if (exact) return exact;
+        return null;
+      }
+      return items[0];
+    }
+
+    function getPostSurveyYear(post) {
+      const direct = String((post && (post.survey_year || post.year)) || "").trim();
+      return direct;
+    }
+
+    function getPostSurveySeason(post) {
+      return normalizeSurveySeasonValue(
+        (post && (post.survey_season_slug || post.season_slug || post.survey_season || post.season)) || ""
+      );
+    }
+
+    function filterSurveyPostsByCurrentState(posts) {
+      const requested = getRequestedSurveyKey();
+      const requestedYear = String(requested.year || "").trim();
+      const requestedSeason = normalizeSurveySeasonValue(requested.season);
+      const list = Array.isArray(posts) ? posts : [];
+
+      return list.filter(function(post) {
+        const postYear = getPostSurveyYear(post);
+        const postSeason = getPostSurveySeason(post);
+        const sameYear = !requestedYear ? true : postYear === requestedYear;
+        const sameSeason = !requestedSeason ? true : postSeason === requestedSeason;
+        return sameYear && sameSeason;
+      });
+    }
+
+    function formatStatValue(value, suffix) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      if (/[%％]$/.test(raw) || /人$/.test(raw)) return raw;
+      if (suffix === "%") return raw + "%";
+      try {
+        const num = Number(raw.replace(/,/g, ""));
+        if (Number.isFinite(num) && suffix !== "%") return num.toLocaleString("ja-JP");
+      } catch (_e) {}
+      return raw;
+    }
+    function renderParagraphBlocks(text) {
+      const normalized = String(text || "").replaceAll("\r\n", "\n").replaceAll("\r", "\n").trim();
+      if (!normalized) return "";
+      return normalized
+        .split(/\n{2,}/)
+        .map(function(block) {
+          const html = escapeHtmlLocal(block).split("\n").join("<br>");
+          return `<p>${html}</p>`;
+        })
+        .join("");
+    }
+
+function renderGraphItems(items) {
+      return items.map(function(item) {
+        const width = Math.max(0, Math.min(100, Number(item.value) || 0));
+        const pct = `${Math.round(width)}%`;
+        return `
+          <div class="simple-bar-item">
+            <div class="simple-bar-label">${escapeHtmlLocal(item.label)}</div>
+            <div class="simple-bar-track">
+              <div class="simple-bar-fill${width === 0 ? " is-zero" : ""}" style="width:${width}%">${escapeHtmlLocal(pct)}</div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    function renderSurveyTopContent(entry) {
+      const root = document.getElementById("surveyTopDynamicContent");
+      if (!root || !entry || !entry.graphs.length) return;
+
+      const detailTitle = entry.detail_title || "部会アンケート詳細";
+      const detailSubtitle = entry.detail_subtitle || "アンケート集計結果";
+      const detailDescription = entry.detail_description || "全国の回答結果をもとに主な課題をまとめています。";
+
+      const icons = [
+        '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"></path></svg>',
+        '<svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"></path></svg>',
+        '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>'
+      ];
+
+      const sections = entry.graphs.map(function(graph, index) {
+        const sectionTitle = graph.section_title || graph.title;
+        const sectionTextHtml = renderParagraphBlocks(graph.section_text);
+        const sectionHighlightHtml = renderParagraphBlocks(graph.section_highlight);
+        const hasTextContent = Boolean(sectionTextHtml || sectionHighlightHtml);
+
+        return `
+          <div class="detail-section">
+            <div class="detail-section-header">
+              <div class="detail-section-icon">${icons[Math.min(index, icons.length - 1)] || icons[icons.length - 1]}</div>
+              <h3 class="detail-section-title">${escapeHtmlLocal(sectionTitle)}</h3>
+            </div>
+            <div class="detail-content${hasTextContent ? " has-text" : ""}">
+              <div class="detail-text${hasTextContent ? "" : " is-empty"}">
+                ${sectionTextHtml}
+                ${sectionHighlightHtml ? `<div class="detail-highlight">${sectionHighlightHtml}</div>` : ""}
+              </div>
+              <div class="detail-chart">
+                <p class="chart-title-small">グラフ${index + 1}「${escapeHtmlLocal(graph.title)}」</p>
+                <div class="simple-bar-chart">${renderGraphItems(graph.items)}</div>
+              </div>
+            </div>
+          </div>`;
+      });
+
+      root.innerHTML = `
+        <div class="survey-detail-header">
+          <h2 class="survey-detail-title">${escapeHtmlLocal(detailTitle)}</h2>
+          <p class="survey-detail-subtitle">${escapeHtmlLocal(detailSubtitle)}</p>
+          <p class="survey-detail-description">${escapeHtmlLocal(detailDescription)}</p>
+        </div>
+        ${sections.join("") || '<div class="survey-top-empty">グラフデータがありません。</div>'}`;
+    }
+
+
+    function renderSurveyTopEmptyState() {
+      const pageTitle = document.getElementById("surveyPageTitle");
+      const pageSubtitle = document.getElementById("surveyPageSubtitle");
+      const heroTitle = document.getElementById("surveyHeroTitle");
+      const heroDescription = document.getElementById("surveyHeroDescription");
+      const totalProducers = document.getElementById("surveyTotalProducers");
+      const responseRate = document.getElementById("surveyResponseRate");
+      const root = document.getElementById("surveyTopDynamicContent");
+      const requested = getRequestedSurveyKey();
+      const requestedYear = String(requested.year || "").trim();
+      const requestedSeason = normalizeSurveySeasonValue(requested.season);
+      const seasonLabel = requestedSeason === "winter" ? "冬春" : (requestedSeason === "summer" ? "夏秋" : "");
+      const heading = [requestedYear ? requestedYear + "年" : "", seasonLabel].filter(Boolean).join(" ") || "選択中の条件";
+
+      if (pageTitle) pageTitle.textContent = "JA部会アンケート結果";
+      if (pageSubtitle) pageSubtitle.textContent = heading + " のTOPデータはまだありません。";
+      if (heroTitle) heroTitle.textContent = heading + " のデータ準備中";
+      if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する JA部会アンケートTOP が見つかりませんでした。";
+      if (totalProducers) totalProducers.textContent = "—";
+      if (responseRate) responseRate.textContent = "—";
+      if (root) {
+        root.innerHTML = '<div class="survey-top-empty">選択された年度・シーズンに一致する JA部会アンケートTOP データがありません。</div>';
+      }
+    }
+
+    function applySurveyTopEntry(entry) {
+      if (!entry) return;
+      const pageTitle = document.getElementById("surveyPageTitle");
+      const pageSubtitle = document.getElementById("surveyPageSubtitle");
+      const heroTitle = document.getElementById("surveyHeroTitle");
+      const heroDescription = document.getElementById("surveyHeroDescription");
+      const totalProducers = document.getElementById("surveyTotalProducers");
+      const responseRate = document.getElementById("surveyResponseRate");
+
+      if (pageTitle && entry.page_title) pageTitle.textContent = entry.page_title;
+      if (pageSubtitle && entry.page_subtitle) pageSubtitle.textContent = entry.page_subtitle;
+      if (heroTitle && entry.hero_title) heroTitle.textContent = entry.hero_title;
+      if (heroDescription && entry.hero_description) heroDescription.textContent = entry.hero_description;
+      if (totalProducers && entry.total_producers) totalProducers.textContent = formatStatValue(entry.total_producers, "");
+      if (responseRate && entry.response_rate) responseRate.textContent = formatStatValue(entry.response_rate, "%");
+      renderSurveyTopContent(entry);
     }
 
     async function run() {
@@ -4738,4 +5730,787 @@ if (typeof window.switchPestTab !== "function") {
   } else {
     initFeaturePage();
   }
+
+  /* =====================================================================
+   * JA部会アンケート: survey.json から動的表示
+   * - Source: /static/{paper}/survey.json
+   * - 都道府県プルダウン、地域別都道府県一覧、部会一覧を動的生成
+   * - 既存の静的HTMLは残し、該当DOMがある場合のみ動作
+   * ===================================================================== */
+  (function initJaSurveyPage() {
+    if (!document.body || !document.body.classList.contains("page-survey")) return;
+    if (window.__JA_SURVEY_RENDERED__ || window.__JA_SURVEY_EARLY_BOUND__) return;
+
+    const REGION_ORDER = ["北海道", "東北", "関東", "中部", "近畿", "中国", "四国", "九州"];
+    const PREF_TO_REGION = {
+      "北海道":"北海道",
+      "青森県":"東北","岩手県":"東北","宮城県":"東北","秋田県":"東北","山形県":"東北","福島県":"東北",
+      "茨城県":"関東","栃木県":"関東","群馬県":"関東","埼玉県":"関東","千葉県":"関東","東京都":"関東","神奈川県":"関東",
+      "新潟県":"中部","富山県":"中部","石川県":"中部","福井県":"中部","山梨県":"中部","長野県":"中部","岐阜県":"中部","静岡県":"中部","愛知県":"中部",
+      "三重県":"近畿","滋賀県":"近畿","京都府":"近畿","大阪府":"近畿","兵庫県":"近畿","奈良県":"近畿","和歌山県":"近畿",
+      "鳥取県":"中国","島根県":"中国","岡山県":"中国","広島県":"中国","山口県":"中国",
+      "徳島県":"四国","香川県":"四国","愛媛県":"四国","高知県":"四国",
+      "福岡県":"九州","佐賀県":"九州","長崎県":"九州","熊本県":"九州","大分県":"九州","宮崎県":"九州","鹿児島県":"九州","沖縄県":"九州"
+    };
+
+    function getPaperLocal() {
+      try {
+        if (typeof getCurrentPaper === "function") {
+          const paper = getCurrentPaper();
+          if (paper) return paper;
+        }
+      } catch (_e) {}
+      try {
+        const parts = window.location.pathname.split("/").filter(Boolean);
+        const idx = parts.indexOf("static");
+        if (idx !== -1 && parts[idx + 1]) return parts[idx + 1];
+      } catch (_e2) {}
+      return "tomato";
+    }
+
+    async function fetchJsonLocal(url) {
+      const res = await fetch(url, { cache: "no-store" });
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      if (/^\s*</.test(text)) throw new Error(`HTML returned instead of JSON for ${url}`);
+      return JSON.parse(text);
+    }
+
+    function stripHtmlLocal(text) {
+      const tmp = document.createElement("div");
+      tmp.innerHTML = String(text || "");
+      return (tmp.textContent || tmp.innerText || "").trim();
+    }
+
+    function escapeHtmlLocal(text) {
+      return String(text || "").replace(/[&<>"']/g, function(ch) {
+        return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[ch];
+      });
+    }
+
+    function resolveImageUrl(path) {
+      if (!path) return "";
+      if (/^https?:\/\//i.test(path)) return path;
+      try {
+        return new URL(String(path), window.location.origin).href;
+      } catch (_e) {
+        return String(path);
+      }
+    }
+
+    function normalizePrefectureName(name) {
+      return String(name || "").trim();
+    }
+
+    function getPostPrefectures(post) {
+      const fromArray = Array.isArray(post && post.prefectures)
+        ? post.prefectures.map(normalizePrefectureName).filter(Boolean)
+        : [];
+      if (fromArray.length) return Array.from(new Set(fromArray));
+      const fallback = normalizePrefectureName(post && post.prefecture);
+      return fallback ? [fallback] : [];
+    }
+
+    function getRegionName(prefecture, post) {
+      const normalized = normalizePrefectureName(prefecture);
+      if (normalized && PREF_TO_REGION[normalized]) return PREF_TO_REGION[normalized];
+
+      const regions = Array.isArray(post && post.regions)
+        ? post.regions.map(function(v){ return String(v || "").trim(); }).filter(Boolean)
+        : [];
+      if (regions.length) return regions[0];
+      return "その他";
+    }
+
+    function getDetailHref(post) {
+      if (post && post.url) return String(post.url);
+      if (post && post.id) return `detail.html?id=${encodeURIComponent(post.id)}`;
+      return "#";
+    }
+
+    function buildAssociationTile(post, prefectureName) {
+      const a = document.createElement("a");
+      a.className = "association-tile";
+      a.href = getDetailHref(post);
+
+      const image = resolveImageUrl(post && post.featured_image);
+      const title = stripHtmlLocal(post && post.title);
+      const excerpt = stripHtmlLocal(post && post.excerpt);
+
+      a.innerHTML =
+        `<div class="association-tile-img">${
+          image
+            ? `<img src="${escapeHtmlLocal(image)}" alt="${escapeHtmlLocal(title)}" loading="lazy">`
+            : `<div class="association-tile-placeholder">JA部会アンケート</div>`
+        }</div>` +
+        `<div class="association-tile-overlay">` +
+          `<div class="association-tile-prefecture">${escapeHtmlLocal(prefectureName)}</div>` +
+          `<h3 class="association-tile-name">${escapeHtmlLocal(title || "名称未設定")}</h3>` +
+          (excerpt ? `<p class="association-tile-excerpt">${escapeHtmlLocal(excerpt)}</p>` : ``) +
+        `</div>`;
+
+      return a;
+    }
+
+    function sortPrefectures(names) {
+      return names.slice().sort(function(a, b) {
+        return String(a).localeCompare(String(b), "ja");
+      });
+    }
+
+    async function loadSurveyData() {
+      const paper = getPaperLocal();
+      const candidates = [
+        `/static/${encodeURIComponent(paper)}/survey.json`,
+        `./survey.json`,
+        `survey.json`
+      ];
+
+      let data = null;
+      let lastError = null;
+      for (const url of candidates) {
+        try {
+          data = await fetchJsonLocal(url);
+          if (Array.isArray(data)) return data;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      throw lastError || new Error("survey.json could not be loaded");
+    }
+
+    function buildPrefectureIndex(posts) {
+      const map = new Map();
+      (Array.isArray(posts) ? posts : []).forEach(function(post) {
+        const prefs = getPostPrefectures(post);
+        prefs.forEach(function(prefName) {
+          const current = map.get(prefName) || [];
+          current.push(post);
+          map.set(prefName, current);
+        });
+      });
+      return map;
+    }
+
+    function renderPrefectureGroups(prefectureMap, onSelect, selectedPrefecture) {
+      const root = document.getElementById("prefectureList");
+      if (!root) return;
+
+      const grouped = {};
+      Array.from(prefectureMap.keys()).forEach(function(prefName) {
+        const regionName = getRegionName(prefName, (prefectureMap.get(prefName) || [])[0]);
+        if (!grouped[regionName]) grouped[regionName] = [];
+        grouped[regionName].push(prefName);
+      });
+
+      const outer = document.createElement("div");
+      outer.className = "survey-region-groups";
+
+      const orderedRegions = REGION_ORDER
+        .filter(function(name){ return Array.isArray(grouped[name]) && grouped[name].length; })
+        .concat(
+          Object.keys(grouped)
+            .filter(function(name){ return !REGION_ORDER.includes(name); })
+            .sort(function(a, b){ return a.localeCompare(b, "ja"); })
+        );
+
+      orderedRegions.forEach(function(regionName) {
+        const section = document.createElement("section");
+        section.className = "survey-region-group";
+
+        const title = document.createElement("h3");
+        title.className = "survey-region-title";
+        title.textContent = regionName;
+        section.appendChild(title);
+
+        const grid = document.createElement("div");
+        grid.className = "prefecture-list";
+
+        sortPrefectures(grouped[regionName]).forEach(function(prefName) {
+          const count = (prefectureMap.get(prefName) || []).length;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "prefecture-card" + (selectedPrefecture === prefName ? " selected is-active" : "");
+          btn.setAttribute("data-prefecture", prefName);
+          btn.innerHTML =
+            `<div class="prefecture-name">${escapeHtmlLocal(prefName)}</div>` +
+            `<div class="prefecture-count">${count}部会</div>`;
+          btn.addEventListener("click", function() {
+            onSelect(prefName);
+          });
+          grid.appendChild(btn);
+        });
+
+        section.appendChild(grid);
+        outer.appendChild(section);
+      });
+
+      root.innerHTML = "";
+      root.appendChild(outer);
+    }
+
+    function renderSelectOptions(prefectureMap, selectedPrefecture) {
+      const select = document.getElementById("prefectureSelect");
+      if (!select) return;
+
+      const prefectures = sortPrefectures(Array.from(prefectureMap.keys()));
+      select.innerHTML = `<option value="">すべての都道府県</option>`;
+      prefectures.forEach(function(prefName) {
+        const option = document.createElement("option");
+        option.value = prefName;
+        option.textContent = prefName;
+        if (prefName === selectedPrefecture) option.selected = true;
+        select.appendChild(option);
+      });
+    }
+
+    function renderAssociationList(prefectureMap, selectedPrefecture) {
+      const section = document.getElementById("associationSection");
+      const title = document.getElementById("selectedPrefectureTitle");
+      const list = document.getElementById("associationList");
+      const empty = document.getElementById("associationEmptyMessage");
+      if (!section || !title || !list || !empty) return;
+
+      if (!selectedPrefecture) {
+        section.style.display = "none";
+        list.innerHTML = "";
+        empty.hidden = true;
+        title.textContent = "部会一覧";
+        return;
+      }
+
+      const posts = prefectureMap.get(selectedPrefecture) || [];
+      title.textContent = `${selectedPrefecture}の部会一覧`;
+      list.innerHTML = "";
+
+      if (!posts.length) {
+        section.style.display = "";
+        empty.hidden = false;
+        return;
+      }
+
+      empty.hidden = true;
+      posts
+        .slice()
+        .sort(function(a, b) {
+          const at = Date.parse(String((a && (a.date || a.date_ymd)) || "")) || 0;
+          const bt = Date.parse(String((b && (b.date || b.date_ymd)) || "")) || 0;
+          return bt - at;
+        })
+        .forEach(function(post) {
+          list.appendChild(buildAssociationTile(post, selectedPrefecture));
+        });
+
+      section.style.display = "";
+    }
+
+    function updateStats(prefectureMap) {
+      const prefCountEl = document.getElementById("surveyPrefectureCount");
+      const assocCountEl = document.getElementById("surveyAssociationCount");
+
+      if (prefCountEl) prefCountEl.textContent = String(prefectureMap.size);
+
+      if (assocCountEl) {
+        const uniquePostIds = new Set();
+        Array.from(prefectureMap.values()).forEach(function(items) {
+          (Array.isArray(items) ? items : []).forEach(function(post) {
+            const key = String((post && (post.id || post.url || post.title)) || "").trim();
+            if (key) uniquePostIds.add(key);
+          });
+        });
+        assocCountEl.textContent = String(uniquePostIds.size);
+      }
+    }
+
+    function maybeSelectFromQuery(prefectureMap) {
+      try {
+        const sp = new URLSearchParams(window.location.search || "");
+        const pref = normalizePrefectureName(sp.get("prefecture") || "");
+        return pref && prefectureMap.has(pref) ? pref : "";
+      } catch (_e) {
+        return "";
+      }
+    }
+
+    function syncQuery(prefectureName) {
+      try {
+        const url = new URL(window.location.href);
+        if (prefectureName) url.searchParams.set("prefecture", prefectureName);
+        else url.searchParams.delete("prefecture");
+        window.history.replaceState({}, "", url.toString());
+      } catch (_e) {}
+    }
+
+    function scrollToAssociations() {
+      const section = document.getElementById("associationSection");
+      if (!section || section.style.display === "none") return;
+      try {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (_e) {
+        section.scrollIntoView();
+      }
+    }
+
+
+    async function loadSurveyTopData() {
+      const paper = getPaperLocal();
+      const candidates = [
+        `/static/${encodeURIComponent(paper)}/survey-top.json`,
+        `./survey-top.json`,
+        `survey-top.json`
+      ];
+
+      let data = null;
+      let lastError = null;
+      for (const url of candidates) {
+        try {
+          data = await fetchJsonLocal(url);
+          if (data) return data;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      if (lastError) throw lastError;
+      return null;
+    }
+
+    function normalizeGraphItems(items) {
+      if (!Array.isArray(items)) return [];
+      return items.map(function(item) {
+        if (!item || typeof item !== "object") return null;
+        const label = String(item.label || item.name || "").trim();
+        const raw = item.value != null ? item.value : item.percent;
+        let value = Number(raw);
+        if (!Number.isFinite(value)) value = 0;
+        value = Math.max(0, Math.min(100, value));
+        return label ? { label: label, value: value } : null;
+      }).filter(Boolean);
+    }
+
+    function normalizeSurveyTopEntry(entry) {
+      if (!entry || typeof entry !== "object") return null;
+      const graphDefaults = [
+        { id: "graph1", title: "困っている害虫" },
+        { id: "graph2", title: "困っている病害" },
+        { id: "graph3", title: "困っている生理障害" },
+        { id: "graph4", title: "導入したい資機材" }
+      ];
+
+      const rawGraphs = Array.isArray(entry.graphs) ? entry.graphs : [];
+      const graphs = graphDefaults.map(function(def, index) {
+        const source = rawGraphs[index] || entry[def.id] || {};
+        const sourceItems = Array.isArray(source.items) ? source.items : (Array.isArray(source.categories) ? source.categories : []);
+        return {
+          id: String(source.id || def.id),
+          title: String(source.title || def.title),
+          section_title: String(source.section_title || source.sectionTitle || source.title || def.title).trim(),
+          section_text: String(source.section_text || source.sectionText || "").trim(),
+          section_highlight: String(source.section_highlight || source.sectionHighlight || "").trim(),
+          items: normalizeGraphItems(sourceItems)
+        };
+      }).filter(function(graph){ return graph.items.length; });
+
+      return {
+        id: Number(entry.id || 0),
+        survey_year: String(entry.survey_year || entry.year || entry.survey_top_year || "").trim(),
+        survey_season: String(entry.survey_season || entry.season || "").trim(),
+        survey_season_slug: String(entry.survey_season_slug || entry.season_slug || "").trim(),
+        page_title: String(entry.page_title || entry.title || "").trim(),
+        page_subtitle: String(entry.page_subtitle || entry.lead_subtitle || "").trim(),
+        hero_title: String(entry.hero_title || "").trim(),
+        hero_description: String(entry.hero_description || "").trim(),
+        detail_title: String(entry.detail_title || "").trim(),
+        detail_subtitle: String(entry.detail_subtitle || "").trim(),
+        detail_description: String(entry.detail_description || "").trim(),
+        total_producers: String(entry.total_producers || entry.stats_total_producers || "").trim(),
+        response_rate: String(entry.response_rate || entry.stats_response_rate || "").trim(),
+        graphs: graphs
+      };
+    }
+
+    function getRequestedSurveyKey() {
+      let year = "";
+      let season = "";
+      try {
+        const sp = new URLSearchParams(window.location.search || "");
+        year = String(sp.get("survey_year") || "").trim();
+        season = String(sp.get("survey_season") || "").trim();
+      } catch (_e) {}
+      if (!year && document.body) year = String(document.body.getAttribute("data-survey-year") || "").trim();
+      if (!season && document.body) season = String(document.body.getAttribute("data-survey-season") || "").trim();
+      return { year: year, season: season };
+    }
+
+    function normalizeSurveySeasonValue(value) {
+      const raw = String(value || "").trim().toLowerCase();
+      if (!raw) return "";
+      if (
+        raw === "winter" ||
+        raw === "winter-spring" ||
+        raw === "winter_spring" ||
+        raw === "winter spring" ||
+        raw === "fuyu-haru" ||
+        raw === "fuyuharu" ||
+        raw === "冬春"
+      ) return "winter";
+      if (
+        raw === "summer" ||
+        raw === "summer-autumn" ||
+        raw === "summer_autumn" ||
+        raw === "summer autumn" ||
+        raw === "summer-fall" ||
+        raw === "summer_fall" ||
+        raw === "summer fall" ||
+        raw === "natsu-aki" ||
+        raw === "natsuaki" ||
+        raw === "夏秋"
+      ) return "summer";
+      return raw;
+    }
+
+    function pickSurveyTopEntry(data) {
+      const rawItems = Array.isArray(data) ? data : (Array.isArray(data && data.items) ? data.items : (data ? [data] : []));
+      const items = rawItems.map(normalizeSurveyTopEntry).filter(Boolean);
+      if (!items.length) return null;
+
+      const requested = getRequestedSurveyKey();
+      const requestedYear = String(requested.year || "").trim();
+      const requestedSeason = normalizeSurveySeasonValue(requested.season);
+
+      if (requestedYear || requestedSeason) {
+        const exact = items.find(function(item) {
+          const itemYear = String(item && item.survey_year || "").trim();
+          const itemSeason = normalizeSurveySeasonValue((item && (item.survey_season_slug || item.survey_season)) || "");
+          const sameYear = !requestedYear || itemYear === requestedYear;
+          const sameSeason = !requestedSeason || itemSeason === requestedSeason;
+          return sameYear && sameSeason;
+        });
+        if (exact) return exact;
+        return null;
+      }
+      return items[0];
+    }
+
+    function getPostSurveyYear(post) {
+      const direct = String((post && (post.survey_year || post.year)) || "").trim();
+      return direct;
+    }
+
+    function getPostSurveySeason(post) {
+      return normalizeSurveySeasonValue(
+        (post && (post.survey_season_slug || post.season_slug || post.survey_season || post.season)) || ""
+      );
+    }
+
+    function filterSurveyPostsByCurrentState(posts) {
+      const requested = getRequestedSurveyKey();
+      const requestedYear = String(requested.year || "").trim();
+      const requestedSeason = normalizeSurveySeasonValue(requested.season);
+      const list = Array.isArray(posts) ? posts : [];
+
+      return list.filter(function(post) {
+        const postYear = getPostSurveyYear(post);
+        const postSeason = getPostSurveySeason(post);
+        const sameYear = !requestedYear ? true : postYear === requestedYear;
+        const sameSeason = !requestedSeason ? true : postSeason === requestedSeason;
+        return sameYear && sameSeason;
+      });
+    }
+
+    function formatStatValue(value, suffix) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      if (/[%％]$/.test(raw) || /人$/.test(raw)) return raw;
+      if (suffix === "%") return raw + "%";
+      try {
+        const num = Number(raw.replace(/,/g, ""));
+        if (Number.isFinite(num) && suffix !== "%") return num.toLocaleString("ja-JP");
+      } catch (_e) {}
+      return raw;
+    }
+    function renderParagraphBlocks(text) {
+      const normalized = String(text || "").replaceAll("\r\n", "\n").replaceAll("\r", "\n").trim();
+      if (!normalized) return "";
+      return normalized
+        .split(/\n{2,}/)
+        .map(function(block) {
+          const html = escapeHtmlLocal(block).split("\n").join("<br>");
+          return `<p>${html}</p>`;
+        })
+        .join("");
+    }
+
+function renderGraphItems(items) {
+      return items.map(function(item) {
+        const width = Math.max(0, Math.min(100, Number(item.value) || 0));
+        const pct = `${Math.round(width)}%`;
+        return `
+          <div class="simple-bar-item">
+            <div class="simple-bar-label">${escapeHtmlLocal(item.label)}</div>
+            <div class="simple-bar-track">
+              <div class="simple-bar-fill${width === 0 ? " is-zero" : ""}" style="width:${width}%">${escapeHtmlLocal(pct)}</div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    function renderSurveyTopContent(entry) {
+      const root = document.getElementById("surveyTopDynamicContent");
+      if (!root || !entry || !entry.graphs.length) return;
+
+      const detailTitle = entry.detail_title || "部会アンケート詳細";
+      const detailSubtitle = entry.detail_subtitle || "アンケート集計結果";
+      const detailDescription = entry.detail_description || "全国の回答結果をもとに主な課題をまとめています。";
+
+      const icons = [
+        '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"></path></svg>',
+        '<svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"></path></svg>',
+        '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>'
+      ];
+
+      const sections = entry.graphs.map(function(graph, index) {
+        const sectionTitle = graph.section_title || graph.title;
+        const sectionTextHtml = renderParagraphBlocks(graph.section_text);
+        const sectionHighlightHtml = renderParagraphBlocks(graph.section_highlight);
+        const hasTextContent = Boolean(sectionTextHtml || sectionHighlightHtml);
+
+        return `
+          <div class="detail-section">
+            <div class="detail-section-header">
+              <div class="detail-section-icon">${icons[Math.min(index, icons.length - 1)] || icons[icons.length - 1]}</div>
+              <h3 class="detail-section-title">${escapeHtmlLocal(sectionTitle)}</h3>
+            </div>
+            <div class="detail-content${hasTextContent ? " has-text" : ""}">
+              <div class="detail-text${hasTextContent ? "" : " is-empty"}">
+                ${sectionTextHtml}
+                ${sectionHighlightHtml ? `<div class="detail-highlight">${sectionHighlightHtml}</div>` : ""}
+              </div>
+              <div class="detail-chart">
+                <p class="chart-title-small">グラフ${index + 1}「${escapeHtmlLocal(graph.title)}」</p>
+                <div class="simple-bar-chart">${renderGraphItems(graph.items)}</div>
+              </div>
+            </div>
+          </div>`;
+      });
+
+      root.innerHTML = `
+        <div class="survey-detail-header">
+          <h2 class="survey-detail-title">${escapeHtmlLocal(detailTitle)}</h2>
+          <p class="survey-detail-subtitle">${escapeHtmlLocal(detailSubtitle)}</p>
+          <p class="survey-detail-description">${escapeHtmlLocal(detailDescription)}</p>
+        </div>
+        ${sections.join("") || '<div class="survey-top-empty">グラフデータがありません。</div>'}`;
+    }
+
+
+    function renderSurveyTopEmptyState() {
+      const pageTitle = document.getElementById("surveyPageTitle");
+      const pageSubtitle = document.getElementById("surveyPageSubtitle");
+      const heroTitle = document.getElementById("surveyHeroTitle");
+      const heroDescription = document.getElementById("surveyHeroDescription");
+      const totalProducers = document.getElementById("surveyTotalProducers");
+      const responseRate = document.getElementById("surveyResponseRate");
+      const root = document.getElementById("surveyTopDynamicContent");
+      const requested = getRequestedSurveyKey();
+      const requestedYear = String(requested.year || "").trim();
+      const requestedSeason = normalizeSurveySeasonValue(requested.season);
+      const seasonLabel = requestedSeason === "winter" ? "冬春" : (requestedSeason === "summer" ? "夏秋" : "");
+      const heading = [requestedYear ? requestedYear + "年" : "", seasonLabel].filter(Boolean).join(" ") || "選択中の条件";
+
+      if (pageTitle) pageTitle.textContent = "JA部会アンケート結果";
+      if (pageSubtitle) pageSubtitle.textContent = heading + " のTOPデータはまだありません。";
+      if (heroTitle) heroTitle.textContent = heading + " のデータ準備中";
+      if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する JA部会アンケートTOP が見つかりませんでした。";
+      if (totalProducers) totalProducers.textContent = "—";
+      if (responseRate) responseRate.textContent = "—";
+      if (root) {
+        root.innerHTML = '<div class="survey-top-empty">選択された年度・シーズンに一致する JA部会アンケートTOP データがありません。</div>';
+      }
+    }
+
+    function applySurveyTopEntry(entry) {
+      if (!entry) return;
+      const pageTitle = document.getElementById("surveyPageTitle");
+      const pageSubtitle = document.getElementById("surveyPageSubtitle");
+      const heroTitle = document.getElementById("surveyHeroTitle");
+      const heroDescription = document.getElementById("surveyHeroDescription");
+      const totalProducers = document.getElementById("surveyTotalProducers");
+      const responseRate = document.getElementById("surveyResponseRate");
+
+      if (pageTitle && entry.page_title) pageTitle.textContent = entry.page_title;
+      if (pageSubtitle && entry.page_subtitle) pageSubtitle.textContent = entry.page_subtitle;
+      if (heroTitle && entry.hero_title) heroTitle.textContent = entry.hero_title;
+      if (heroDescription && entry.hero_description) heroDescription.textContent = entry.hero_description;
+      if (totalProducers && entry.total_producers) totalProducers.textContent = formatStatValue(entry.total_producers, "");
+      if (responseRate && entry.response_rate) responseRate.textContent = formatStatValue(entry.response_rate, "%");
+      renderSurveyTopContent(entry);
+    }
+
+    async function run() {
+      try {
+        const posts = await loadSurveyData();
+        const filteredPosts = filterSurveyPostsByCurrentState(posts);
+        const prefectureMap = buildPrefectureIndex(filteredPosts);
+        const select = document.getElementById("prefectureSelect");
+        const searchBtn = document.getElementById("surveySearchButton");
+
+        try {
+          const surveyTopData = await loadSurveyTopData();
+          const entry = pickSurveyTopEntry(surveyTopData);
+          if (entry) {
+            applySurveyTopEntry(entry);
+          } else if (getRequestedSurveyKey().year || getRequestedSurveyKey().season) {
+            renderSurveyTopEmptyState();
+          }
+        } catch (_e) {
+          if (getRequestedSurveyKey().year || getRequestedSurveyKey().season) {
+            renderSurveyTopEmptyState();
+          }
+        }
+
+        if (!prefectureMap.size) {
+          const empty = document.getElementById("associationEmptyMessage");
+          const section = document.getElementById("associationSection");
+          if (section) section.style.display = "";
+          if (empty) {
+            empty.hidden = false;
+            empty.textContent = "JA部会アンケートのデータがまだありません。";
+          }
+          return;
+        }
+
+        let selectedPrefecture = maybeSelectFromQuery(prefectureMap);
+
+        function rerender() {
+          updateStats(prefectureMap);
+          renderSelectOptions(prefectureMap, selectedPrefecture);
+          renderPrefectureGroups(prefectureMap, function(prefName) {
+            selectedPrefecture = prefName;
+            syncQuery(selectedPrefecture);
+            rerender();
+            scrollToAssociations();
+          }, selectedPrefecture);
+          renderAssociationList(prefectureMap, selectedPrefecture);
+        }
+
+        if (select) {
+          select.addEventListener("change", function() {
+            selectedPrefecture = normalizePrefectureName(this.value);
+          });
+        }
+
+        if (searchBtn) {
+          searchBtn.addEventListener("click", function() {
+            syncQuery(selectedPrefecture);
+            rerender();
+            scrollToAssociations();
+          });
+        }
+
+        rerender();
+      } catch (error) {
+        console.error("[JA部会アンケート] render failed:", error);
+        const section = document.getElementById("associationSection");
+        const empty = document.getElementById("associationEmptyMessage");
+        if (section) section.style.display = "";
+        if (empty) {
+          empty.hidden = false;
+          empty.textContent = "JA部会アンケートの読み込みに失敗しました。survey.json を確認してください。";
+        }
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", run);
+    } else {
+      run();
+    }
+  })();
+
+})();
+
+/* ==============================================
+JA Survey Year + Season Switching
+============================================== */
+
+(function(){
+  if (!document.body || !document.body.classList.contains("page-survey")) return;
+
+  const yearTabs = Array.from(document.querySelectorAll("#surveyYearTabs .selector-tab"));
+  const seasonTabs = Array.from(document.querySelectorAll("#surveySeasonTabs .selector-tab"));
+  if (!yearTabs.length && !seasonTabs.length) return;
+
+  function getCurrentState() {
+    let year = "";
+    let season = "";
+
+    try {
+      const params = new URLSearchParams(window.location.search || "");
+      year = String(params.get("survey_year") || "").trim();
+      season = String(params.get("survey_season") || "").trim();
+    } catch (_e) {}
+
+    if (!year && document.body) year = String(document.body.getAttribute("data-survey-year") || "").trim();
+    if (!season && document.body) season = String(document.body.getAttribute("data-survey-season") || "").trim();
+
+    return { year, season };
+  }
+
+  let state = getCurrentState();
+
+  function setActive(tabGroup, value, attr) {
+    tabGroup.forEach(function(btn) {
+      if (String(btn.dataset[attr] || "") === String(value || "")) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+  }
+
+  function syncTabs() {
+    setActive(yearTabs, state.year, "year");
+    setActive(seasonTabs, state.season, "season");
+  }
+
+  function navigateWithState() {
+    if (document.body) {
+      document.body.setAttribute("data-survey-year", state.year || "");
+      document.body.setAttribute("data-survey-season", state.season || "");
+    }
+
+    const params = new URLSearchParams(window.location.search || "");
+
+    if (state.year) params.set("survey_year", state.year);
+    else params.delete("survey_year");
+
+    if (state.season) params.set("survey_season", state.season);
+    else params.delete("survey_season");
+
+    const query = params.toString();
+    const nextUrl = window.location.pathname + (query ? "?" + query : "") + window.location.hash;
+    window.location.href = nextUrl;
+  }
+
+  yearTabs.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const nextYear = String(btn.dataset.year || "").trim();
+      if (!nextYear || nextYear === state.year) return;
+      state.year = nextYear;
+      syncTabs();
+      navigateWithState();
+    });
+  });
+
+  seasonTabs.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const nextSeason = String(btn.dataset.season || "").trim();
+      if (!nextSeason || nextSeason === state.season) return;
+      state.season = nextSeason;
+      syncTabs();
+      navigateWithState();
+    });
+  });
+
+  syncTabs();
 })();

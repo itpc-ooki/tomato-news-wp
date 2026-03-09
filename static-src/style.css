@@ -11218,44 +11218,90 @@ body.page-feature .pest-name{
     background:#fafafa;
     padding:40px;
     border-radius:16px;
-    margin-bottom:40px;
+    margin:0 auto 40px;
     box-shadow:0 2px 8px rgba(0,0,0,0.05);
   }
 .page-survey .search-title{
     font-size:1.5rem;
     font-weight:700;
-    margin-bottom:8px;
+    margin:0 0 8px;
     display:flex;
     align-items:center;
     gap:12px;
+    line-height:1.3;
+    color:var(--text);
   }
 .page-survey .search-icon{
     width:32px;
     height:32px;
+    min-width:32px;
     display:flex;
     align-items:center;
     justify-content:center;
     background:var(--accent);
     border-radius:8px;
+    flex-shrink:0;
   }
 .page-survey .search-icon svg{
     width:18px;
     height:18px;
     fill:#fff;
   }
-.page-survey .search-subtitle{ font-size:0.938rem; color:var(--muted); margin-bottom:24px }
+.page-survey .search-subtitle{
+    font-size:0.938rem;
+    color:var(--muted);
+    margin:0 0 24px;
+    line-height:1.7;
+  }
 .page-survey .filter-group{ margin-bottom:24px }
-.page-survey .filter-label{ font-size:0.938rem; font-weight:600; margin-bottom:8px; display:block }
+.page-survey .filter-label{
+    font-size:0.938rem;
+    font-weight:600;
+    margin-bottom:8px;
+    display:block;
+    color:var(--text);
+  }
 .page-survey .filter-select{
     width:100%;
+    min-height:52px;
     padding:14px;
     border:2px solid var(--border);
     border-radius:8px;
     font-size:1rem;
+    line-height:1.5;
+    color:var(--text);
     background:#fff;
     transition:all 0.2s;
+    appearance:none;
+    -webkit-appearance:none;
+    -moz-appearance:none;
   }
-.page-survey .filter-select:focus{ outline:none; border-color:var(--accent) }@media (max-width: 768px) {.page-survey .search-section{ padding:24px }}
+.page-survey .filter-select:focus{
+    outline:none;
+    border-color:var(--accent);
+  }
+.page-survey .btn-search{
+    width:100%;
+    padding:16px;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2));
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-size:1.125rem;
+    font-weight:600;
+    line-height:1.4;
+    cursor:pointer;
+    transition:transform 0.2s;
+    box-shadow:none;
+  }
+.page-survey .btn-search:hover{
+    transform:translateY(-2px);
+  }
+@media (max-width: 768px) {
+  .page-survey .search-section{
+      padding:24px;
+    }
+}
 .page-survey .survey-section{ margin-bottom:60px }
 .page-survey .association-grid{
     display: grid;
@@ -12161,5 +12207,260 @@ body.page-feature .pest-name{
     justify-content: center;   /* Center horizontally */
     align-items: center;
     gap: 16px;
+  }
+}
+/* ===============================
+   JA部会アンケート dynamic states
+   =============================== */
+.page-survey .prefecture-card {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  text-align: center;
+  background:#fff;
+  border:2px solid var(--border);
+  border-radius:8px;
+  padding:20px;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+
+.page-survey .prefecture-card:hover {
+  transform:translateY(-2px);
+  border-color:var(--accent);
+  box-shadow:0 4px 12px rgba(224, 82, 61, 0.15);
+}
+
+.page-survey .prefecture-card.selected,
+.page-survey .prefecture-card.is-active {
+  background:linear-gradient(135deg, var(--accent), var(--accent-2));
+  color:#fff;
+  border-color:transparent;
+  box-shadow:none;
+}
+
+.page-survey .association-tile-placeholder {
+  width: 100%;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f8fafc, #e5e7eb);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.page-survey .survey-empty-message {
+  margin-top: 24px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+}
+
+
+/* ===============================
+   JA部会アンケート region groups
+   =============================== */
+.page-survey .survey-region-groups{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+  gap:16px;
+  margin-bottom:40px;
+}
+
+.page-survey .survey-region-group{
+  display:contents;
+}
+
+.page-survey .survey-region-title{
+  display:none;
+}
+
+.page-survey .association-tile-excerpt{
+  margin:6px 0 0;
+  font-size:0.72rem;
+  line-height:1.4;
+  opacity:0.92;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+@media (max-width:768px){
+  .page-survey .survey-region-groups{
+    gap:22px;
+  }
+
+  .page-survey .survey-region-title{
+    font-size:1rem;
+    margin-bottom:10px;
+  }
+}
+
+
+/* ===== JA survey dynamic top data ===== */
+.page-survey .detail-section-header{ display:flex; align-items:center; margin-bottom:24px; }
+.page-survey .detail-content.is-two-column{ grid-template-columns:1fr 1fr; gap:24px; }
+.page-survey .survey-top-empty{ background:#fff; border:1px dashed var(--border); padding:20px; color:var(--muted); border-radius:8px; }
+.page-survey .simple-bar-fill.is-zero{ justify-content:flex-start; padding-left:8px; padding-right:0; min-width:48px; }
+@media (max-width:768px){ .page-survey .detail-content.is-two-column{ grid-template-columns:1fr; } }
+
+/* ======================================
+JA Survey Year Season Selector
+====================================== */
+
+body.page-survey .selector-container{
+display:flex;
+gap:40px;
+justify-content:center;
+margin:40px 0;
+flex-wrap:wrap;
+}
+
+body.page-survey .selector-group{
+text-align:center;
+}
+
+body.page-survey .selector-label{
+font-size:12px;
+color:#64748b;
+margin-bottom:8px;
+letter-spacing:.1em;
+}
+
+body.page-survey .selector-tabs{
+display:flex;
+}
+
+body.page-survey .selector-tab{
+padding:8px 16px;
+border:1px solid #e5e7eb;
+background:#fff;
+cursor:pointer;
+font-size:14px;
+}
+
+body.page-survey .selector-tab.active{
+background:#0f172a;
+color:#fff;
+border-color:#0f172a;
+}
+
+/* =====================================================
+   JA部会アンケートページ専用
+   Add border-bottom to match mockup
+   This is scoped so other pages are NOT affected
+   ===================================================== */
+
+.page-survey .article-header{
+    border-bottom: 2px solid var(--border);
+}
+/* =====================================================
+   Survey page: search section icon position fix
+   - Keeps the mockup layout and neutralizes generic .search-icon rules
+   - Scoped to .page-survey so other pages are unaffected
+   ===================================================== */
+.page-survey .search-title{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.page-survey .search-title .search-icon{
+  position:relative;
+  left:auto;
+  top:auto;
+  transform:none;
+  margin:0;
+  flex:0 0 32px;
+  width:32px;
+  height:32px;
+  min-width:32px;
+  min-height:32px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:inherit;
+  font-size:0;
+  line-height:1;
+  pointer-events:none;
+}
+
+.page-survey .search-title .search-icon svg{
+  display:block;
+  width:18px;
+  height:18px;
+  fill:#fff;
+}
+
+.page-survey .filter-group{
+  position:relative;
+}
+
+.page-survey .filter-select{
+  padding-left:20px;
+}
+
+@media (max-width:768px){
+  .page-survey .search-title{
+    align-items:flex-start;
+  }
+
+  .page-survey .search-title .search-icon{
+    margin-top:2px;
+  }
+}
+
+
+/* =====================================================
+   JA部会アンケート: prefecture list match mockup
+   - flatten region wrappers so prefecture cards align in one grid
+   - hide region headings
+   - scoped to .page-survey only
+   ===================================================== */
+.page-survey .survey-region-group > .prefecture-list{
+  display: contents;
+  margin-bottom: 0;
+}
+
+.page-survey .prefecture-list{
+  display: contents;
+}
+
+.page-survey .prefecture-card{
+  width: 100%;
+  min-height: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-survey .prefecture-name{
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.page-survey .prefecture-count{
+  font-size: 0.875rem;
+  line-height: 1.2;
+  opacity: 0.8;
+}
+
+@media (max-width:768px){
+  .page-survey .survey-region-groups{
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .page-survey .prefecture-card{
+    min-height: 102px;
+    padding: 20px 16px;
   }
 }

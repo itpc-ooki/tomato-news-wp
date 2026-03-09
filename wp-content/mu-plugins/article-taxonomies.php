@@ -79,6 +79,29 @@ add_action('init', function () {
     'rewrite'           => ['slug' => 'season'],
   ]);
 
+
+  // アンケート年度（JA部会アンケート詳細用）
+  // - 通常投稿の JA部会アンケート記事に年度を明示的に紐付ける
+  register_taxonomy('survey_year', ['post'], [
+    'labels' => [
+      'name'              => 'アンケート年度',
+      'singular_name'     => 'アンケート年度',
+      'menu_name'         => 'アンケート年度',
+      'all_items'         => 'すべてのアンケート年度',
+      'add_new_item'      => '新しいアンケート年度を追加',
+      'edit_item'         => 'アンケート年度を編集',
+      'update_item'       => 'アンケート年度を更新',
+      'search_items'      => 'アンケート年度を検索',
+    ],
+    'public'            => true,
+    'show_ui'           => true,
+    'show_admin_column' => true,
+    'hierarchical'      => true,
+    'meta_box_cb'       => 'post_categories_meta_box',
+    'show_in_rest'      => true,
+    'rewrite'           => ['slug' => 'survey-year'],
+  ]);
+
   // Region（産地）
   register_taxonomy('region', ['post'], [
     'labels' => [
@@ -146,6 +169,24 @@ add_action('init', function () {
   foreach ($defaults as $t) {
     if (!term_exists($t['slug'], 'season')) {
       wp_insert_term($t['name'], 'season', ['slug' => $t['slug']]);
+    }
+  }
+}, 11);
+
+
+
+// --------------------------------------------------
+// Ensure default survey year terms exist
+// --------------------------------------------------
+add_action('init', function () {
+  if (!taxonomy_exists('survey_year')) {
+    return;
+  }
+
+  $defaults = ['2024', '2025', '2026', '2027'];
+  foreach ($defaults as $year) {
+    if (!term_exists($year, 'survey_year')) {
+      wp_insert_term($year, 'survey_year', ['slug' => $year]);
     }
   }
 }, 11);
