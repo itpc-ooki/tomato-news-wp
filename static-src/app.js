@@ -1746,6 +1746,423 @@ function shouldSkipHref(href) {
     return new URLSearchParams(window.location.search).get(name);
   }
 
+
+  const ARCHIVE_REGION_ORDER = ["北海道", "東北", "関東", "中部", "近畿", "中国", "四国", "九州"];
+  const ARCHIVE_DEFAULT_ARTICLE_TYPES = ["トマトNEWS", "ニュース", "トマト特集", "品種情報", "栽培技術", "市場動向", "病害虫対策", "WEBセミナー", "採録紙面", "コラム", "JA部会アンケート"];
+  const ARCHIVE_DEFAULT_VARIETY_CATEGORIES = ["大玉トマト", "ミディトマト", "ミニトマト", "台木用トマト"];
+
+  function getArchiveSearchForm() {
+    return document.getElementById("archive-search-form");
+  }
+
+  function normalizeTextForSearch(value) {
+    return String(value || "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/　/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function normalizeDateValue(value) {
+    const s = String(value || "").trim();
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+    const t = Date.parse(s);
+    if (!Number.isFinite(t)) return "";
+    return new Date(t).toISOString().slice(0, 10);
+  }
+
+  function getPostDateForFilter(post) {
+    return normalizeDateValue((post && (post.date_ymd || post.date)) || "");
+  }
+
+  function getPostArticleTypes(post) {
+    const items = Array.isArray(post && post.article_types) ? post.article_types : [];
+    if (items.length) return items.map(function (v) { return String(v || "").trim(); }).filter(Boolean);
+    const first = String((post && post.article_type) || "").trim();
+    return first ? [first] : [];
+  }
+
+  function deriveRegionsFromPrefectures(prefectures) {
+    const prefToRegion = {
+      "北海道": "北海道",
+      "青森県": "東北", "岩手県": "東北", "宮城県": "東北", "秋田県": "東北", "山形県": "東北", "福島県": "東北",
+      "茨城県": "関東", "栃木県": "関東", "群馬県": "関東", "埼玉県": "関東", "千葉県": "関東", "東京都": "関東", "神奈川県": "関東",
+      "新潟県": "中部", "富山県": "中部", "石川県": "中部", "福井県": "中部", "山梨県": "中部", "長野県": "中部", "岐阜県": "中部", "静岡県": "中部", "愛知県": "中部",
+      "三重県": "近畿", "滋賀県": "近畿", "京都府": "近畿", "大阪府": "近畿", "兵庫県": "近畿", "奈良県": "近畿", "和歌山県": "近畿",
+      "鳥取県": "中国", "島根県": "中国", "岡山県": "中国", "広島県": "中国", "山口県": "中国",
+      "徳島県": "四国", "香川県": "四国", "愛媛県": "四国", "高知県": "四国",
+      "福岡県": "九州", "佐賀県": "九州", "長崎県": "九州", "熊本県": "九州", "大分県": "九州", "宮崎県": "九州", "鹿児島県": "九州", "沖縄県": "九州"
+    };
+    const src = Array.isArray(prefectures) ? prefectures : [];
+    return Array.from(new Set(src.map(function (v) {
+      return prefToRegion[String(v || '').trim()] || '';
+    }).filter(Boolean)));
+  }
+
+  function getPostRegions(post) {
+    const items = Array.isArray(post && post.regions) ? post.regions : [];
+    if (items.length) return items.map(function (v) { return String(v || "").trim(); }).filter(Boolean);
+    const first = String((post && post.region) || "").trim();
+    if (first) return [first];
+    return deriveRegionsFromPrefectures(Array.isArray(post && post.prefectures) ? post.prefectures : []);
+  }
+
+  function getPostVarietyCategories(post) {
+    const items = Array.isArray(post && post.variety_categories) ? post.variety_categories : [];
+    if (items.length) return items.map(function (v) { return String(v || "").trim(); }).filter(Boolean);
+    const first = String((post && post.variety_category) || "").trim();
+    return first ? [first] : [];
+  }
+
+  function getPostTagNames(post) {
+    const raw = Array.isArray(post && post.article_tags) ? post.article_tags : [];
+    return raw.map(function (tag) {
+      if (tag && typeof tag === 'object') return String(tag.name || '').trim();
+      return String(tag || '').trim();
+    }).filter(Boolean);
+  }
+
+  function buildArchiveKeywordHaystack(post) {
+    return normalizeTextForSearch([
+      post && post.title,
+      post && post.excerpt,
+      post && post.search_text,
+      post && post.content_plain,
+      post && post.article_type,
+      ...(Array.isArray(post && post.article_types) ? post.article_types : []),
+      ...getPostRegions(post),
+      ...(Array.isArray(post && post.prefectures) ? post.prefectures : []),
+      ...getPostVarietyCategories(post),
+      ...getPostTagNames(post)
+    ].join(' '));
+  }
+
+  function matchesQueryValue(values, wanted) {
+    if (!wanted) return true;
+    return (Array.isArray(values) ? values : []).some(function (value) {
+      return String(value || "").trim() === wanted;
+    });
+  }
+
+  function matchesKeyword(post, keyword) {
+    if (!keyword) return true;
+    const tokens = normalizeTextForSearch(keyword).split(/\s+/).filter(Boolean);
+    if (!tokens.length) return true;
+    const haystack = buildArchiveKeywordHaystack(post);
+    return tokens.every(function (token) {
+      return haystack.indexOf(token) !== -1;
+    });
+  }
+
+  function filterArchivePosts(posts, filters) {
+    const all = Array.isArray(posts) ? posts : [];
+    const keyword = String((filters && filters.keyword) || "").trim();
+    const articleType = String((filters && filters.article_type) || "").trim();
+    const region = String((filters && filters.region) || "").trim();
+    const varietyCategory = String((filters && filters.variety_category) || "").trim();
+    const memberScope = String((filters && filters.member_scope) || "").trim();
+    const dateFrom = normalizeDateValue(filters && filters.date_from);
+    const dateTo = normalizeDateValue(filters && filters.date_to);
+
+    return all.filter(function (post) {
+      if (!matchesKeyword(post, keyword)) return false;
+      if (!matchesQueryValue(getPostArticleTypes(post), articleType)) return false;
+      if (!matchesQueryValue(getPostRegions(post), region)) return false;
+      if (!matchesQueryValue(getPostVarietyCategories(post), varietyCategory)) return false;
+
+      if (memberScope === "free" && Number(post && post.free_viewable) !== 1) return false;
+      if (memberScope === "member" && Number(post && post.free_viewable) === 1) return false;
+
+      const postDate = getPostDateForFilter(post);
+      if (dateFrom && (!postDate || postDate < dateFrom)) return false;
+      if (dateTo && (!postDate || postDate > dateTo)) return false;
+      return true;
+    });
+  }
+
+  function buildArchiveSearchParamsFromForm(form) {
+    const fd = new FormData(form);
+    const params = new URLSearchParams();
+    ["keyword", "article_type", "region", "variety_category", "date_from", "date_to", "member_scope"].forEach(function (key) {
+      const value = String(fd.get(key) || "").trim();
+      if (value) params.set(key, value);
+    });
+    params.delete("page");
+    return params;
+  }
+
+  function buildArchiveSearchSummary(filters, total) {
+    const chips = [];
+    if (filters.keyword) chips.push('キーワード: ' + filters.keyword);
+    if (filters.article_type) chips.push('カテゴリ: ' + filters.article_type);
+    if (filters.region) chips.push('産地: ' + filters.region);
+    if (filters.variety_category) chips.push('品種: ' + filters.variety_category);
+    if (filters.date_from) chips.push('開始: ' + filters.date_from);
+    if (filters.date_to) chips.push('終了: ' + filters.date_to);
+    if (filters.member_scope === 'free') chips.push('会員限定: 無料記事のみ');
+    if (filters.member_scope === 'member') chips.push('会員限定: 会員限定のみ');
+    if (!chips.length) return '全ての記事を表示しています（' + total + '件）。';
+    return '検索条件: ' + chips.join(' / ') + '（' + total + '件）';
+  }
+
+  function ensureArchiveSearchEmptyState() {
+    let el = document.getElementById('archive-search-empty-state');
+    if (el) return el;
+    const grid = document.querySelector('.grid');
+    if (!grid || !grid.parentNode) return null;
+    el = document.createElement('div');
+    el.id = 'archive-search-empty-state';
+    el.style.display = 'none';
+    el.style.maxWidth = '900px';
+    el.style.margin = '24px auto 0';
+    el.style.padding = '24px';
+    el.style.border = '1px solid #e5e7eb';
+    el.style.borderRadius = '12px';
+    el.style.background = '#fff';
+    el.style.textAlign = 'center';
+    el.style.color = '#64748b';
+    grid.parentNode.insertBefore(el, grid.nextSibling);
+    return el;
+  }
+
+  function updateListSearchHeader(filters, total) {
+    const titleEl = document.querySelector('.page-header .page-title');
+    const descEl = document.querySelector('.page-header .page-desc');
+    const hasFilters = !!(
+      filters && (
+        filters.keyword ||
+        filters.article_type ||
+        filters.region ||
+        filters.variety_category ||
+        filters.date_from ||
+        filters.date_to ||
+        filters.member_scope
+      )
+    );
+    if (titleEl) titleEl.textContent = hasFilters ? '検索結果' : '記事一覧';
+    if (descEl) descEl.textContent = buildArchiveSearchSummary(filters, total);
+  }
+
+  function toggleArchiveEmptyState(total) {
+    const grid = document.querySelector('.grid');
+    const nav = document.querySelector('nav.pagination');
+    const empty = ensureArchiveSearchEmptyState();
+    if (grid) grid.style.display = total > 0 ? '' : 'none';
+    if (nav) nav.style.display = total > 0 ? '' : 'none';
+    if (empty) {
+      empty.style.display = total > 0 ? 'none' : 'block';
+      empty.textContent = '該当する記事がありません。検索条件を変更して再度お試しください。';
+    }
+  }
+
+  function populateSelectOptions(select, values, placeholder, preferredOrder) {
+    if (!select) return;
+    const currentValue = String(select.value || '').trim();
+    const unique = Array.from(new Set((Array.isArray(values) ? values : []).map(function (v) { return String(v || '').trim(); }).filter(Boolean)));
+    let ordered = unique.slice();
+    if (Array.isArray(preferredOrder) && preferredOrder.length) {
+      const set = new Set(unique);
+      ordered = preferredOrder.filter(function (item) { return set.has(item); }).concat(
+        unique.filter(function (item) { return preferredOrder.indexOf(item) === -1; }).sort(function (a, b) { return a.localeCompare(b, 'ja'); })
+      );
+    } else {
+      ordered.sort(function (a, b) { return a.localeCompare(b, 'ja'); });
+    }
+
+    select.innerHTML = '';
+    const first = document.createElement('option');
+    first.value = '';
+    first.textContent = placeholder;
+    select.appendChild(first);
+    ordered.forEach(function (value) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = value;
+      if (value === currentValue) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+
+  function buildArchiveFilterMasterFromPosts(posts) {
+    const all = Array.isArray(posts) ? posts : [];
+    const postRegions = all.flatMap(function (post) { return getPostRegions(post); });
+    return {
+      article_types: Array.from(new Set(
+        ARCHIVE_DEFAULT_ARTICLE_TYPES.concat(
+          all.flatMap(function (post) { return getPostArticleTypes(post); })
+        )
+      )),
+      regions: Array.from(new Set(ARCHIVE_REGION_ORDER.concat(postRegions))),
+      variety_categories: Array.from(new Set(
+        ARCHIVE_DEFAULT_VARIETY_CATEGORIES.concat(
+          all.flatMap(function (post) { return getPostVarietyCategories(post); })
+        )
+      ))
+    };
+  }
+
+  function normalizeArchiveFilterMaster(data, posts) {
+    const fallback = buildArchiveFilterMasterFromPosts(posts);
+    const src = data && typeof data === 'object' ? data : {};
+
+    const articleTypes = Array.isArray(src.article_types) && src.article_types.length
+      ? src.article_types
+      : fallback.article_types;
+
+    const regions = Array.isArray(src.regions) && src.regions.length
+      ? src.regions
+      : fallback.regions;
+
+    const varietyCategories = Array.isArray(src.variety_categories) && src.variety_categories.length
+      ? src.variety_categories
+      : fallback.variety_categories;
+
+    return {
+      article_types: Array.from(new Set(articleTypes.concat(fallback.article_types))),
+      regions: Array.from(new Set(ARCHIVE_REGION_ORDER.concat(regions))),
+      variety_categories: Array.from(new Set(varietyCategories.concat(fallback.variety_categories)))
+    };
+  }
+
+  async function loadArchiveFilterMaster(paper, posts) {
+    const candidates = [
+      `/static/${encodeURIComponent(paper)}/archive-filters.json`,
+      `./archive-filters.json`,
+      `archive-filters.json`
+    ];
+
+    for (const url of candidates) {
+      try {
+        const data = await fetchJson(url);
+        return normalizeArchiveFilterMaster(data, posts);
+      } catch (_error) {}
+    }
+
+    return buildArchiveFilterMasterFromPosts(posts);
+  }
+
+  async function loadArchivePostsForSearch(paper) {
+    const candidates = [
+      `/static/${encodeURIComponent(paper)}/posts.json`,
+      `./posts.json`,
+      `posts.json`,
+      `../${encodeURIComponent(paper)}/posts.json`
+    ];
+
+    let lastError = null;
+    for (const url of candidates) {
+      try {
+        const data = await fetchJson(url);
+        if (Array.isArray(data)) return data;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError || new Error('posts.json could not be loaded for archive search.');
+  }
+
+  function populateArchiveSearchForm(form, master) {
+    if (!form) return;
+
+    populateSelectOptions(
+      form.querySelector('#archive-category'),
+      master.article_types,
+      'すべて',
+      ARCHIVE_DEFAULT_ARTICLE_TYPES
+    );
+    populateSelectOptions(
+      form.querySelector('#archive-region'),
+      master.regions,
+      'すべて',
+      ARCHIVE_REGION_ORDER
+    );
+    populateSelectOptions(
+      form.querySelector('#archive-variety'),
+      master.variety_categories,
+      'すべて',
+      ARCHIVE_DEFAULT_VARIETY_CATEGORIES
+    );
+  }
+
+  async function initArchiveSearchTopPage(paper) {
+    const form = getArchiveSearchForm();
+    if (!form) return;
+    if (form.dataset.archiveSearchBound === '1') return;
+
+    form.setAttribute('method', 'get');
+    if (!form.getAttribute('action')) {
+      form.setAttribute('action', './list.html');
+    }
+
+    populateArchiveSearchForm(form, buildArchiveFilterMasterFromPosts([]));
+
+    let master = buildArchiveFilterMasterFromPosts([]);
+    try {
+      const posts = await loadArchivePostsForSearch(paper);
+      const all = Array.isArray(posts) ? posts : [];
+      master = await loadArchiveFilterMaster(paper, all);
+      populateArchiveSearchForm(form, master);
+    } catch (error) {
+      console.warn('[archive-search] option master load failed:', error);
+    }
+
+    const dateFrom = form.querySelector('#archive-date-from');
+    const dateTo = form.querySelector('#archive-date-to');
+    const syncDateRange = function () {
+      if (dateFrom) {
+        if (dateTo && dateTo.value) dateFrom.max = dateTo.value;
+        else dateFrom.removeAttribute('max');
+      }
+      if (dateTo) {
+        if (dateFrom && dateFrom.value) dateTo.min = dateFrom.value;
+        else dateTo.removeAttribute('min');
+      }
+    };
+
+    if (dateFrom && dateTo) {
+      dateFrom.addEventListener('change', syncDateRange);
+      dateTo.addEventListener('change', syncDateRange);
+      syncDateRange();
+    }
+
+    const submitArchiveSearch = function () {
+      const params = buildArchiveSearchParamsFromForm(form);
+      const url = new URL('./list.html', window.location.href);
+      params.forEach(function (value, key) { url.searchParams.set(key, value); });
+      window.location.href = url.toString();
+    };
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      submitArchiveSearch();
+    });
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn && !submitBtn.dataset.archiveSearchClickBound) {
+      submitBtn.dataset.archiveSearchClickBound = '1';
+      submitBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        submitArchiveSearch();
+      });
+    }
+
+    const clearBtn = document.getElementById('archive-search-clear');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function () {
+        form.reset();
+        if (dateFrom) dateFrom.removeAttribute('max');
+        if (dateTo) dateTo.removeAttribute('min');
+        populateArchiveSearchForm(form, master);
+        syncDateRange();
+      });
+    }
+
+    form.dataset.archiveSearchBound = '1';
+  }
+
   // =========================================================
   // List page: Filter tab active state
   // - list.html (no query)            -> "すべて" active
@@ -2560,16 +2977,70 @@ async function renderNewsSection(posts, paper) {
   let __listAllPosts = null;
   let __listPerPage = null;
 
+  let __listFilteredPosts = null;
+
+  function getListSortValue() {
+    const select = document.querySelector('.sort-select');
+    return String((select && select.value) || '最新順').trim() || '最新順';
+  }
+
+  function getPostSortDate(post) {
+    const raw = String((post && (post.date || post.date_ymd)) || '').trim();
+    const time = Date.parse(raw);
+    return Number.isFinite(time) ? time : 0;
+  }
+
+  function compareListPosts(a, b, sortValue) {
+    const av = a || {};
+    const bv = b || {};
+    switch (sortValue) {
+      case '投稿順': {
+        const aid = Number(av.id) || 0;
+        const bid = Number(bv.id) || 0;
+        return aid - bid;
+      }
+      case '人気順':
+        return String(av.title || '').localeCompare(String(bv.title || ''), 'ja');
+      case 'カテゴリー順':
+        return String((getPostArticleTypes(av)[0] || '')).localeCompare(String((getPostArticleTypes(bv)[0] || '')), 'ja');
+      case '最新順':
+      default: {
+        const ad = getPostSortDate(av);
+        const bd = getPostSortDate(bv);
+        if (bd !== ad) return bd - ad;
+        return (Number(bv.id) || 0) - (Number(av.id) || 0);
+      }
+    }
+  }
+
+  function sortListPosts(posts, sortValue) {
+    return (Array.isArray(posts) ? posts : []).slice().sort(function (a, b) {
+      return compareListPosts(a, b, sortValue);
+    });
+  }
+
   function renderListPageState(pageNum) {
     if (!Array.isArray(__listAllPosts)) return;
 
-    const totalItems = __listAllPosts.length;
+    const sortedPosts = sortListPosts(__listAllPosts, getListSortValue());
+    __listFilteredPosts = sortedPosts;
+
+    const totalItems = sortedPosts.length;
+    toggleArchiveEmptyState(totalItems);
+
+    if (totalItems === 0) {
+      renderListTiles([]);
+      const nav = document.querySelector("nav.pagination");
+      if (nav) nav.innerHTML = "";
+      return;
+    }
+
     const totalPages = Math.max(1, Math.ceil(totalItems / __listPerPage));
     const page = clampInt(pageNum, 1, totalPages);
 
     const start = (page - 1) * __listPerPage;
     const end = start + __listPerPage;
-    const slice = __listAllPosts.slice(start, end);
+    const slice = sortedPosts.slice(start, end);
 
     renderListTiles(slice);
     buildPaginationNav(totalItems, __listPerPage, page);
@@ -4174,9 +4645,24 @@ async function loadAndRenderPlacementsJson(paper) {
     }
   }
 
+  function bindArchiveSearchStandalone() {
+    const form = getArchiveSearchForm();
+    const paper = getPaperFromPath();
+    if (!form || !paper) return;
+    initArchiveSearchTopPage(paper).catch(function (e) {
+      console.warn('[archive-search] standalone init failed:', e);
+    });
+  }
+
   async function main() {
     const paper = getPaperFromPath();
     if (!paper) return;
+
+    try {
+      await initArchiveSearchTopPage(paper);
+    } catch (e) {
+      console.warn('[archive-search] init failed:', e);
+    }
 
     // Variety page enhancement (clickable images)
     enhanceVarietyImageLinks();
@@ -4216,19 +4702,35 @@ async function loadAndRenderPlacementsJson(paper) {
       const tiles = getListArticleTiles();
       const perPage = tiles.length > 0 ? tiles.length : 20;
 
-      // Optional filter by Article Type (taxonomy: article_type)
-      // Example: list.html?article_type=トマトNEWS
-      const requestedArticleType = getQueryParam("article_type");
+      const filters = {
+        keyword: getQueryParam("keyword") || "",
+        article_type: getQueryParam("article_type") || "",
+        region: getQueryParam("region") || "",
+        variety_category: getQueryParam("variety_category") || "",
+        date_from: getQueryParam("date_from") || "",
+        date_to: getQueryParam("date_to") || "",
+        member_scope: getQueryParam("member_scope") || ""
+      };
 
       // Update active state of category filter tabs based on current URL
-      updateListFilterTabsActive(requestedArticleType);
+      updateListFilterTabsActive(filters.article_type);
       const all = Array.isArray(posts) ? posts : [];
-      const filtered = requestedArticleType
-        ? all.filter((p) => String((p && p.article_type) || "") === String(requestedArticleType))
-        : all;
+      const filtered = filterArchivePosts(all, filters);
 
       __listAllPosts = filtered;
       __listPerPage = perPage;
+
+      updateListSearchHeader(filters, filtered.length);
+
+      const sortSelect = document.querySelector('.sort-select');
+      if (sortSelect && !sortSelect.dataset.archiveSortBound) {
+        sortSelect.dataset.archiveSortBound = '1';
+        sortSelect.addEventListener('change', function () {
+          const url = setQueryParam('page', 1);
+          window.history.replaceState({ page: 1 }, '', url);
+          renderListPageState(1);
+        });
+      }
 
       const page = getCurrentPageFromUrl();
       renderListPageState(page);
@@ -4253,6 +4755,7 @@ async function loadAndRenderPlacementsJson(paper) {
     }
   }
 
+  bindArchiveSearchStandalone();
   main().catch((e) => showError(String(e && e.message ? e.message : e)));
 })();
 

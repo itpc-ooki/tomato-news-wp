@@ -406,50 +406,33 @@
   <section id="search">
     <div class="cat">
       <h2>トマト新聞アーカイブ検索</h2>
-      <div class="search-container" style="max-width:900px; margin:0 auto; padding:20px; background:#f8f9fa; border-radius:12px;">
+      <form id="archive-search-form" class="search-container" action="./list.html" method="get" style="max-width:900px; margin:0 auto; padding:20px; background:#f8f9fa; border-radius:12px;">
         <!-- キーワード検索 -->
         <div class="search-field" style="margin-bottom:20px;">
-          <label style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">キーワード検索</label>
-          <input type="text" placeholder="記事のタイトル、本文から検索" style="width:100%; padding:12px 16px; border:1px solid #e5e7eb; border-radius:8px; font-size:1rem;">
+          <label for="archive-keyword" style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">キーワード検索</label>
+          <input id="archive-keyword" name="keyword" type="text" placeholder="記事のタイトル、本文から検索" style="width:100%; padding:12px 16px; border:1px solid #e5e7eb; border-radius:8px; font-size:1rem;">
         </div>
         
         <!-- フィルター行1 -->
         <div class="search-filters" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:16px;">
           <div class="search-field">
-            <label style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">カテゴリ</label>
-            <select style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
+            <label for="archive-category" style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">カテゴリ</label>
+            <select id="archive-category" name="article_type" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
               <option value="">すべて</option>
-              <option value="news">トマトNEWS</option>
-              <option value="variety">品種情報</option>
-              <option value="cultivation">栽培技術</option>
-              <option value="market">市場動向</option>
-              <option value="pest">病害虫対策</option>
             </select>
           </div>
           
           <div class="search-field">
-            <label style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">産地</label>
-            <select style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
+            <label for="archive-region" style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">産地</label>
+            <select id="archive-region" name="region" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
               <option value="">すべて</option>
-              <option value="hokkaido">北海道</option>
-              <option value="tohoku">東北</option>
-              <option value="kanto">関東</option>
-              <option value="chubu">中部</option>
-              <option value="kinki">近畿</option>
-              <option value="chugoku">中国</option>
-              <option value="shikoku">四国</option>
-              <option value="kyushu">九州</option>
             </select>
           </div>
           
           <div class="search-field">
-            <label style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">品種</label>
-            <select style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
+            <label for="archive-variety" style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">品種</label>
+            <select id="archive-variety" name="variety_category" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
               <option value="">すべて</option>
-              <option value="large">大玉トマト</option>
-              <option value="medium">中玉トマト</option>
-              <option value="mini">ミニトマト</option>
-              <option value="first">ファーストトマト</option>
             </select>
           </div>
         </div>
@@ -457,18 +440,18 @@
         <!-- フィルター行2 -->
         <div class="search-filters" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
           <div class="search-field">
-            <label style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">期間（開始）</label>
-            <input type="date" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
+            <label for="archive-date-from" style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">期間（開始）</label>
+            <input id="archive-date-from" name="date_from" type="date" inputmode="none" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
           </div>
           
           <div class="search-field">
-            <label style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">期間（終了）</label>
-            <input type="date" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
+            <label for="archive-date-to" style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">期間（終了）</label>
+            <input id="archive-date-to" name="date_to" type="date" inputmode="none" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
           </div>
           
           <div class="search-field">
-            <label style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">会員限定</label>
-            <select style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
+            <label for="archive-member" style="display:block; font-weight:600; margin-bottom:8px; font-size:0.9rem;">会員限定</label>
+            <select id="archive-member" name="member_scope" style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.95rem;">
               <option value="">すべて</option>
               <option value="free">無料記事のみ</option>
               <option value="member">会員限定のみ</option>
@@ -478,14 +461,14 @@
         
         <!-- 検索ボタン -->
         <div style="text-align:center; margin-top:24px;">
-          <button class="btn accent" style="padding:12px 48px; font-size:1rem; cursor:pointer;" onclick="alert('検索機能は実装中です')">検索する</button>
-          <button class="btn" style="padding:12px 32px; font-size:1rem; margin-left:12px; cursor:pointer;" onclick="alert('条件をクリアしました')">条件をクリア</button>
+          <button type="submit" class="btn accent" style="padding:12px 48px; font-size:1rem; cursor:pointer;">検索する</button>
+          <button type="button" id="archive-search-clear" class="btn" style="padding:12px 32px; font-size:1rem; margin-left:12px; cursor:pointer;">条件をクリア</button>
         </div>
         
         <p style="margin-top:20px; font-size:0.85rem; color:#64748b; text-align:center;">
-          ※ 実装時は、ファセット検索とキーワードの組み合わせ、種苗会社・農薬メーカー・病害虫名による絞り込みなどを追加予定
+          ※ キーワード・カテゴリ・産地・品種・期間・会員限定条件を組み合わせて検索できます。
         </p>
-      </div>
+      </form>
     </div>
   </section>
 

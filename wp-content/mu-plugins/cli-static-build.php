@@ -918,6 +918,7 @@ $list = [];
 
         // excerpt (plain) - keep it short
         $excerpt = has_excerpt($p) ? $p->post_excerpt : wp_trim_words(wp_strip_all_tags($p->post_content), 60, '…');
+        $content_plain = trim(wp_strip_all_tags((string) $p->post_content));
 
         // slug: use post_name (keep as-is), but URL encode on the consumer side if needed
         $slug = $p->post_name;
@@ -1137,7 +1138,10 @@ $list[] = [
           'title'    => $title,
           'date'     => $date,
           'date_ymd' => $date_ymd,
+          'post_date' => $date_ymd,
           'excerpt'  => $excerpt,
+          'content_plain' => $content_plain,
+          'search_text' => trim(implode(' ', array_filter([$title, $excerpt, $content_plain, implode(' ', $article_types), implode(' ', $regions), implode(' ', $prefectures), implode(' ', $variety_categories)]))),
           'slug'     => $slug,
           // Use query param id for simplicity (detail.html?id=XX)
           'url'      => 'detail.html?id=' . $post_id,
@@ -1150,13 +1154,20 @@ $list[] = [
           'season_slug' => $season_slug,
           'survey_year' => $survey_year,
           'survey_year_slug' => $survey_year_slug,
+          'variety_category' => $variety_category,
           'variety_categories' => $variety_categories,
+          'variety_category_slug' => $variety_category_slug,
           'variety_category_slugs' => $variety_category_slugs,
+          'region' => $region,
 'regions' => $regions,
+          'region_slug' => $region_slug,
           'region_slugs' => $region_slugs,
+          'prefecture' => $prefecture,
 'prefectures' => $prefectures,
+          'prefecture_slug' => $prefecture_slug,
           'prefecture_slugs' => $prefecture_slugs,
           'free_viewable' => $free_viewable ? 1 : 0,
+          'member_scope' => $free_viewable ? 'free' : 'member',
         ];
 
         // detail json
@@ -1278,13 +1289,20 @@ $list[] = [
           'season_slug' => $season_slug,
           'survey_year' => $survey_year,
           'survey_year_slug' => $survey_year_slug,
+          'variety_category' => $variety_category,
           'variety_categories' => $variety_categories,
+          'variety_category_slug' => $variety_category_slug,
           'variety_category_slugs' => $variety_category_slugs,
+          'region' => $region,
 'regions' => $regions,
+          'region_slug' => $region_slug,
           'region_slugs' => $region_slugs,
+          'prefecture' => $prefecture,
 'prefectures' => $prefectures,
+          'prefecture_slug' => $prefecture_slug,
           'prefecture_slugs' => $prefecture_slugs,
           'free_viewable' => $free_viewable ? 1 : 0,
+          'member_scope' => $free_viewable ? 'free' : 'member',
           'reference_materials' => is_string($reference_materials) ? trim($reference_materials) : '',
           'writer_name' => is_string($writer_name) ? trim($writer_name) : '',
           'columnists' => $columnists,
@@ -1301,6 +1319,8 @@ $list[] = [
     // posts.json
     $posts_json_path = $static_paper_root . '/posts.json';
     file_put_contents($posts_json_path, wp_json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
+    self::build_archive_filters_json($paper);
 
     // survey.json
     // - Dedicated dataset for JA部会アンケート page
@@ -1388,6 +1408,76 @@ $list[] = [
     if (class_exists('Tomato_Market_Data') && method_exists('Tomato_Market_Data', 'export_json_for_paper')) {
       Tomato_Market_Data::export_json_for_paper($paper);
     }
+  }
+
+
+  /**
+   * Build archive-filters.json for archive search form.
+   *
+   * Output:
+   * - /static/{paper}/archive-filters.json
+   */
+  private static function build_archive_filters_json(string $paper): void {
+    $paper = sanitize_title($paper);
+    if ($paper === '') return;
+    if (!self::paper_exists($paper)) return;
+
+    $static_paper_root = self::static_root() . '/' . $paper;
+    self::ensure_dir($static_paper_root);
+
+    $article_types = [];
+    $article_type_terms = get_terms([
+      'taxonomy' => 'article_type',
+      'hide_empty' => false,
+      'orderby' => 'id',
+      'order' => 'ASC',
+    ]);
+    if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
+      foreach ($article_type_terms as $term) {
+        if ($term instanceof WP_Term && isset($term->name) && $term->name !== '') {
+          $article_types[] = (string) $term->name;
+        }
+      }
+    }
+
+    $regions = [];
+    $region_terms = get_terms([
+      'taxonomy' => 'region',
+      'hide_empty' => false,
+      'orderby' => 'id',
+      'order' => 'ASC',
+    ]);
+    if (!is_wp_error($region_terms) && !empty($region_terms)) {
+      foreach ($region_terms as $term) {
+        if ($term instanceof WP_Term && isset($term->name) && $term->name !== '') {
+          $regions[] = (string) $term->name;
+        }
+      }
+    }
+
+    $variety_categories = [];
+    $variety_terms = get_terms([
+      'taxonomy' => 'variety_category',
+      'hide_empty' => false,
+      'orderby' => 'id',
+      'order' => 'ASC',
+    ]);
+    if (!is_wp_error($variety_terms) && !empty($variety_terms)) {
+      foreach ($variety_terms as $term) {
+        if ($term instanceof WP_Term && isset($term->name) && $term->name !== '') {
+          $variety_categories[] = (string) $term->name;
+        }
+      }
+    }
+
+    $payload = [
+      'article_types' => array_values(array_unique(array_filter($article_types))),
+      'regions' => array_values(array_unique(array_filter($regions))),
+      'variety_categories' => array_values(array_unique(array_filter($variety_categories))),
+    ];
+
+    $archive_filters_json_path = $static_paper_root . '/archive-filters.json';
+    file_put_contents($archive_filters_json_path, wp_json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
   }
 
   /**
