@@ -104,7 +104,7 @@ services:
       echo "[static_builder] wordpress ready.";
       while true; do
         echo "[static_builder] build start: $(date -u +%F\ %T) UTC";
-        wp --allow-root tomato auto-static-run-now || true;
+        wp --path=/var/www/html --allow-root tomato auto-static-run || true;
 
         # S3 sync (safe for local dev: it will skip if AWS credentials are not available)
         
