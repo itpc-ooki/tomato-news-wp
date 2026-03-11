@@ -414,9 +414,6 @@ if (defined('WP_CLI') && WP_CLI) {
   // Debounced runner (for cron): runs only when due.
   \WP_CLI::add_command('tomato auto-static-run', [Tomato_Auto_Static_Build_Runner::class, 'cli_run'], [
     'shortdesc' => 'Run queued static-build and S3 sync (if due).',
-    'synopsis'  => [
-      ['type' => 'flag', 'name' => 'force', 'description' => 'Run immediately, ignore debounce timer'],
-    ],
   ]);
 
   // Run immediately, ignoring debounce
