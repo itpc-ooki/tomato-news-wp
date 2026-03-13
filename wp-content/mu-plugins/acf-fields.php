@@ -6,6 +6,347 @@
 
 if (!defined('ABSPATH')) exit;
 
+
+/**
+ * Dynamic global menu helpers
+ * - Keep the admin menu settings in sync with the menu.json builder.
+ * - This allows clients to add a new 記事タイプ term and immediately control
+ *   visibility, order, and URL from the newspaper edit screen.
+ */
+if (!function_exists('tomato_normalize_global_menu_item_from_term')) {
+  function tomato_normalize_global_menu_item_from_term($term): ?array {
+    if (!($term instanceof WP_Term)) return null;
+
+    $name = isset($term->name) ? trim((string) $term->name) : '';
+    $slug = isset($term->slug) ? trim((string) $term->slug) : '';
+    if ($name === '') return null;
+
+    $key = $slug !== '' ? $slug : sanitize_title($name);
+    $label = $name;
+    $url = './list.html?article_type=' . rawurlencode($name);
+
+    switch ($name) {
+      case 'トマトNEWS':
+        $key = 'news';
+        break;
+
+      case '栽培技術':
+        $key = 'cultivation';
+        break;
+
+      case '市場動向':
+        $key = 'market';
+        break;
+
+      case 'コラム':
+        $key = 'column';
+        break;
+
+      case '動画':
+        $key = 'video';
+        break;
+
+      case '紙面':
+        $key = 'paper';
+        $label = '紙面';
+        break;
+
+      case '採録紙面':
+        $key = 'paper';
+        $label = '採録紙面';
+        break;
+
+      case '品種情報':
+        $key = 'variety';
+        $url = './variety.html';
+        break;
+
+      case '病害虫対策':
+        $key = 'pest';
+        $url = './pest-control.html';
+        break;
+
+      case 'WEBセミナー':
+        $key = 'seminar';
+        $url = './web-seminar.html';
+        break;
+
+      case 'JA部会アンケート':
+        $key = 'survey';
+        $url = './survey.html';
+        break;
+
+      case '特集記事':
+      case 'トマト特集':
+        $key = 'featured';
+        $label = '特集記事';
+        $url = './feature.html';
+        break;
+    }
+
+    $key = trim((string) $key);
+    if ($key === '') {
+      $key = 'menu-item';
+    }
+
+    return [
+      'key' => $key,
+      'label' => $label,
+      'url' => $url,
+    ];
+  }
+}
+
+if (!function_exists('tomato_get_global_menu_default_items')) {
+  function tomato_get_global_menu_default_items(): array {
+    $items = [
+      'featured' => [
+        'key' => 'featured',
+        'label' => '特集記事',
+        'url' => './feature.html',
+      ],
+    ];
+
+    $terms = get_terms([
+      'taxonomy' => 'article_type',
+      'hide_empty' => false,
+      'orderby' => 'id',
+      'order' => 'ASC',
+    ]);
+    if (!is_wp_error($terms) && !empty($terms)) {
+      foreach ($terms as $term) {
+        $item = tomato_normalize_global_menu_item_from_term($term);
+        if (!is_array($item)) continue;
+
+        $key = isset($item['key']) ? sanitize_title((string) $item['key']) : '';
+        $label = isset($item['label']) ? trim((string) $item['label']) : '';
+        if ($key === '' || $label === '') continue;
+
+        $current = isset($items[$key]) && is_array($items[$key]) ? $items[$key] : [];
+        $current_label = isset($current['label']) ? trim((string) $current['label']) : '';
+        $current_url = isset($current['url']) ? trim((string) $current['url']) : '';
+        $next_url = isset($item['url']) ? trim((string) $item['url']) : '';
+
+        if ($current_label === '' || $current_label === $key) {
+          $current_label = $label;
+        }
+        if ($next_url !== '') {
+          $current_url = $next_url;
+        }
+
+        if ($key === 'featured') {
+          $current_label = '特集記事';
+          $current_url = './feature.html';
+        } elseif ($key === 'paper' && $label === '採録紙面') {
+          $current_label = '採録紙面';
+          if ($next_url !== '') {
+            $current_url = $next_url;
+          }
+        } elseif ($current_label === '') {
+          $current_label = $label;
+        }
+
+        $items[$key] = [
+          'key' => $key,
+          'label' => $current_label,
+          'url' => $current_url,
+        ];
+      }
+    }
+
+    $items = array_values($items);
+
+    $preferred_order = [
+      'featured',
+      'news',
+      'variety',
+      'cultivation',
+      'market',
+      'pest',
+      'seminar',
+      'column',
+      'video',
+      'paper',
+      'survey',
+    ];
+    $preferred_rank = array_flip($preferred_order);
+
+    usort($items, static function($a, $b) use ($preferred_rank) {
+      $a_key = isset($a['key']) ? (string) $a['key'] : '';
+      $b_key = isset($b['key']) ? (string) $b['key'] : '';
+      $a_rank = array_key_exists($a_key, $preferred_rank) ? (int) $preferred_rank[$a_key] : 999;
+      $b_rank = array_key_exists($b_key, $preferred_rank) ? (int) $preferred_rank[$b_key] : 999;
+
+      if ($a_rank !== $b_rank) {
+        return $a_rank <=> $b_rank;
+      }
+
+      $a_label = isset($a['label']) ? (string) $a['label'] : '';
+      $b_label = isset($b['label']) ? (string) $b['label'] : '';
+      return strcmp($a_label, $b_label);
+    });
+
+    foreach ($items as $index => &$item) {
+      $item['order'] = $index + 1;
+    }
+    unset($item);
+
+    return $items;
+  }
+}
+
+if (!function_exists('tomato_get_global_menu_choices')) {
+  function tomato_get_global_menu_choices(): array {
+    $choices = [];
+    foreach (tomato_get_global_menu_default_items() as $item) {
+      $key = isset($item['key']) ? (string) $item['key'] : '';
+      $label = isset($item['label']) ? (string) $item['label'] : '';
+      if ($key === '' || $label === '') continue;
+      $choices[$key] = $label;
+    }
+    return $choices;
+  }
+}
+
+if (!function_exists('tomato_get_global_menu_default_settings_rows')) {
+  function tomato_get_global_menu_default_settings_rows(): array {
+    $rows = [];
+    foreach (tomato_get_global_menu_default_items() as $item) {
+      $rows[] = [
+        'menu_item_key' => isset($item['key']) ? (string) $item['key'] : '',
+        'menu_order' => isset($item['order']) ? (int) $item['order'] : 0,
+        'menu_url' => isset($item['url']) ? (string) $item['url'] : '',
+      ];
+    }
+    return $rows;
+  }
+}
+
+
+if (!function_exists('tomato_get_global_menu_setting_field_name')) {
+  function tomato_get_global_menu_setting_field_name(string $prefix, string $menu_key): string {
+    $menu_key = sanitize_title($menu_key);
+    if ($menu_key === '') $menu_key = 'menu_item';
+    return $prefix . '_' . str_replace('-', '_', $menu_key);
+  }
+}
+
+if (!function_exists('tomato_get_global_menu_individual_setting_fields')) {
+  function tomato_get_global_menu_individual_setting_fields(): array {
+    $fields = [
+      [
+        'key' => 'field_newspaper_menu_settings_message',
+        'label' => 'メニュー設定（順番 / URL）',
+        'name' => '',
+        'type' => 'message',
+        'message' => '各メニューの順番とURLをここで直接編集できます。順番の小さいものほど先に表示されます。URL未入力時は既定URLを使用します。',
+        'new_lines' => 'wpautop',
+        'esc_html' => 0,
+      ],
+    ];
+
+    foreach (tomato_get_global_menu_default_items() as $index => $item) {
+      $menu_key = isset($item['key']) ? sanitize_title((string) $item['key']) : '';
+      $menu_label = isset($item['label']) ? (string) $item['label'] : $menu_key;
+      $default_order = isset($item['order']) ? (int) $item['order'] : ($index + 1);
+      if ($menu_key === '') continue;
+
+      $order_name = tomato_get_global_menu_setting_field_name('menu_order', $menu_key);
+      $url_name = tomato_get_global_menu_setting_field_name('menu_url', $menu_key);
+
+      $fields[] = [
+        'key' => 'field_newspaper_menu_order_' . $menu_key,
+        'label' => sprintf('%s の順番', $menu_label),
+        'name' => $order_name,
+        'type' => 'number',
+        'required' => 0,
+        'wrapper' => ['width' => '20'],
+        'default_value' => $default_order,
+        'min' => 1,
+        'step' => 1,
+      ];
+
+      $fields[] = [
+        'key' => 'field_newspaper_menu_url_' . $menu_key,
+        'label' => sprintf('%s のURL', $menu_label),
+        'name' => $url_name,
+        'type' => 'text',
+        'required' => 0,
+        'wrapper' => ['width' => '80'],
+        'placeholder' => isset($item['url']) ? (string) $item['url'] : '',
+      ];
+    }
+
+    return $fields;
+  }
+}
+
+if (!function_exists('tomato_merge_global_menu_settings_rows')) {
+  function tomato_merge_global_menu_settings_rows($value): array {
+    $defaults = tomato_get_global_menu_default_settings_rows();
+    $default_map = [];
+    foreach ($defaults as $row) {
+      $row_key = isset($row['menu_item_key']) ? sanitize_title((string) $row['menu_item_key']) : '';
+      if ($row_key === '') continue;
+      $default_map[$row_key] = $row;
+    }
+
+    $merged = [];
+    if (is_array($value)) {
+      foreach ($value as $row) {
+        if (!is_array($row)) continue;
+        $row_key = isset($row['menu_item_key']) ? sanitize_title((string) $row['menu_item_key']) : '';
+        if ($row_key === '') continue;
+
+        $base = isset($default_map[$row_key]) ? $default_map[$row_key] : [
+          'menu_item_key' => $row_key,
+          'menu_order' => 999,
+          'menu_url' => '',
+        ];
+
+        $menu_order = isset($row['menu_order']) && $row['menu_order'] !== '' ? (int) $row['menu_order'] : (int) $base['menu_order'];
+        if ($menu_order <= 0) {
+          $menu_order = (int) $base['menu_order'];
+          if ($menu_order <= 0) $menu_order = 999;
+        }
+
+        $menu_url = isset($row['menu_url']) ? trim((string) $row['menu_url']) : '';
+        if ($menu_url === '') {
+          $menu_url = isset($base['menu_url']) ? (string) $base['menu_url'] : '';
+        }
+
+        $merged[$row_key] = [
+          'menu_item_key' => $row_key,
+          'menu_order' => $menu_order,
+          'menu_url' => $menu_url,
+        ];
+      }
+    }
+
+    foreach ($default_map as $row_key => $row) {
+      if (!isset($merged[$row_key])) {
+        $merged[$row_key] = $row;
+      }
+    }
+
+    uasort($merged, static function($a, $b) {
+      $a_order = isset($a['menu_order']) ? (int) $a['menu_order'] : 999;
+      $b_order = isset($b['menu_order']) ? (int) $b['menu_order'] : 999;
+      if ($a_order !== $b_order) {
+        return $a_order <=> $b_order;
+      }
+
+      $choices = tomato_get_global_menu_choices();
+      $a_label = isset($choices[$a['menu_item_key']]) ? (string) $choices[$a['menu_item_key']] : (string) $a['menu_item_key'];
+      $b_label = isset($choices[$b['menu_item_key']]) ? (string) $choices[$b['menu_item_key']] : (string) $b['menu_item_key'];
+      return strcmp($a_label, $b_label);
+    });
+
+    return array_values($merged);
+  }
+}
+
+
 /**
  * 1) Custom Post Type: newspaper（新聞マスタ）
  * - 管理用（CMS用）
@@ -289,7 +630,7 @@ add_action('acf/init', function () {
   acf_add_local_field_group([
     'key' => 'group_newspaper_master',
     'title' => '新聞マスタ設定',
-    'fields' => [
+    'fields' => array_merge([
       [
         'key' => 'field_newspaper_slug',
         'label' => '新聞スラッグ',
@@ -316,7 +657,6 @@ add_action('acf/init', function () {
         'instructions' => '例: トマト新聞（未入力ならタイトルを利用）',
         'required' => 0,
       ],
-
       [
         'key' => 'field_newspaper_hidden_menu_items',
         'label' => '非表示メニュー（グローバルメニュー）',
@@ -325,24 +665,11 @@ add_action('acf/init', function () {
         'instructions' => "この新聞（paper）で非表示にしたいメニューを選択してください。
 未選択の場合はすべて表示されます。",
         'required' => 0,
-        'choices' => [
-          'featured'    => '特集記事',
-          'news'        => 'トマトNEWS',
-          'variety'     => '品種情報',
-          'cultivation' => '栽培技術',
-          'market'      => '市場動向',
-          'pest'        => '病害虫対策',
-          'seminar'     => 'WEBセミナー',
-          'column'      => 'コラム',
-          'video'       => '動画',
-          'paper'       => '紙面',
-          'survey'      => 'JA部会アンケート',
-        ],
+        'choices' => tomato_get_global_menu_choices(),
         'layout' => 'vertical',
         'return_format' => 'value',
       ],
-
-    ],
+    ]),
     'location' => [
       [
         [
@@ -358,6 +685,115 @@ add_action('acf/init', function () {
     'instruction_placement' => 'label',
     'active' => true,
   ]);
+
+  // Keep the hidden menu checkbox list synced with article_type terms.
+  // This lets the client add a new menu term and control its visibility
+  // from WordPress admin without code changes.
+  add_filter('acf/load_field/name=hidden_menu_items', function ($field) {
+    if (!is_array($field)) $field = [];
+    $field['choices'] = tomato_get_global_menu_choices();
+    return $field;
+  });
+
+
+if (!function_exists('tomato_get_global_menu_setting_value')) {
+  function tomato_get_global_menu_setting_value(int $post_id, string $field_name, $default = '') {
+    if ($post_id <= 0 || $field_name === '') return $default;
+
+    if (function_exists('get_field')) {
+      $value = get_field($field_name, $post_id);
+      if ($value !== null && $value !== false && $value !== '') {
+        return $value;
+      }
+    }
+
+    $meta = get_post_meta($post_id, $field_name, true);
+    if ($meta !== '' && $meta !== null) return $meta;
+
+    return $default;
+  }
+}
+
+add_action('add_meta_boxes', function () {
+  add_meta_box(
+    'tomato_newspaper_menu_settings_box',
+    'メニュー設定（順番 / URL）',
+    function ($post) {
+      if (!($post instanceof WP_Post) || $post->post_type !== 'newspaper') return;
+
+      wp_nonce_field('tomato_save_newspaper_menu_settings', 'tomato_newspaper_menu_settings_nonce');
+
+      echo '<p>各メニューの順番とURLをここで直接編集できます。順番の小さいものほど先に表示されます。URL未入力時は既定URLを使用します。</p>';
+      echo '<table class="form-table" role="presentation"><tbody>';
+
+      foreach (tomato_get_global_menu_default_items() as $item) {
+        $menu_key = isset($item['key']) ? sanitize_title((string) $item['key']) : '';
+        $menu_label = isset($item['label']) ? (string) $item['label'] : $menu_key;
+        if ($menu_key === '') continue;
+
+        $order_name = tomato_get_global_menu_setting_field_name('menu_order', $menu_key);
+        $url_name = tomato_get_global_menu_setting_field_name('menu_url', $menu_key);
+
+        $default_order = isset($item['order']) ? (int) $item['order'] : 999;
+        if ($default_order <= 0) $default_order = 999;
+
+        $order_value = tomato_get_global_menu_setting_value((int) $post->ID, $order_name, $default_order);
+        $url_value = tomato_get_global_menu_setting_value((int) $post->ID, $url_name, isset($item['url']) ? (string) $item['url'] : '');
+
+        echo '<tr>';
+        echo '<th scope="row" style="width:220px;">' . esc_html($menu_label) . '</th>';
+        echo '<td>';
+        echo '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">';
+        echo '<div style="min-width:180px;">';
+        echo '<label for="' . esc_attr($order_name) . '" style="display:block;font-weight:600;margin-bottom:6px;">順番</label>';
+        echo '<input type="number" min="1" step="1" class="small-text" id="' . esc_attr($order_name) . '" name="' . esc_attr($order_name) . '" value="' . esc_attr((string) $order_value) . '">';
+        echo '</div>';
+        echo '<div style="flex:1;min-width:320px;">';
+        echo '<label for="' . esc_attr($url_name) . '" style="display:block;font-weight:600;margin-bottom:6px;">URL</label>';
+        echo '<input type="text" class="regular-text" style="width:100%;max-width:100%;" id="' . esc_attr($url_name) . '" name="' . esc_attr($url_name) . '" value="' . esc_attr((string) $url_value) . '" placeholder="' . esc_attr(isset($item['url']) ? (string) $item['url'] : '') . '">';
+        echo '</div>';
+        echo '</div>';
+        echo '</td>';
+        echo '</tr>';
+      }
+
+      echo '</tbody></table>';
+    },
+    'newspaper',
+    'normal',
+    'default'
+  );
+});
+
+add_action('save_post_newspaper', function ($post_id, $post, $update) {
+  if (!($post instanceof WP_Post) || $post->post_type !== 'newspaper') return;
+  if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+  if (wp_is_post_revision($post_id)) return;
+  if (!current_user_can('edit_post', $post_id)) return;
+
+  $nonce = isset($_POST['tomato_newspaper_menu_settings_nonce']) ? wp_unslash($_POST['tomato_newspaper_menu_settings_nonce']) : '';
+  if (!$nonce || !wp_verify_nonce($nonce, 'tomato_save_newspaper_menu_settings')) return;
+
+  foreach (tomato_get_global_menu_default_items() as $item) {
+    $menu_key = isset($item['key']) ? sanitize_title((string) $item['key']) : '';
+    if ($menu_key === '') continue;
+
+    $order_name = tomato_get_global_menu_setting_field_name('menu_order', $menu_key);
+    $url_name = tomato_get_global_menu_setting_field_name('menu_url', $menu_key);
+
+    $default_order = isset($item['order']) ? (int) $item['order'] : 999;
+    if ($default_order <= 0) $default_order = 999;
+
+    $raw_order = isset($_POST[$order_name]) ? wp_unslash($_POST[$order_name]) : '';
+    $order_value = is_numeric($raw_order) ? (int) $raw_order : $default_order;
+    if ($order_value <= 0) $order_value = $default_order;
+    update_post_meta($post_id, $order_name, $order_value);
+
+    $raw_url = isset($_POST[$url_name]) ? wp_unslash($_POST[$url_name]) : '';
+    $url_value = trim((string) $raw_url);
+    update_post_meta($post_id, $url_name, $url_value);
+  }
+}, 10, 3);
 
 
   // ---------------------------------------------------------------------------

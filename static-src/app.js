@@ -1448,6 +1448,165 @@ function renderGraphItems(items) {
   } else {
     renderKwBarDynamic();
   }
+
+  // --------------------------------------------------
+  // Dynamic navigation menu
+  // - Preferred source: /static/{paper}/menu.json
+  // - Fallback: /static/{paper}/archive-filters.json
+  // - Article types become navigation items
+  // --------------------------------------------------
+  function escapeHtml(text) {
+    return String(text == null ? "" : text).replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
+  function getDynamicMenuSpecialConfig(typeName) {
+    var name = String(typeName || "").trim();
+    var map = {
+      "品種情報": { key: "variety", url: "./variety.html" },
+      "病害虫対策": { key: "pest", url: "./pest-control.html" },
+      "WEBセミナー": { key: "seminar", url: "./web-seminar.html" },
+      "JA部会アンケート": { key: "survey", url: "./survey.html" },
+      "特集記事": { key: "featured", url: "./feature.html" },
+      "トマト特集": { key: "featured", url: "./feature.html", label: "特集記事" },
+      "採録紙面": { key: "paper", url: "./list.html?article_type=" + encodeURIComponent(name), label: "採録紙面" },
+      "紙面": { key: "paper", url: "./list.html?article_type=" + encodeURIComponent(name), label: "紙面" },
+      "動画": { key: "video", url: "./list.html?article_type=" + encodeURIComponent(name) },
+      "トマトNEWS": { key: "news", url: "./list.html?article_type=" + encodeURIComponent(name) },
+      "栽培技術": { key: "cultivation", url: "./list.html?article_type=" + encodeURIComponent(name) },
+      "市場動向": { key: "market", url: "./list.html?article_type=" + encodeURIComponent(name) },
+      "コラム": { key: "column", url: "./list.html?article_type=" + encodeURIComponent(name) }
+    };
+    return map[name] || null;
+  }
+
+  function buildMenuItemFromArticleType(typeName) {
+    var name = String(typeName || "").trim();
+    if (!name) return null;
+
+    var special = getDynamicMenuSpecialConfig(name);
+    if (special) {
+      return {
+        key: special.key,
+        label: special.label || name,
+        url: special.url
+      };
+    }
+
+    return {
+      key: name.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "") || "menu-item",
+      label: name,
+      url: "./list.html?article_type=" + encodeURIComponent(name)
+    };
+  }
+
+  function getDynamicMenuPreferredOrder() {
+    return ["featured", "news", "variety", "cultivation", "market", "pest", "seminar", "column", "video", "paper", "survey"];
+  }
+
+  function sortDynamicMenuItems(items) {
+    var order = getDynamicMenuPreferredOrder();
+    var rank = {};
+    order.forEach(function (key, index) {
+      rank[key] = index;
+    });
+
+    return items.slice().sort(function (a, b) {
+      var aHasExplicitOrder = Number.isFinite(Number(a && a.order));
+      var bHasExplicitOrder = Number.isFinite(Number(b && b.order));
+      var aOrder = aHasExplicitOrder ? Number(a.order) : 999;
+      var bOrder = bHasExplicitOrder ? Number(b.order) : 999;
+
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      if (aHasExplicitOrder !== bHasExplicitOrder) return aHasExplicitOrder ? -1 : 1;
+
+      var aRank = Object.prototype.hasOwnProperty.call(rank, a.key) ? rank[a.key] : 999;
+      var bRank = Object.prototype.hasOwnProperty.call(rank, b.key) ? rank[b.key] : 999;
+      if (aRank !== bRank) return aRank - bRank;
+      return String(a.label || "").localeCompare(String(b.label || ""), "ja");
+    });
+  }
+
+  function dedupeDynamicMenuItems(items) {
+    var map = new Map();
+    (Array.isArray(items) ? items : []).forEach(function (item) {
+      if (!item || !item.label || !item.url) return;
+      var key = String(item.key || "").trim() + "__" + String(item.label || "").trim();
+      if (!map.has(key)) map.set(key, item);
+    });
+    return Array.from(map.values());
+  }
+
+  async function loadDynamicMenuItems() {
+    var paper = getCurrentPaper() || getKwPaper();
+    if (!paper) return [];
+
+    try {
+      var menuData = await fetchJson('/static/' + encodeURIComponent(paper) + '/menu.json');
+      var sourceItems = Array.isArray(menuData)
+        ? menuData
+        : (Array.isArray(menuData && menuData.items) ? menuData.items : []);
+
+      return sortDynamicMenuItems(dedupeDynamicMenuItems(sourceItems.map(function (item) {
+        if (!item || typeof item !== 'object') return null;
+        var label = String(item.label || "").trim();
+        var url = String(item.url || "").trim();
+        if (!label || !url) return null;
+        var rawOrder = Number(item.order);
+        return {
+          key: String(item.key || "").trim() || label.toLowerCase().replace(/[^a-z0-9_-]+/g, '-'),
+          label: label,
+          url: url,
+          order: Number.isFinite(rawOrder) ? rawOrder : null
+        };
+      }).filter(Boolean)));
+    } catch (menuError) {
+      try {
+        var filters = await fetchJson('/static/' + encodeURIComponent(paper) + '/archive-filters.json');
+        var articleTypes = Array.isArray(filters && filters.article_types) ? filters.article_types : [];
+        var fallbackItems = [{ key: 'featured', label: '特集記事', url: './feature.html' }];
+
+        articleTypes.forEach(function (typeName) {
+          var next = buildMenuItemFromArticleType(typeName);
+          if (next) fallbackItems.push(next);
+        });
+
+        return sortDynamicMenuItems(dedupeDynamicMenuItems(fallbackItems));
+      } catch (fallbackError) {
+        console.warn('[menu] menu.json and archive-filters.json load failed:', menuError, fallbackError);
+        return [];
+      }
+    }
+  }
+
+  function renderDynamicMenuInto(root, items) {
+    if (!root || !Array.isArray(items) || !items.length) return;
+    root.innerHTML = items.map(function (item) {
+      return '<li data-menu-key="' + escapeHtml(item.key) + '"><a href="' + escapeHtml(item.url) + '">' + escapeHtml(item.label) + '</a></li>';
+    }).join('');
+  }
+
+  async function renderDynamicMenus() {
+    var items = await loadDynamicMenuItems();
+    if (!items.length) return;
+
+    renderDynamicMenuInto(document.getElementById('header-main-menu'), items);
+    renderDynamicMenuInto(document.getElementById('mobile-main-menu'), items);
+    renderDynamicMenuInto(document.getElementById('footer-content-menu'), items);
+
+    updatePaperMenuLinks();
+    updateHeaderMenuVisibility();
+  }
+
+  window.addEventListener('headerLoaded', renderDynamicMenus);
+  window.addEventListener('footerLoaded', renderDynamicMenus);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderDynamicMenus);
+  } else {
+    renderDynamicMenus();
+  }
 // Load footer component
   (async function() {
     try {
@@ -2064,6 +2223,29 @@ function shouldSkipHref(href) {
     throw lastError || new Error('posts.json could not be loaded for archive search.');
   }
 
+  function bindArchiveSearchScrollButton() {
+    const trigger = document.getElementById('scroll-to-archive-search');
+    const target = document.getElementById('search');
+    if (!trigger || !target) return;
+    if (trigger.dataset.archiveScrollBound === '1') return;
+
+    trigger.addEventListener('click', function () {
+      const header = document.querySelector('header');
+      const kwBar = document.querySelector('.kw-bar');
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const kwBarHeight = kwBar ? kwBar.getBoundingClientRect().height : 0;
+      const extraGap = 16;
+      const top = window.pageYOffset + target.getBoundingClientRect().top - headerHeight - kwBarHeight - extraGap;
+
+      window.scrollTo({
+        top: Math.max(top, 0),
+        behavior: 'smooth'
+      });
+    });
+
+    trigger.dataset.archiveScrollBound = '1';
+  }
+
   function populateArchiveSearchForm(form, master) {
     if (!form) return;
 
@@ -2096,6 +2278,8 @@ function shouldSkipHref(href) {
     if (!form.getAttribute('action')) {
       form.setAttribute('action', './list.html');
     }
+
+    bindArchiveSearchScrollButton();
 
     populateArchiveSearchForm(form, buildArchiveFilterMasterFromPosts([]));
 

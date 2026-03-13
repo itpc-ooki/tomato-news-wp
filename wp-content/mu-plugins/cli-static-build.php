@@ -344,8 +344,21 @@ private static function sync_uploads_assets(): void {
    * @return mixed|null
    */
   private static function get_acf_field_value(string $field_key, int $post_id) {
-    if (!function_exists('get_field')) return null;
-    return get_field($field_key, $post_id);
+    $value = null;
+
+    if (function_exists('get_field')) {
+      $value = get_field($field_key, $post_id);
+      if ($value !== null && $value !== false && $value !== '') {
+        return $value;
+      }
+    }
+
+    $meta = get_post_meta($post_id, $field_key, true);
+    if ($meta !== '' && $meta !== null) {
+      return $meta;
+    }
+
+    return $value;
   }
 
   /**
@@ -371,6 +384,48 @@ private static function sync_uploads_assets(): void {
     return null;
   }
 
+  /** @return int newspaper post id for the paper slug/output dir, or 0 */
+  private static function get_newspaper_post_id_by_paper(string $paper): int {
+    $paper = sanitize_title($paper);
+    if ($paper === '') return 0;
+
+    $queries = [
+      [
+        'key' => 'newspaper_slug',
+        'value' => $paper,
+      ],
+      [
+        'key' => 'output_subdir',
+        'value' => $paper,
+      ],
+    ];
+
+    foreach ($queries as $meta) {
+      $q = new WP_Query([
+        'post_type' => 'newspaper',
+        'post_status' => 'any',
+        'posts_per_page' => 1,
+        'meta_query' => [
+          [
+            'key' => $meta['key'],
+            'value' => $meta['value'],
+            'compare' => '=',
+          ],
+        ],
+      ]);
+
+      if ($q->have_posts()) {
+        $post = $q->posts[0];
+        wp_reset_postdata();
+        return ($post instanceof WP_Post) ? (int) $post->ID : 0;
+      }
+      wp_reset_postdata();
+    }
+
+    return 0;
+  }
+
+
   /**
    * Build placements json for a paper:
    * - /static/{paper}/placements.json
@@ -390,51 +445,18 @@ private static function sync_uploads_assets(): void {
     // =========================================================
     $menu_hidden = [];
     try {
-      $nq = new WP_Query([
-        'post_type'      => 'newspaper',
-        'post_status'    => 'any',
-        'posts_per_page' => 1,
-        'meta_query'     => [
-          [
-            'key'     => 'newspaper_slug',
-            'value'   => $paper,
-            'compare' => '=',
-          ],
-        ],
-      ]);
-
-      // Fallback: match by output_subdir if newspaper_slug didn't match
-      if (!$nq->have_posts()) {
-        $nq = new WP_Query([
-          'post_type'      => 'newspaper',
-          'post_status'    => 'any',
-          'posts_per_page' => 1,
-          'meta_query'     => [
-            [
-              'key'     => 'output_subdir',
-              'value'   => $paper,
-              'compare' => '=',
-            ],
-          ],
-        ]);
-      }
-
-      if ($nq->have_posts()) {
-        $np = $nq->posts[0];
-        if ($np instanceof WP_Post) {
-          $raw = self::get_acf_field_value('hidden_menu_items', (int) $np->ID);
-          if (is_array($raw)) {
-            $menu_hidden = array_values(array_filter(array_map(function($v){
-              $v = sanitize_title((string) $v);
-              return $v !== '' ? $v : null;
-            }, $raw)));
-          } elseif (is_string($raw) && $raw !== '') {
-            // In case return_format is set differently, normalize to array
-            $menu_hidden = [ sanitize_title($raw) ];
-          }
+      $newspaper_post_id = self::get_newspaper_post_id_by_paper($paper);
+      if ($newspaper_post_id > 0) {
+        $raw = self::get_acf_field_value('hidden_menu_items', $newspaper_post_id);
+        if (is_array($raw)) {
+          $menu_hidden = array_values(array_filter(array_map(function($v){
+            $v = sanitize_title((string) $v);
+            return $v !== '' ? $v : null;
+          }, $raw)));
+        } elseif (is_string($raw) && $raw !== '') {
+          $menu_hidden = [ sanitize_title($raw) ];
         }
       }
-      wp_reset_postdata();
     } catch (Exception $e) {
       // keep silent - placements build should not fail because of menu settings
       $menu_hidden = [];
@@ -1321,6 +1343,7 @@ $list[] = [
     file_put_contents($posts_json_path, wp_json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 
     self::build_archive_filters_json($paper);
+    self::build_menu_json($paper);
 
     // survey.json
     // - Dedicated dataset for JA部会アンケート page
@@ -1408,6 +1431,376 @@ $list[] = [
     if (class_exists('Tomato_Market_Data') && method_exists('Tomato_Market_Data', 'export_json_for_paper')) {
       Tomato_Market_Data::export_json_for_paper($paper);
     }
+  }
+
+
+
+  /**
+   * Read newspaper menu settings from the new per-menu ACF fields.
+   * Falls back to the legacy repeater field when individual fields are empty.
+   */
+  private static function get_newspaper_menu_settings_map(int $newspaper_post_id): array {
+    if ($newspaper_post_id <= 0) return [];
+
+    $menu_settings_map = [];
+    $article_type_terms = get_terms([
+      'taxonomy' => 'article_type',
+      'hide_empty' => false,
+      'orderby' => 'id',
+      'order' => 'ASC',
+    ]);
+
+    $default_items = [
+      'featured' => [ 'key' => 'featured', 'label' => '特集記事', 'url' => './feature.html', 'order' => 1 ],
+    ];
+
+    if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
+      foreach ($article_type_terms as $term) {
+        if (!($term instanceof WP_Term) || !isset($term->name)) continue;
+
+        $name = trim((string) $term->name);
+        $slug = isset($term->slug) ? trim((string) $term->slug) : '';
+        if ($name === '') continue;
+
+        $label = $name;
+        $url = './list.html?article_type=' . rawurlencode($name);
+        $key = $slug !== '' ? $slug : sanitize_title($name);
+
+        switch ($name) {
+          case 'トマトNEWS':
+            $key = 'news';
+            break;
+          case '栽培技術':
+            $key = 'cultivation';
+            break;
+          case '市場動向':
+            $key = 'market';
+            break;
+          case 'コラム':
+            $key = 'column';
+            break;
+          case '動画':
+            $key = 'video';
+            break;
+          case '紙面':
+            $key = 'paper';
+            $label = '紙面';
+            break;
+          case '採録紙面':
+            $key = 'paper';
+            $label = '採録紙面';
+            break;
+          case '品種情報':
+            $key = 'variety';
+            $url = './variety.html';
+            break;
+          case '病害虫対策':
+            $key = 'pest';
+            $url = './pest-control.html';
+            break;
+          case 'WEBセミナー':
+            $key = 'seminar';
+            $url = './web-seminar.html';
+            break;
+          case 'JA部会アンケート':
+            $key = 'survey';
+            $url = './survey.html';
+            break;
+          case '特集記事':
+          case 'トマト特集':
+            $key = 'featured';
+            $label = '特集記事';
+            $url = './feature.html';
+            break;
+        }
+
+        $current = isset($default_items[$key]) && is_array($default_items[$key]) ? $default_items[$key] : [];
+        $current_label = isset($current['label']) ? trim((string) $current['label']) : '';
+        $current_url = isset($current['url']) ? trim((string) $current['url']) : '';
+
+        if ($key === 'featured') {
+          $label = '特集記事';
+          $url = './feature.html';
+        } elseif ($key === 'paper' && $label === '採録紙面') {
+          $current_label = '採録紙面';
+        }
+
+        if ($current_label === '' || $current_label === $key || ($key === 'paper' && $label === '採録紙面')) {
+          $current_label = $label;
+        }
+        if ($url !== '') {
+          $current_url = $url;
+        }
+
+        $default_items[$key] = [
+          'key' => $key,
+          'label' => $current_label,
+          'url' => $current_url,
+          'order' => 999,
+        ];
+      }
+    }
+
+    $default_items = array_values($default_items);
+    foreach ($default_items as $index => $item) {
+      $key = isset($item['key']) ? sanitize_title((string) $item['key']) : '';
+      if ($key === '') continue;
+
+      $order_field = 'menu_order_' . str_replace('-', '_', $key);
+      $url_field = 'menu_url_' . str_replace('-', '_', $key);
+
+      $order_value = self::get_acf_field_value($order_field, $newspaper_post_id);
+      $url_value = self::get_acf_field_value($url_field, $newspaper_post_id);
+
+      $order = is_numeric($order_value) && intval($order_value) > 0 ? intval($order_value) : ($index + 1);
+      $url = is_string($url_value) ? trim($url_value) : '';
+      if ($url === '') {
+        $url = isset($item['url']) ? (string) $item['url'] : '';
+      }
+
+      $menu_settings_map[$key] = [
+        'order' => $order,
+        'url' => $url,
+      ];
+    }
+
+    $raw_menu_settings = self::get_acf_field_value('menu_item_settings', $newspaper_post_id);
+    if (is_array($raw_menu_settings)) {
+      foreach ($raw_menu_settings as $row) {
+        if (!is_array($row)) continue;
+        $row_key = isset($row['menu_item_key']) ? sanitize_title((string) $row['menu_item_key']) : '';
+        if ($row_key === '') continue;
+
+        $current_order = isset($menu_settings_map[$row_key]['order']) ? intval($menu_settings_map[$row_key]['order']) : 0;
+        $current_url = isset($menu_settings_map[$row_key]['url']) ? (string) $menu_settings_map[$row_key]['url'] : '';
+
+        $row_order = isset($row['menu_order']) && $row['menu_order'] !== '' ? (int) $row['menu_order'] : 0;
+        if ($current_order <= 0 && $row_order > 0) {
+          $current_order = $row_order;
+        }
+        if ($current_order <= 0) $current_order = 999;
+
+        $row_url = isset($row['menu_url']) ? trim((string) $row['menu_url']) : '';
+        if ($current_url === '' && $row_url !== '') {
+          $current_url = $row_url;
+        }
+
+        $menu_settings_map[$row_key] = [
+          'order' => $current_order,
+          'url' => $current_url,
+        ];
+      }
+    }
+
+    return $menu_settings_map;
+  }
+
+  /**
+   * Build menu.json for header/footer navigation.
+   *
+   * Output:
+   * - /static/{paper}/menu.json
+   *
+   * Behavior:
+   * - Uses article_type terms as the main navigation source
+   * - Converts specific known article types to dedicated page URLs
+   * - Keeps a stable preferred order and appends new article types automatically
+   */
+  private static function build_menu_json(string $paper): void {
+    $paper = sanitize_title($paper);
+    if ($paper === '') return;
+    if (!self::paper_exists($paper)) return;
+
+    $static_paper_root = self::static_root() . '/' . $paper;
+    self::ensure_dir($static_paper_root);
+
+    $term_items = [];
+    $article_type_terms = get_terms([
+      'taxonomy' => 'article_type',
+      'hide_empty' => false,
+      'orderby' => 'id',
+      'order' => 'ASC',
+    ]);
+
+    $preferred_order = [
+      'featured',
+      'news',
+      'variety',
+      'cultivation',
+      'market',
+      'pest',
+      'seminar',
+      'column',
+      'video',
+      'paper',
+      'survey',
+    ];
+    $preferred_rank = array_flip($preferred_order);
+
+    $newspaper_post_id = self::get_newspaper_post_id_by_paper($paper);
+    $menu_settings_map = self::get_newspaper_menu_settings_map($newspaper_post_id);
+
+    if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
+      foreach ($article_type_terms as $term) {
+        if (!($term instanceof WP_Term) || !isset($term->name)) continue;
+
+        $name = trim((string) $term->name);
+        $slug = isset($term->slug) ? trim((string) $term->slug) : '';
+        if ($name === '') continue;
+
+        $label = $name;
+        $url = './list.html?article_type=' . rawurlencode($name);
+        $key = $slug !== '' ? $slug : sanitize_title($name);
+
+        switch ($name) {
+          case 'トマトNEWS':
+            $key = 'news';
+            break;
+
+          case '栽培技術':
+            $key = 'cultivation';
+            break;
+
+          case '市場動向':
+            $key = 'market';
+            break;
+
+          case 'コラム':
+            $key = 'column';
+            break;
+
+          case '動画':
+            $key = 'video';
+            break;
+
+          case '紙面':
+            $key = 'paper';
+            $label = '紙面';
+            break;
+
+          case '採録紙面':
+            $key = 'paper';
+            $label = '採録紙面';
+            break;
+
+          case '品種情報':
+            $key = 'variety';
+            $url = './variety.html';
+            break;
+
+          case '病害虫対策':
+            $key = 'pest';
+            $url = './pest-control.html';
+            break;
+
+          case 'WEBセミナー':
+            $key = 'seminar';
+            $url = './web-seminar.html';
+            break;
+
+          case 'JA部会アンケート':
+            $key = 'survey';
+            $url = './survey.html';
+            break;
+
+          case '特集記事':
+          case 'トマト特集':
+            $key = 'featured';
+            $label = '特集記事';
+            $url = './feature.html';
+            break;
+        }
+
+        $order = array_key_exists($key, $preferred_rank) ? (intval($preferred_rank[$key]) + 1) : 999;
+        if (isset($menu_settings_map[$key])) {
+          if (!empty($menu_settings_map[$key]['url'])) {
+            $url = (string) $menu_settings_map[$key]['url'];
+          }
+          if (isset($menu_settings_map[$key]['order']) && intval($menu_settings_map[$key]['order']) > 0) {
+            $order = intval($menu_settings_map[$key]['order']);
+          }
+        }
+
+        $map_key = $key !== '' ? $key : 'menu-item';
+        $current = isset($term_items[$map_key]) && is_array($term_items[$map_key]) ? $term_items[$map_key] : null;
+
+        if ($map_key === 'featured') {
+          $label = '特集記事';
+          if (!isset($menu_settings_map[$map_key]['url']) || trim((string) $menu_settings_map[$map_key]['url']) === '') {
+            $url = './feature.html';
+          }
+        }
+
+        if ($map_key === 'paper') {
+          $existing_label = $current && isset($current['label']) ? trim((string) $current['label']) : '';
+          if ($existing_label === '採録紙面' && $label !== '採録紙面') {
+            $label = $existing_label;
+          }
+          if ($label === '採録紙面') {
+            // Prefer 採録紙面 when both 紙面 and 採録紙面 exist.
+          } elseif ($existing_label === '採録紙面') {
+            $label = '採録紙面';
+          }
+        }
+
+        if ($current && isset($current['label']) && $map_key !== 'paper') {
+          $label = (string) $current['label'];
+        }
+        if ($current && isset($current['url']) && $map_key !== 'paper' && (!isset($menu_settings_map[$map_key]['url']) || trim((string) $menu_settings_map[$map_key]['url']) === '')) {
+          $url = (string) $current['url'];
+        }
+        if ($current && isset($current['order']) && isset($menu_settings_map[$map_key]['order']) && intval($menu_settings_map[$map_key]['order']) <= 0) {
+          $order = intval($current['order']);
+        }
+
+        $term_items[$map_key] = [
+          'key' => $map_key,
+          'label' => $label,
+          'url' => $url,
+          'order' => $order,
+        ];
+      }
+    }
+
+    if (!isset($term_items['featured'])) {
+      $featured_order = isset($menu_settings_map['featured']['order']) && intval($menu_settings_map['featured']['order']) > 0
+        ? intval($menu_settings_map['featured']['order'])
+        : 1;
+      $featured_url = isset($menu_settings_map['featured']['url']) && trim((string) $menu_settings_map['featured']['url']) !== ''
+        ? trim((string) $menu_settings_map['featured']['url'])
+        : './feature.html';
+
+      $term_items = ['featured' => [
+        'key' => 'featured',
+        'label' => '特集記事',
+        'url' => $featured_url,
+        'order' => $featured_order,
+      ]] + $term_items;
+    }
+
+    $items = array_values($term_items);
+    usort($items, static function(array $a, array $b) use ($preferred_rank) {
+      $a_order = isset($a['order']) ? intval($a['order']) : 999;
+      $b_order = isset($b['order']) ? intval($b['order']) : 999;
+      if ($a_order !== $b_order) {
+        return $a_order <=> $b_order;
+      }
+
+      $a_key = isset($a['key']) ? (string) $a['key'] : '';
+      $b_key = isset($b['key']) ? (string) $b['key'] : '';
+      $a_rank = array_key_exists($a_key, $preferred_rank) ? intval($preferred_rank[$a_key]) : 999;
+      $b_rank = array_key_exists($b_key, $preferred_rank) ? intval($preferred_rank[$b_key]) : 999;
+      if ($a_rank !== $b_rank) {
+        return $a_rank <=> $b_rank;
+      }
+
+      $a_label = isset($a['label']) ? (string) $a['label'] : '';
+      $b_label = isset($b['label']) ? (string) $b['label'] : '';
+      return strcmp($a_label, $b_label);
+    });
+
+    $menu_json_path = $static_paper_root . '/menu.json';
+    file_put_contents($menu_json_path, wp_json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
   }
 
 
