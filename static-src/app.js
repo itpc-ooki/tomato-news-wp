@@ -5383,14 +5383,17 @@ function goToMarketPage(pageIndex) {
 // 特定のページに移動（SP版、1カードずつ）
 function goToMarketPageSP(pageIndex) {
   const grid = document.getElementById('market-grid-sp');
+  if (!grid) return;
+
   const cards = Array.from(grid.querySelectorAll('.market-card'));
   const totalCards = cards.length;
-  
-  marketCarouselIndex.sp = pageIndex;
-  
+  if (!totalCards) return;
+
+  marketCarouselIndex.sp = ((pageIndex % totalCards) + totalCards) % totalCards;
+
   const currentIdx = marketCarouselIndex.sp;
   const nextIdx = (currentIdx + 1) % totalCards;
-  
+
   cards.forEach((card, index) => {
     if (index === currentIdx) {
       card.style.display = 'block';
@@ -5403,9 +5406,9 @@ function goToMarketPageSP(pageIndex) {
       card.style.order = '99';
     }
   });
-  
+
   updateMarketIndicatorsSP();
-  
+
   // 自動スライドをリセット（手動操作時）
   resetAutoSlide();
 }
@@ -5427,8 +5430,133 @@ function updateMarketIndicatorsSP() {
   });
 }
 
+
+function enableMarketSwipeSP() {
+  const grid = document.getElementById('market-grid-sp');
+  if (!grid || grid.dataset.swipeBound === '1') return;
+
+  grid.dataset.swipeBound = '1';
+  grid.style.touchAction = 'pan-y';
+
+  const state = {
+    startX: 0,
+    startY: 0,
+    deltaX: 0,
+    deltaY: 0,
+    dragging: false,
+    pointerId: null
+  };
+
+  function isSmallScreenMarket() {
+    return window.matchMedia('(max-width:1179px)').matches;
+  }
+
+  function resetState() {
+    state.dragging = false;
+    state.deltaX = 0;
+    state.deltaY = 0;
+    state.pointerId = null;
+  }
+
+  function beginDrag(x, y, pointerId) {
+    state.startX = x;
+    state.startY = y;
+    state.deltaX = 0;
+    state.deltaY = 0;
+    state.dragging = true;
+    state.pointerId = pointerId != null ? pointerId : null;
+  }
+
+  function updateDrag(x, y) {
+    state.deltaX = x - state.startX;
+    state.deltaY = y - state.startY;
+  }
+
+  function commitSwipe() {
+    if (!state.dragging || !isSmallScreenMarket()) {
+      resetState();
+      return;
+    }
+
+    const threshold = 30;
+    const mostlyHorizontal = Math.abs(state.deltaX) > Math.abs(state.deltaY);
+    const cards = Array.from(grid.querySelectorAll('.market-card'));
+    const totalCards = cards.length;
+
+    if (mostlyHorizontal && Math.abs(state.deltaX) >= threshold && totalCards > 1) {
+      const nextIndex = state.deltaX < 0
+        ? (marketCarouselIndex.sp + 1) % totalCards
+        : (marketCarouselIndex.sp - 1 + totalCards) % totalCards;
+      goToMarketPageSP(nextIndex);
+    }
+
+    resetState();
+  }
+
+  function onTouchStart(e) {
+    if (!isSmallScreenMarket() || !e.touches || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    beginDrag(touch.clientX, touch.clientY, null);
+  }
+
+  function onTouchMove(e) {
+    if (!state.dragging || !isSmallScreenMarket() || !e.touches || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    updateDrag(touch.clientX, touch.clientY);
+
+    if (Math.abs(state.deltaX) > Math.abs(state.deltaY) && Math.abs(state.deltaX) > 8) {
+      e.preventDefault();
+    }
+  }
+
+  function onTouchEnd() {
+    commitSwipe();
+  }
+
+  function onTouchCancel() {
+    resetState();
+  }
+
+  function onPointerDown(e) {
+    if (!isSmallScreenMarket()) return;
+    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+    beginDrag(e.clientX, e.clientY, e.pointerId);
+  }
+
+  function onPointerMove(e) {
+    if (!state.dragging || !isSmallScreenMarket()) return;
+    if (state.pointerId !== null && e.pointerId !== state.pointerId) return;
+    updateDrag(e.clientX, e.clientY);
+
+    if (Math.abs(state.deltaX) > Math.abs(state.deltaY) && Math.abs(state.deltaX) > 8) {
+      e.preventDefault();
+    }
+  }
+
+  function onPointerUp(e) {
+    if (state.pointerId !== null && e.pointerId !== state.pointerId) return;
+    commitSwipe();
+  }
+
+  function onPointerCancel(e) {
+    if (state.pointerId !== null && e.pointerId !== state.pointerId) return;
+    resetState();
+  }
+
+  grid.addEventListener('touchstart', onTouchStart, { passive: true });
+  grid.addEventListener('touchmove', onTouchMove, { passive: false });
+  grid.addEventListener('touchend', onTouchEnd, { passive: true });
+  grid.addEventListener('touchcancel', onTouchCancel, { passive: true });
+
+  grid.addEventListener('pointerdown', onPointerDown, { passive: true });
+  grid.addEventListener('pointermove', onPointerMove, { passive: false });
+  grid.addEventListener('pointerup', onPointerUp, { passive: true });
+  grid.addEventListener('pointercancel', onPointerCancel, { passive: true });
+}
+
 // ページ読み込み時にナビゲーションボタンの状態を初期化
 document.addEventListener('DOMContentLoaded', function() {
+
   const pcGrid = document.getElementById('market-grid-pc');
   const spGrid = document.getElementById('market-grid-sp');
   
@@ -5459,7 +5587,7 @@ document.addEventListener('DOMContentLoaded', function() {
         card.style.order = '1'; // 左側に表示
       } else if (index === 1) {
         card.style.display = 'block';
-        card.style.order = '2'; // 右側に表示
+        card.style.order = '2'; // 左側の次に表示
       } else {
         card.style.display = 'none';
         card.style.order = '99';
@@ -5467,6 +5595,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     // 初期状態のドットを設定
     updateMarketIndicatorsSP();
+    enableMarketSwipeSP();
   }
   
   // 自動スライド機能を開始
