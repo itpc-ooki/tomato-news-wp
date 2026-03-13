@@ -879,6 +879,30 @@ function renderGraphItems(items) {
       return Number.isFinite(t) ? t : 0;
     }
 
+    function isNewPost(p) {
+      const publishedAt = safeDateValue(p);
+      if (!publishedAt) return false;
+      const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+      return Date.now() - publishedAt <= ONE_WEEK_MS;
+    }
+
+    function syncTopNewBadge(tileEl, post) {
+      if (!tileEl) return;
+
+      const existing = tileEl.querySelector('.vtile-badge-new');
+      if (!isNewPost(post)) {
+        if (existing) existing.remove();
+        return;
+      }
+
+      if (existing) return;
+
+      const badge = document.createElement('span');
+      badge.className = 'vtile-badge-new';
+      badge.textContent = 'NEW';
+      tileEl.appendChild(badge);
+    }
+
     function getPaperFromPathLocal() {
       const parts = window.location.pathname.split("/").filter(Boolean);
       const idx = parts.indexOf("static");
@@ -2851,6 +2875,36 @@ async function renderNewsSection(posts, paper) {
   }
   // ===== End Added =====
 
+  function safeTopBadgeDateValue(post) {
+    const raw = (post && (post.date_ymd || post.date)) || "";
+    const time = Date.parse(String(raw));
+    return Number.isFinite(time) ? time : 0;
+  }
+
+  function isTopBadgeNewPost(post) {
+    const publishedAt = safeTopBadgeDateValue(post);
+    if (!publishedAt) return false;
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    return Date.now() - publishedAt <= ONE_WEEK_MS;
+  }
+
+  function syncTopNewBadge(tileEl, post) {
+    if (!tileEl) return;
+
+    const existing = tileEl.querySelector('.vtile-badge-new');
+    if (!isTopBadgeNewPost(post)) {
+      if (existing) existing.remove();
+      return;
+    }
+
+    if (existing) return;
+
+    const badge = document.createElement('span');
+    badge.className = 'vtile-badge-new';
+    badge.textContent = 'NEW';
+    tileEl.appendChild(badge);
+  }
+
   // ========= TOP PAGE (.vtile) RENDERING =========
   function getTopVtiles() {
     // Only anchors with class vtile (ads are divs, so they won't be touched)
@@ -2914,6 +2968,8 @@ async function renderNewsSection(posts, paper) {
           capDivs[1].textContent = title;
         }
       }
+
+      syncTopNewBadge(a, post);
     });
   }
   // ========= END TOP PAGE RENDERING =========
@@ -5437,13 +5493,13 @@ function enableMarketSwipeSP() {
 
   grid.dataset.swipeBound = '1';
   grid.style.touchAction = 'pan-y';
+  grid.style.userSelect = 'none';
+  grid.style.webkitUserSelect = 'none';
 
   const state = {
     startX: 0,
     startY: 0,
-    deltaX: 0,
-    deltaY: 0,
-    dragging: false,
+    tracking: false,
     pointerId: null
   };
 
@@ -5451,40 +5507,39 @@ function enableMarketSwipeSP() {
     return window.matchMedia('(max-width:1179px)').matches;
   }
 
+  function getTotalCards() {
+    return grid.querySelectorAll('.market-card').length;
+  }
+
   function resetState() {
-    state.dragging = false;
-    state.deltaX = 0;
-    state.deltaY = 0;
+    state.startX = 0;
+    state.startY = 0;
+    state.tracking = false;
     state.pointerId = null;
   }
 
-  function beginDrag(x, y, pointerId) {
+  function beginSwipe(x, y, pointerId) {
     state.startX = x;
     state.startY = y;
-    state.deltaX = 0;
-    state.deltaY = 0;
-    state.dragging = true;
+    state.tracking = true;
     state.pointerId = pointerId != null ? pointerId : null;
   }
 
-  function updateDrag(x, y) {
-    state.deltaX = x - state.startX;
-    state.deltaY = y - state.startY;
-  }
-
-  function commitSwipe() {
-    if (!state.dragging || !isSmallScreenMarket()) {
+  function finishSwipe(x, y) {
+    if (!state.tracking || !isSmallScreenMarket()) {
       resetState();
       return;
     }
 
-    const threshold = 30;
-    const mostlyHorizontal = Math.abs(state.deltaX) > Math.abs(state.deltaY);
-    const cards = Array.from(grid.querySelectorAll('.market-card'));
-    const totalCards = cards.length;
+    const deltaX = x - state.startX;
+    const deltaY = y - state.startY;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+    const totalCards = getTotalCards();
+    const threshold = 40;
 
-    if (mostlyHorizontal && Math.abs(state.deltaX) >= threshold && totalCards > 1) {
-      const nextIndex = state.deltaX < 0
+    if (totalCards > 1 && absX >= threshold && absX > (absY * 1.2)) {
+      const nextIndex = deltaX < 0
         ? (marketCarouselIndex.sp + 1) % totalCards
         : (marketCarouselIndex.sp - 1 + totalCards) % totalCards;
       goToMarketPageSP(nextIndex);
@@ -5496,21 +5551,17 @@ function enableMarketSwipeSP() {
   function onTouchStart(e) {
     if (!isSmallScreenMarket() || !e.touches || e.touches.length !== 1) return;
     const touch = e.touches[0];
-    beginDrag(touch.clientX, touch.clientY, null);
+    beginSwipe(touch.clientX, touch.clientY, null);
   }
 
-  function onTouchMove(e) {
-    if (!state.dragging || !isSmallScreenMarket() || !e.touches || e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    updateDrag(touch.clientX, touch.clientY);
-
-    if (Math.abs(state.deltaX) > Math.abs(state.deltaY) && Math.abs(state.deltaX) > 8) {
-      e.preventDefault();
+  function onTouchEnd(e) {
+    if (!state.tracking) return;
+    const touch = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+    if (!touch) {
+      resetState();
+      return;
     }
-  }
-
-  function onTouchEnd() {
-    commitSwipe();
+    finishSwipe(touch.clientX, touch.clientY);
   }
 
   function onTouchCancel() {
@@ -5520,22 +5571,12 @@ function enableMarketSwipeSP() {
   function onPointerDown(e) {
     if (!isSmallScreenMarket()) return;
     if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
-    beginDrag(e.clientX, e.clientY, e.pointerId);
-  }
-
-  function onPointerMove(e) {
-    if (!state.dragging || !isSmallScreenMarket()) return;
-    if (state.pointerId !== null && e.pointerId !== state.pointerId) return;
-    updateDrag(e.clientX, e.clientY);
-
-    if (Math.abs(state.deltaX) > Math.abs(state.deltaY) && Math.abs(state.deltaX) > 8) {
-      e.preventDefault();
-    }
+    beginSwipe(e.clientX, e.clientY, e.pointerId);
   }
 
   function onPointerUp(e) {
     if (state.pointerId !== null && e.pointerId !== state.pointerId) return;
-    commitSwipe();
+    finishSwipe(e.clientX, e.clientY);
   }
 
   function onPointerCancel(e) {
@@ -5543,15 +5584,21 @@ function enableMarketSwipeSP() {
     resetState();
   }
 
-  grid.addEventListener('touchstart', onTouchStart, { passive: true });
-  grid.addEventListener('touchmove', onTouchMove, { passive: false });
-  grid.addEventListener('touchend', onTouchEnd, { passive: true });
-  grid.addEventListener('touchcancel', onTouchCancel, { passive: true });
+  function bindSwipeTarget(target) {
+    if (!target || target.dataset.marketSwipeTargetBound === '1') return;
+    target.dataset.marketSwipeTargetBound = '1';
 
-  grid.addEventListener('pointerdown', onPointerDown, { passive: true });
-  grid.addEventListener('pointermove', onPointerMove, { passive: false });
-  grid.addEventListener('pointerup', onPointerUp, { passive: true });
-  grid.addEventListener('pointercancel', onPointerCancel, { passive: true });
+    target.addEventListener('touchstart', onTouchStart, { passive: true });
+    target.addEventListener('touchend', onTouchEnd, { passive: true });
+    target.addEventListener('touchcancel', onTouchCancel, { passive: true });
+
+    target.addEventListener('pointerdown', onPointerDown, { passive: true });
+    target.addEventListener('pointerup', onPointerUp, { passive: true });
+    target.addEventListener('pointercancel', onPointerCancel, { passive: true });
+  }
+
+  bindSwipeTarget(grid);
+  Array.from(grid.querySelectorAll('.market-card')).forEach(bindSwipeTarget);
 }
 
 // ページ読み込み時にナビゲーションボタンの状態を初期化
