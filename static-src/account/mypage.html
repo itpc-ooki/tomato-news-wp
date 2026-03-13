@@ -287,18 +287,16 @@
 </div>
 </div>
 <div class="form-group">
-<label class="form-label">情報配信の希望<span class="optional">（任意・複数選択可）</span></label>
-<div class="checkbox-group">
-<label class="checkbox-item selected"><input type="checkbox" name="newsletter" value="週刊ニュースレター" checked><span>週刊ニュースレター</span></label>
-<label class="checkbox-item selected"><input type="checkbox" name="newsletter" value="新製品・サービス情報" checked><span>新製品・サービス情報</span></label>
-<label class="checkbox-item selected"><input type="checkbox" name="newsletter" value="セミナー・イベント案内" checked><span>セミナー・イベント案内</span></label>
-<label class="checkbox-item"><input type="checkbox" name="newsletter" value="市況速報"><span>市況速報</span></label>
+<label class="form-label">今後、日本農業新聞が実施するアンケート調査やキャンペーンのご案内、特集企画のお知らせ等<span class="required">*</span></label>
+<div class="radio-group">
+<label class="radio-item selected"><input type="radio" name="newsletter_preference" value="希望する" checked required><span>希望する</span></label>
+<label class="radio-item"><input type="radio" name="newsletter_preference" value="希望しない" required><span>希望しない</span></label>
 </div>
 </div>
 </div>
 </div>
 <div class="form-actions">
-<button type="button" class="btn-large btn-secondary" onclick="window.location.href='../index.html'">キャンセル</button>
+<button type="button" class="btn-large btn-secondary" onclick="(function(){ var paper = localStorage.getItem('tomato_active_paper_v1') || 'tomato'; window.location.href = '/static/' + paper + '/index.html'; })();">キャンセル</button>
 <button type="submit" class="btn-large btn-primary">変更を保存</button>
 </div>
 </form>

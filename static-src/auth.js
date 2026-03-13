@@ -102,7 +102,7 @@
 
     const interests = formData.getAll('interest')?.length ? formData.getAll('interest')
                     : formData.getAll('interests'); // support both names
-    const newsletters = formData.getAll('newsletter');
+    const newsletterPreference = String(formData.get('newsletter_preference') || '希望する');
 
     const user = {
       id: 'u_' + Math.random().toString(36).slice(2, 10),
@@ -118,7 +118,7 @@
       crop_2: String(formData.get('crop_2') || ''),
       future_crop: String(formData.get('future_crop') || ''),
       interests: Array.isArray(interests) ? interests.filter(Boolean) : [],
-      newsletter: Array.isArray(newsletters) ? newsletters.filter(Boolean) : [],
+      newsletter_preference: newsletterPreference,
       created_at: nowIso(),
       updated_at: nowIso()
     };
@@ -205,7 +205,7 @@
     setValue(form, 'crop_2', user.crop_2);
     setValue(form, 'future_crop', user.future_crop);
     setCheckboxGroup(form, 'interests', user.interests);
-    setCheckboxGroup(form, 'newsletter', user.newsletter);
+    setRadio(form, 'newsletter_preference', user.newsletter_preference || (Array.isArray(user.newsletter) && user.newsletter.length ? '希望する' : '希望する'));
   }
 
   async function updateProfileFromMypageForm(form){
@@ -227,7 +227,7 @@
     const crop_2 = String(form.querySelector('[name="crop_2"]')?.value || '');
     const future_crop = String(form.querySelector('[name="future_crop"]')?.value || '');
     const interests = Array.from(form.querySelectorAll('input[name="interests"]:checked')).map(n => n.value);
-    const newsletter = Array.from(form.querySelectorAll('input[name="newsletter"]:checked')).map(n => n.value);
+    const newsletter_preference = String(form.querySelector('input[name="newsletter_preference"]:checked')?.value || '希望する');
 
     if (!email) throw new Error('メールアドレスを入力してください。');
 
@@ -257,7 +257,7 @@
       crop_2,
       future_crop,
       interests,
-      newsletter,
+      newsletter_preference,
       updated_at: nowIso()
     };
 
@@ -675,7 +675,7 @@ var currentStep = 1;
             window.__REGISTER_EDIT_MODE__ = !!__currentUser;
 
             if (window.__REGISTER_EDIT_MODE__) {
-                // Prefill all fields (email/nickname/gender/prefecture/city/occupation/farm_scale/crops/interests/newsletter)
+                // Prefill all fields (email/nickname/gender/prefecture/city/occupation/farm_scale/crops/interests/newsletter_preference)
                 try {
                     var formElForPrefill = document.getElementById('registrationForm');
                     window.TomatoAuth.prefillMypageForm(formElForPrefill, __currentUser);
@@ -930,9 +930,9 @@ var currentStep = 1;
                 summaryHTML += '<p><strong>興味・関心:</strong> （未選択）</p>';
             }
             // 情報配信の希望（複数選択）
-            var newsletters = formData.getAll('newsletter') || [];
-            if (newsletters.length > 0) {
-                summaryHTML += '<p><strong>情報配信の希望:</strong> ' + newsletters.join('、') + '</p>';
+            var newsletterPreference = formData.get('newsletter_preference') || '';
+            if (newsletterPreference) {
+                summaryHTML += '<p><strong>情報配信の希望:</strong> ' + newsletterPreference + '</p>';
             }
 
             summaryHTML += '</div>';
