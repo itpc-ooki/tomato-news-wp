@@ -1050,6 +1050,26 @@ header .btn, header .hamb{ border-radius:999px !important; box-shadow:0 10px 24p
              background:#334155; padding:4px 8px; border-radius:999px; letter-spacing:.01em;
              width:auto; height:auto; max-width:60px; max-height:30px; 
              white-space:nowrap; overflow:hidden; z-index:10;}
+
+.ad-slot[data-hidden="true"],
+.pc-only-ad[data-hidden="true"],
+.halfpage-ad-wrapper[data-hidden="true"],
+.mpu-ad-wrapper[data-hidden="true"]{
+  display:none !important;
+  visibility:hidden !important;
+  opacity:0 !important;
+  width:0 !important;
+  height:0 !important;
+  max-width:0 !important;
+  max-height:0 !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  overflow:hidden !important;
+  pointer-events:none !important;
+}
 @media (max-width: 768px){
   .sticky-banner{ position:fixed; z-index:80; left:12px; right:12px; bottom:12px; display:none}
   .sticky-banner.active{ display:block}

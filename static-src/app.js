@@ -4457,8 +4457,8 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
   function hasSideAdsUi() {
     return (
       !!document.querySelector(".right-gallery") &&
-      (!!document.querySelector("#vcolA .ad-slot") ||
-        !!document.querySelector("#vcolB .ad-slot"))
+      (!!document.querySelector("#vcolA .v-track") ||
+        !!document.querySelector("#vcolB .v-track"))
     );
   }
 
@@ -4477,15 +4477,32 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     return "A";
   }
 
-  function setSlotHidden(slot, hidden) {
+  function removeKnownAdWrapperNextTo(slot) {
     if (!slot) return;
-    slot.style.display = hidden ? "none" : "";
-    // Also hide the adjacent SP wrapper if it exists
     const next = slot.nextElementSibling;
-    if (next && (next.classList.contains("mpu-ad-wrapper") || next.classList.contains("halfpage-ad-wrapper"))) {
-      next.style.display = hidden ? "none" : "";
+    if (
+      next &&
+      next.classList &&
+      (next.classList.contains("mpu-ad-wrapper") || next.classList.contains("halfpage-ad-wrapper"))
+    ) {
+      next.remove();
     }
   }
+
+  function setSlotHidden(slot, hidden) {
+    if (!slot) return;
+
+    if (hidden) {
+      slot.setAttribute("data-hidden", "true");
+      slot.style.setProperty("display", "none", "important");
+      removeKnownAdWrapperNextTo(slot);
+      return;
+    }
+
+    slot.removeAttribute("data-hidden");
+    slot.style.removeProperty("display");
+  }
+
 
 
   // Ensure the SP (small screen) wrapper markup matches the ad size class.
@@ -4604,33 +4621,213 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
 
     const items = Array.isArray(placements && placements.ads) ? placements.ads : [];
 
-    const slotsA = Array.from(document.querySelectorAll("#vcolA .ad-slot"));
-    const slotsB = Array.from(document.querySelectorAll("#vcolB .ad-slot"));
+    function resetVerticalColumnForRebuild(root) {
+      if (!root) return;
 
-    // Hide everything first (so "no ads" case is clean)
-    slotsA.forEach((s) => setSlotHidden(s, true));
-    slotsB.forEach((s) => setSlotHidden(s, true));
-
-    if (items.length === 0) return;
-
-    let idxA = 0;
-    let idxB = 0;
-
-    items.forEach((item) => {
-      const col = normalizeAdColumn(item);
-      if (col === "B") {
-        const slot = slotsB[idxB++];
-        if (!slot) return;
-        applyAdToSlot(slot, item);
-        setSlotHidden(slot, false);
-      } else {
-        const slot = slotsA[idxA++];
-        if (!slot) return;
-        applyAdToSlot(slot, item);
-        setSlotHidden(slot, false);
+      if (root.dataset && root.dataset.inited === "1" && typeof root._destroy === "function") {
+        root._destroy();
       }
-    });
+
+      const track = root.querySelector(".v-track");
+      if (!track) return;
+
+      if (track.dataset && track.dataset.cloned === "1") {
+        const children = Array.from(track.children);
+        const half = Math.floor(children.length / 2);
+        children.slice(half).forEach((child) => child.remove());
+        track.dataset.cloned = "";
+      }
+
+      track.style.transform = "";
+    }
+
+    function getTrack(root) {
+      return root ? root.querySelector(".v-track") : null;
+    }
+
+    function getBaseTemplateSlot(track) {
+      return track ? track.querySelector(".ad-slot") : null;
+    }
+
+    function clearSlotState(slot) {
+      if (!slot) return;
+
+      Array.from(slot.classList).forEach((cls) => {
+        if (
+          cls === "ad-half-vertical" ||
+          cls === "ad-rect-vertical" ||
+          cls === "pc-only-ad" ||
+          cls === "ad-slot"
+        ) {
+          return;
+        }
+        if (/^(ad-|sponsor-|mpu-|halfpage-)/.test(cls)) {
+          slot.classList.remove(cls);
+        }
+      });
+
+      slot.classList.remove("ad-half-vertical", "ad-rect-vertical");
+      slot.removeAttribute("data-hidden");
+      slot.removeAttribute("data-dynamic-ad");
+      slot.removeAttribute("data-ad-type");
+      slot.style.removeProperty("display");
+      slot.onclick = null;
+      slot.style.cursor = "";
+
+      const img = slot.querySelector("img");
+      if (img) {
+        img.removeAttribute("src");
+        img.alt = "広告";
+      }
+    }
+
+    function createFallbackTemplateSlot() {
+      const slot = document.createElement("div");
+      slot.className = "ad-slot pc-only-ad";
+
+      const badge = document.createElement("div");
+      badge.className = "ad-badge";
+      badge.textContent = "広告";
+
+      const img = document.createElement("img");
+      img.alt = "広告";
+
+      slot.appendChild(badge);
+      slot.appendChild(img);
+      clearSlotState(slot);
+      return slot;
+    }
+
+    function createSlotFromTemplate(templateSlot) {
+      const slot = (templateSlot || createFallbackTemplateSlot()).cloneNode(true);
+      clearSlotState(slot);
+      slot.setAttribute("data-dynamic-ad", "1");
+      return slot;
+    }
+
+    function captureInitialSnapshot(root) {
+      if (!root) return null;
+      if (root._adSnapshot) return root._adSnapshot;
+
+      const track = getTrack(root);
+      if (!track) return null;
+
+      const original = Array.from(track.children).map((child) => child.cloneNode(true));
+      const templateSlot =
+        original.find((child) => child.classList && child.classList.contains("ad-slot")) ||
+        getBaseTemplateSlot(track) ||
+        createFallbackTemplateSlot();
+
+      const adPositions = [];
+      let nonAdIndex = 0;
+
+      original.forEach((child) => {
+        if (child.classList && child.classList.contains("ad-slot")) {
+          adPositions.push(nonAdIndex);
+          return;
+        }
+        if (
+          child.classList &&
+          (child.classList.contains("halfpage-ad-wrapper") || child.classList.contains("mpu-ad-wrapper"))
+        ) {
+          return;
+        }
+        nonAdIndex += 1;
+      });
+
+      const contentChildren = original.filter((child) => {
+        return !(
+          child.classList &&
+          (child.classList.contains("ad-slot") ||
+            child.classList.contains("halfpage-ad-wrapper") ||
+            child.classList.contains("mpu-ad-wrapper"))
+        );
+      });
+
+      root._adSnapshot = {
+        templateSlot: templateSlot.cloneNode(true),
+        adPositions: adPositions.slice(),
+        contentChildren: contentChildren.map((child) => child.cloneNode(true)),
+      };
+
+      return root._adSnapshot;
+    }
+
+    function clearKnownWrappers(track) {
+      if (!track) return;
+      track.querySelectorAll(".halfpage-ad-wrapper, .mpu-ad-wrapper").forEach((node) => node.remove());
+    }
+
+    function rebuildColumn(root, columnItems) {
+      if (!root) return;
+      const snapshot = captureInitialSnapshot(root);
+      if (!snapshot) return;
+
+      resetVerticalColumnForRebuild(root);
+
+      const track = getTrack(root);
+      if (!track) return;
+
+      const templateSlot = snapshot.templateSlot || createFallbackTemplateSlot();
+      const contentChildren = (snapshot.contentChildren || []).map((child) => child.cloneNode(true));
+      const adPositions = snapshot.adPositions && snapshot.adPositions.length ? snapshot.adPositions.slice() : [];
+
+      track.innerHTML = "";
+      clearKnownWrappers(track);
+
+      const defaultAdPosition = (index) => {
+        // When the HTML has no hard-coded ad placeholders, place ads every 2 tiles.
+        // Example: 1st ad after 2 tiles, 2nd ad after 4 tiles, then append the rest.
+        const pos = 2 * (index + 1);
+        return Math.min(pos, contentChildren.length);
+      };
+
+      const insertMap = new Map();
+      (Array.isArray(columnItems) ? columnItems : []).forEach((item, index) => {
+        const position = typeof adPositions[index] === "number"
+          ? adPositions[index]
+          : defaultAdPosition(index);
+        if (!insertMap.has(position)) insertMap.set(position, []);
+        insertMap.get(position).push(item);
+      });
+
+      function appendAdsAt(position) {
+        const list = insertMap.get(position) || [];
+        list.forEach((item) => {
+          const slot = createSlotFromTemplate(templateSlot);
+          applyAdToSlot(slot, item);
+          track.appendChild(slot);
+        });
+      }
+
+      appendAdsAt(0);
+
+      contentChildren.forEach((child, index) => {
+        track.appendChild(child);
+        appendAdsAt(index + 1);
+      });
+
+      if (contentChildren.length === 0) {
+        appendAdsAt(1);
+      }
+    }
+
+    const colARoot = document.getElementById("vcolA");
+    const colBRoot = document.getElementById("vcolB");
+
+    const itemsA = items.filter((item) => normalizeAdColumn(item) !== "B");
+    const itemsB = items.filter((item) => normalizeAdColumn(item) === "B");
+
+    rebuildColumn(colARoot, itemsA);
+    rebuildColumn(colBRoot, itemsB);
+
+    if (document.readyState === "complete") {
+      setTimeout(() => {
+        try { boot(); } catch (_e) {}
+      }, 0);
+    }
   }
+
 
 
   // =========================================================

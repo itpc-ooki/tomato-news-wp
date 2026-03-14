@@ -298,6 +298,122 @@ class Tomato_Auto_Static_Build_Queue
     return $san;
   }
 
+  private static function get_papers_for_ad_item(int $post_id): array
+  {
+    $post = get_post($post_id);
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'ad_item') {
+      return [];
+    }
+
+    $papers = [];
+
+    $terms = get_the_terms($post_id, 'paper');
+    if ($terms && !is_wp_error($terms)) {
+      foreach ($terms as $term) {
+        if (!is_object($term) || empty($term->slug)) {
+          continue;
+        }
+        $slug = self::normalize_paper_key((string) $term->slug);
+        if ($slug !== null) {
+          $papers[] = $slug;
+        }
+      }
+    }
+
+    // Fallback during save when taxonomy terms are still coming from POST.
+    if (empty($papers) && isset($_POST['tax_input']['paper'])) {
+      $raw_terms = $_POST['tax_input']['paper'];
+      if (!is_array($raw_terms)) {
+        $raw_terms = [$raw_terms];
+      }
+
+      foreach ($raw_terms as $raw_term) {
+        if (is_numeric($raw_term)) {
+          $term = get_term((int) $raw_term, 'paper');
+          if ($term && !is_wp_error($term) && !empty($term->slug)) {
+            $slug = self::normalize_paper_key((string) $term->slug);
+            if ($slug !== null) {
+              $papers[] = $slug;
+            }
+          }
+          continue;
+        }
+
+        $slug = self::normalize_paper_key((string) $raw_term);
+        if ($slug !== null) {
+          $papers[] = $slug;
+        }
+      }
+    }
+
+    $papers = array_values(array_unique(array_filter($papers)));
+
+    if (!empty($papers)) {
+      return $papers;
+    }
+
+    return self::get_papers_from_newspaper_master() ?: self::get_default_papers();
+  }
+
+  public static function on_save_ad_item($post_id, $post, $update): void
+  {
+    if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+      return;
+    }
+    if (defined('DOING_CRON') && DOING_CRON) {
+      return;
+    }
+    if (!is_object($post) || ($post->post_type ?? '') !== 'ad_item') {
+      return;
+    }
+
+    $papers = self::get_papers_for_ad_item((int) $post_id);
+    self::request_build($papers, 'save_post_ad_item');
+  }
+
+  public static function on_transition_post_status($new_status, $old_status, $post): void
+  {
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'ad_item') {
+      return;
+    }
+
+    if ($new_status === $old_status) {
+      return;
+    }
+
+    $papers = self::get_papers_for_ad_item((int) $post->ID);
+    self::request_build($papers, 'transition_ad_item:' . $old_status . '->' . $new_status);
+  }
+
+  public static function on_trashed_ad_item($post_id): void
+  {
+    $post = get_post((int) $post_id);
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'ad_item') {
+      return;
+    }
+
+    $papers = self::get_papers_for_ad_item((int) $post_id);
+    self::request_build($papers, 'trashed_ad_item');
+  }
+
+  public static function on_deleted_ad_item($post_id): void
+  {
+    $post = get_post((int) $post_id);
+
+    // before_delete_post runs before the post is actually removed, but tax terms may already be unstable.
+    // Rebuild all papers as the safest fallback.
+    if ($post instanceof WP_Post && ($post->post_type ?? '') !== 'ad_item') {
+      return;
+    }
+
+    $papers = self::get_papers_from_newspaper_master();
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers, 'deleted_ad_item');
+  }
+
 private static function get_default_papers(): array
   {
     // Default paper(s) when 新聞マスター is not configured yet.
@@ -308,9 +424,14 @@ private static function get_default_papers(): array
 // Hook it up
 add_action('save_post', [Tomato_Auto_Static_Build_Queue::class, 'on_save_post'], 10, 3);
 add_action('save_post_newspaper', [Tomato_Auto_Static_Build_Queue::class, 'on_save_newspaper'], 10, 3);
+add_action('save_post_ad_item', [Tomato_Auto_Static_Build_Queue::class, 'on_save_ad_item'], 20, 3);
 
 add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_post'], 10, 1);
 add_action('deleted_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_post'], 10, 1);
+add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_ad_item'], 20, 1);
+add_action('before_delete_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_ad_item'], 20, 1);
+
+add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on_transition_post_status'], 20, 3);
 
 add_action('edited_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
 add_action('created_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
