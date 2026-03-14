@@ -12543,3 +12543,134 @@ border-color:#0f172a;
     font-size: 0.85rem;
   }
 }
+
+/* =====================================================
+   Company page
+   ===================================================== */
+.page-company .company-main{
+  width:min(980px, 92vw);
+  margin:0 auto;
+  padding:clamp(70px, 8vw, 100px) 0 40px;
+}
+
+.page-company .company-page-title{
+  margin:0 0 32px;
+  font-size:clamp(1.6rem, 3vw, 2.1rem);
+  font-weight:700;
+  color:#1f2937;
+}
+
+.page-company .company-sections{
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+}
+
+.page-company .company-section{
+  border-bottom:1px solid #7a9a58;
+  padding-bottom:18px;
+}
+
+.page-company .company-section-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:0 0 14px;
+  font-size:1.3rem;
+  font-weight:700;
+  color:#1f2937;
+  line-height:1.4;
+}
+
+.page-company .company-section-title::before{
+  content:"";
+  width:10px;
+  height:1.35em;
+  background:#3b5f1e;
+  flex:0 0 10px;
+}
+
+.page-company .company-section-body,
+.page-company .company-section-body p,
+.page-company .company-section-body li{
+  font-size:1.05rem;
+  line-height:1.9;
+  color:#374151;
+}
+
+.page-company .company-section-body p{
+  margin:0;
+}
+
+.page-company .company-section-body ul{
+  margin:0;
+  padding-left:1.4em;
+}
+
+.page-company .company-section-body a{
+  color:#374151;
+  text-decoration:underline;
+}
+
+.page-company .company-section-body a:hover,
+.page-company .company-more-link:hover{
+  color:var(--accent);
+}
+
+.page-company .company-more{
+  margin-top:28px;
+  text-align:right;
+}
+
+.page-company .company-more-link{
+  font-size:0.95rem;
+  font-weight:700;
+  color:#374151;
+  text-decoration:underline;
+}
+
+@media (max-width:768px){
+  .page-company .company-main{
+    width:min(100%, 92vw);
+    padding:110px 0 44px;
+  }
+
+  .page-company .company-page-title{
+    margin-bottom:24px;
+    font-size:1.35rem;
+  }
+
+  .page-company .company-sections{
+    gap:18px;
+  }
+
+  .page-company .company-section{
+    padding-bottom:14px;
+  }
+
+  .page-company .company-section-title{
+    gap:8px;
+    margin-bottom:12px;
+    font-size:1rem;
+  }
+
+  .page-company .company-section-title::before{
+    width:8px;
+    flex-basis:8px;
+  }
+
+  .page-company .company-section-body,
+  .page-company .company-section-body p,
+  .page-company .company-section-body li{
+    font-size:0.9rem;
+    line-height:1.8;
+  }
+
+  .page-company .company-more{
+    text-align:left;
+  }
+
+  .page-company .company-more-link{
+    font-size:0.9rem;
+  }
+}
