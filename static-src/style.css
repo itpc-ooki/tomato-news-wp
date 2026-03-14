@@ -4375,40 +4375,51 @@ a{ color:inherit; text-decoration:none}
             border-top: 1px solid var(--border);
         }
 .page-register .btn {
-            padding: 14px 32px;
             border: 1px solid var(--border);
-            border-radius: 20px;
+            background: #fff;
+            color: #0f172a;
+            padding: .55rem 1rem;
+            border-radius: 999px;
+            cursor: pointer;
+            white-space: nowrap;
             font-size: 16px;
             font-weight: 600;
-            cursor: pointer;
             transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-            background: #fff;
-            color: var(--text);
+            line-height: 1.2;
+            box-shadow: 0 10px 24px rgba(16,24,40,.10);
+            text-decoration: none;
         }
 .page-register .btn-prev {
-            background: #f8f9fa;
-            color: #495057;
-            border-color: var(--border);
+            border: 1px solid var(--border);
+            background: #fff;
+            color: #0f172a;
+            box-shadow: 0 10px 24px rgba(16,24,40,.10);
         }
 .page-register .btn-prev:hover {
-            background: #e9ecef;
+            transform: translateY(-1px);
         }
 .page-register .btn-next, .page-register .btn-submit {
+            border: 0;
             background: linear-gradient(135deg, var(--accent), var(--accent-2));
-            color: white;
-            border-color: transparent;
-            box-shadow: var(--shadow);
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(16,24,40,.10);
         }
 .page-register .btn-next:hover, .page-register .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 25px 60px rgba(231, 76, 60, 0.2);
+            transform: translateY(-1px);
         }
 .page-register .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+.page-register .form-navigation .btn[style*="display: none"] {
+            display: none !important;
+        }
+.page-register .form-navigation .btn[style*="display: inline-flex"] {
+            display: inline-flex !important;
         }
 .page-register /* 利用規約 */
         .terms-box {
@@ -4492,6 +4503,39 @@ a{ color:inherit; text-decoration:none}
                 flex-direction: column;
             }
         }
+
+
+
+@media (max-width: 768px) {
+.page-register .form-navigation .btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-height: 42px !important;
+            padding: 0.55rem 1rem !important;
+            line-height: 1.2 !important;
+            border-radius: 999px !important;
+            box-shadow: 0 10px 24px rgba(16,24,40,.10) !important;
+            white-space: nowrap !important;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+        }
+.page-register .form-navigation .btn-prev {
+            font-size: 11px !important;
+            letter-spacing: -0.02em !important;
+            border: 1px solid var(--border) !important;
+            background: #fff !important;
+            color: #0f172a !important;
+        }
+.page-register .form-navigation .btn-next,
+.page-register .form-navigation .btn-submit {
+            font-size: 10px !important;
+            letter-spacing: -0.03em !important;
+            border: 0 !important;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2)) !important;
+            color: #fff !important;
+        }
+}
 
 .page-register .page-actions{display:flex; justify-content:flex-end; gap:12px; margin:0 0 12px;}
 .page-register .page-actions .btn{border-radius:999px;}
