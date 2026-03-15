@@ -3824,6 +3824,55 @@ function buildTeaserHtmlFromFullHtml(fullHtml, ratioOrCount) {
     });
   }
 
+function normalizeDetailArticleTypeLabel(value) {
+  const raw = String(value || "").trim();
+  return raw || "コラム";
+}
+
+function buildArticleTypeListHref(articleType) {
+  const paper = getPaperFromPath() || "tomato";
+  const base = `/static/${encodeURIComponent(paper)}/list.html`;
+  const label = normalizeDetailArticleTypeLabel(articleType);
+  return `${base}?article_type=${encodeURIComponent(label)}`;
+}
+
+function updateDetailBreadcrumb(post) {
+  const breadcrumb = document.querySelector('nav.breadcrumb[aria-label="パンくずリスト"]');
+  if (!breadcrumb) return;
+
+  const articleType = normalizeDetailArticleTypeLabel(post && post.article_type);
+  const listHref = buildArticleTypeListHref(articleType);
+
+  const homeLink = breadcrumb.querySelector('a[href*="index.html"]');
+  if (homeLink) {
+    homeLink.textContent = 'ホーム';
+    homeLink.setAttribute('href', `/static/${encodeURIComponent(getPaperFromPath() || 'tomato')}/index.html`);
+  }
+
+  let currentLink = null;
+  const links = breadcrumb.querySelectorAll('a');
+  if (links.length >= 2) currentLink = links[1];
+  if (!currentLink) currentLink = breadcrumb.querySelector('a[href*="list.html"]');
+
+  if (currentLink) {
+    currentLink.textContent = articleType;
+    currentLink.setAttribute('href', listHref);
+  }
+
+  let currentLabel = breadcrumb.querySelector('.breadcrumb-current');
+  if (!currentLabel) {
+    const childNodes = Array.from(breadcrumb.childNodes).filter(function(node) {
+      return node.nodeType === Node.TEXT_NODE && String(node.textContent || '').trim();
+    });
+    currentLabel = childNodes.length ? childNodes[childNodes.length - 1] : null;
+  }
+
+  if (currentLabel) {
+    if (currentLabel.nodeType === Node.ELEMENT_NODE) currentLabel.textContent = '記事詳細';
+    else currentLabel.textContent = '記事詳細';
+  }
+}
+
 function renderDetail(post) {
     const target = getDetailContentTarget();
     if (!target) return;
@@ -3864,6 +3913,9 @@ function renderDetail(post) {
           spans[1].textContent = post.author ? `筆者：${post.author}` : "";
         }
       }
+
+      // Breadcrumb
+      updateDetailBreadcrumb(post);
 
       // Main Image
       const mainImageBox = document.querySelector(".main-image-full img");
