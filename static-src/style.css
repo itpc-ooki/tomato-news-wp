@@ -8602,7 +8602,42 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
 }
 
 /* SP版 */
+.sp-hero-copy{
+  display:none;
+}
+
 @media (max-width: 767px) {
+  .sp-hero-copy{
+    display:block;
+    width:100%;
+    padding:12px 24px 0;
+    box-sizing:border-box;
+  }
+
+  .sp-hero-copy .mark{
+    font-size:1.75rem;
+    letter-spacing:.08em;
+    margin-bottom:12px;
+    text-align:center;
+    line-height:1.5;
+  }
+
+  .sp-hero-copy .pill{
+    background:#fff;
+    border:1px solid var(--border);
+    padding:8px 14px;
+    border-radius:999px;
+    color:#334155;
+    margin:0 0 30px;
+    box-shadow: var(--shadow);
+    text-align:center;
+  }
+
+  #highlight .left-hero > .mark,
+  #highlight .left-hero > .pill{
+    display:none !important;
+  }
+
   .tomato-market-data.sp-only-market {
     width: 100% !important;
     max-width: 900px !important;
