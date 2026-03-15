@@ -1823,7 +1823,19 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
          padding: clamp(12px,4vw,28px) var(--pad)}
 .left-hero{ padding:28px 24px; display:flex; flex-direction:column; justify-content:center; min-height:500px;
               border-radius:0; box-shadow: var(--shadow); background:linear-gradient(180deg,#fafafa,#fff); position:relative}
-.left-hero .mark{ color: #c64d02; font-size:1.75rem; letter-spacing:.08em; margin-bottom:12px; text-align:center; line-height:1.5 }
+.left-hero .mark {
+    color: #334155;
+    font-size: 1.75rem;
+    letter-spacing: .08em;
+    margin-bottom: 12px;
+    text-align: center;
+    line-height: 1.5;
+    background-color: #fff;
+    border: 1px solid #f26c2b33;
+    border-radius: 20px;
+    padding: 20px 0px 20px 0px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
 .left-hero h1{ font-size: clamp(1.8rem,2.8vw,2.4rem); margin:.2rem 0 .6rem; line-height:1.15}
 .left-hero p{ color:#6b7280; margin:0 0 12px}
 .pill {
