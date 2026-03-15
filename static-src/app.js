@@ -2736,7 +2736,14 @@ async function renderNewsSection(posts, paper) {
   if (!grid) return;
 
   const all = Array.isArray(posts) ? posts : [];
-  const newsPosts = all.filter((p) => p && p.article_type === "ニュース");
+  const newsPosts = all.filter((p) => {
+    if (!p) return false;
+    const primaryType = String((p && p.article_type) || "").trim();
+    const typeList = Array.isArray(p && p.article_types)
+      ? p.article_types.map((t) => String(t || "").trim()).filter(Boolean)
+      : [];
+    return primaryType === "トマトNEWS" || typeList.includes("トマトNEWS");
+  });
 
   // Load PR from placements.json (if available)
   let prItems = [];
@@ -2748,11 +2755,16 @@ async function renderNewsSection(posts, paper) {
     prItems = [];
   }
 
-  const prCount = prItems.length;
+  const totalSlots = 8;
+  const prToUse = prItems.slice(0, totalSlots);
+  const prCount = prToUse.length;
+  const maxNews = Math.max(0, totalSlots - prCount);
+  const newsToShow = newsPosts.slice(0, maxNews);
 
   // If nothing to show, hide whole section
-  if (newsPosts.length === 0 && prCount === 0) {
+  if (newsToShow.length === 0 && prCount === 0) {
     if (section) section.style.display = "none";
+    grid.innerHTML = "";
     return;
   }
   if (section) section.style.display = "";
@@ -2769,7 +2781,7 @@ async function renderNewsSection(posts, paper) {
     const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
 
     const badge = document.createElement("div");
-    badge.className = "badge";
+    badge.className = "ad-badge";
     badge.textContent = "PR";
 
     const image = document.createElement("div");
@@ -2800,57 +2812,28 @@ async function renderNewsSection(posts, paper) {
     return a;
   }
 
-  // Decide how many news cards to show
-  let newsToShow = [];
-
-  if (prCount > 0) {
-    const total = 8;
-    const prToUse = prItems.slice(0, total);
-    const maxNews = Math.max(0, total - prToUse.length);
-    newsToShow = newsPosts.slice(0, maxNews);
-
-    // Rebuild grid deterministically:
-    // - If there is at least 1 "ニュース", place the first PR right after the first news card
-    // - If there are 2+ PR items, place the remaining PR items at the very end
-    //   (this avoids PR being side-by-side near the top and keeps placement stable)
-    grid.innerHTML = "";
-
-    const firstNews = newsToShow.length > 0 ? newsToShow[0] : null;
-    const remainingNews = newsToShow.length > 1 ? newsToShow.slice(1) : [];
-
-    const firstPr = prToUse.length > 0 ? prToUse[0] : null;
-    const remainingPr = prToUse.length > 1 ? prToUse.slice(1) : [];
-
-    if (firstNews) grid.appendChild(buildNewsCard(firstNews));
-    if (firstPr && firstNews) {
-      // Place first PR as the 2nd item (after the first news card)
-      grid.appendChild(buildNativePrCard(firstPr));
-    }
-
-    // If there are no news cards, just render PR(s) normally
-    if (!firstNews && firstPr) {
-      grid.appendChild(buildNativePrCard(firstPr));
-    }
-
-    remainingNews.forEach((p) => grid.appendChild(buildNewsCard(p)));
-
-    // If there are multiple PR items, keep the remaining PR items at the end
-    remainingPr.forEach((pr) => grid.appendChild(buildNativePrCard(pr)));
-
-    return;
-  }
-
-  // No PR:
-  // - If news < 6 -> show only news (all)
-  // - Else -> cap to 8
-  if (newsPosts.length < 6) {
-    newsToShow = newsPosts;
-  } else {
-    newsToShow = newsPosts.slice(0, 8);
-  }
-
+  // Rebuild grid deterministically:
+  // - first PR goes right after the first news card when news exists
+  // - remaining PR cards stay at the end
   grid.innerHTML = "";
-  newsToShow.forEach((p) => grid.appendChild(buildNewsCard(p)));
+
+  const firstNews = newsToShow.length > 0 ? newsToShow[0] : null;
+  const remainingNews = newsToShow.length > 1 ? newsToShow.slice(1) : [];
+
+  const firstPr = prToUse.length > 0 ? prToUse[0] : null;
+  const remainingPr = prToUse.length > 1 ? prToUse.slice(1) : [];
+
+  if (firstNews) grid.appendChild(buildNewsCard(firstNews));
+  if (firstPr && firstNews) {
+    grid.appendChild(buildNativePrCard(firstPr));
+  }
+
+  if (!firstNews && firstPr) {
+    grid.appendChild(buildNativePrCard(firstPr));
+  }
+
+  remainingNews.forEach((p) => grid.appendChild(buildNewsCard(p)));
+  remainingPr.forEach((pr) => grid.appendChild(buildNativePrCard(pr)));
 }
 
   // ===== Added: normalize title + prefer tag text for .meta =====
