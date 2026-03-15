@@ -1,7 +1,7 @@
 /*!
  * TomatoAuth (LocalStorage demo)
- * - No backend / No cookies
- * - For production: replace with real API + secure auth
+ * - LocalStorage session for current frontend UI
+ * - Registration is submitted to WordPress REST API when available
  */
 (function(global){
   const USERS_KEY = 'tomato_users_v1';
@@ -82,6 +82,69 @@
     const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,20}$/;
     return re.test(String(pw || ''));
   }
+  function getRegisterApiUrl(){
+    try{
+      if (global.wpApiSettings && wpApiSettings.root) {
+        return String(wpApiSettings.root).replace(/\/$/, '') + '/tomato-members/v1/register';
+      }
+    }catch(_e){}
+    return '/wp-json/tomato-members/v1/register';
+  }
+
+
+  function detectActivePaper(){
+    try{
+      if (typeof window.__detectPaper === 'function') {
+        const byHelper = String(window.__detectPaper() || '').toLowerCase();
+        if (byHelper) {
+          localStorage.setItem('tomato_active_paper_v1', byHelper);
+          return byHelper;
+        }
+      }
+    }catch(_e){}
+
+    try{
+      const host = String(window.location.hostname || '').toLowerCase().replace(/:\d+$/, '');
+      const m = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
+      if (m && m[1] && m[1] !== 'www') {
+        localStorage.setItem('tomato_active_paper_v1', m[1]);
+        return m[1];
+      }
+    }catch(_e){}
+
+    try{
+      const sp = new URLSearchParams(window.location.search || '');
+      const paper = String(sp.get('paper') || sp.get('p') || '').toLowerCase();
+      if (paper) {
+        localStorage.setItem('tomato_active_paper_v1', paper);
+        return paper;
+      }
+    }catch(_e){}
+
+    try{
+      const bodyPaper = String(document.body && document.body.getAttribute('data-paper') || '').toLowerCase();
+      if (bodyPaper) {
+        localStorage.setItem('tomato_active_paper_v1', bodyPaper);
+        return bodyPaper;
+      }
+    }catch(_e){}
+
+    try{
+      const m = String(window.location.pathname || '').match(/\/static\/([^\/]+)\//);
+      if (m && m[1] && m[1] !== 'account') {
+        const byPath = String(m[1]).toLowerCase();
+        localStorage.setItem('tomato_active_paper_v1', byPath);
+        return byPath;
+      }
+    }catch(_e){}
+
+    try{
+      const saved = String(localStorage.getItem('tomato_active_paper_v1') || '').toLowerCase();
+      if (saved) return saved;
+    }catch(_e){}
+
+    return 'tomato';
+  }
 
   async function registerFromFormData(formData){
     const email = normalizeEmail(formData.get('email'));
@@ -103,11 +166,12 @@
     const interests = formData.getAll('interest')?.length ? formData.getAll('interest')
                     : formData.getAll('interests'); // support both names
     const newsletterPreference = String(formData.get('newsletter_preference') || '希望する');
+    const paper = detectActivePaper();
 
-    const user = {
-      id: 'u_' + Math.random().toString(36).slice(2, 10),
+    const payload = {
       email,
-      passwordHash: await sha256Hex(password),
+      password,
+      password_confirm: passwordConfirm,
       nickname: String(formData.get('nickname') || ''),
       gender: String(formData.get('gender') || ''),
       prefecture: String(formData.get('prefecture') || ''),
@@ -119,9 +183,56 @@
       future_crop: String(formData.get('future_crop') || ''),
       interests: Array.isArray(interests) ? interests.filter(Boolean) : [],
       newsletter_preference: newsletterPreference,
-      created_at: nowIso(),
-      updated_at: nowIso()
+      paper
     };
+
+    let apiData = null;
+    let apiError = '';
+
+    try{
+      const response = await fetch(getRegisterApiUrl(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(payload)
+      });
+
+      apiData = await response.json().catch(function(){ return null; });
+      if (!response.ok || !apiData || apiData.success !== true) {
+        apiError = apiData && apiData.message ? String(apiData.message) : '会員登録に失敗しました。';
+        throw new Error(apiError);
+      }
+    }catch(err){
+      throw new Error((err && err.message) || apiError || '会員登録に失敗しました。');
+    }
+
+    const returnedUser = apiData && apiData.user ? apiData.user : {};
+    const user = {
+      id: returnedUser.id ? 'wp_' + String(returnedUser.id) : ('u_' + Math.random().toString(36).slice(2, 10)),
+      email,
+      passwordHash: await sha256Hex(password),
+      nickname: String(returnedUser.nickname || payload.nickname || ''),
+      gender: String(returnedUser.gender || payload.gender || ''),
+      prefecture: String(returnedUser.prefecture || payload.prefecture || ''),
+      city: String(returnedUser.city || payload.city || ''),
+      occupation: String(returnedUser.occupation || payload.occupation || ''),
+      farm_scale: String(returnedUser.farm_scale || payload.farm_scale || ''),
+      crop_1: String(returnedUser.crop_1 || payload.crop_1 || ''),
+      crop_2: String(returnedUser.crop_2 || payload.crop_2 || ''),
+      future_crop: String(returnedUser.future_crop || payload.future_crop || ''),
+      interests: Array.isArray(returnedUser.interests) ? returnedUser.interests.filter(Boolean) : payload.interests,
+      newsletter_preference: String(returnedUser.newsletter_preference || payload.newsletter_preference || '希望する'),
+      paper: String(returnedUser.paper || paper || 'tomato'),
+      created_at: String(returnedUser.created_at || nowIso()),
+      updated_at: String(returnedUser.updated_at || nowIso())
+    };
+
+    try {
+      localStorage.setItem('tomato_active_paper_v1', String(user.paper || paper || 'tomato'));
+    } catch (_e) {}
 
     users.push(user);
     saveUsers(users);
