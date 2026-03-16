@@ -7609,3 +7609,124 @@ JA Survey Year + Season Switching
 
   syncTabs();
 })();
+
+
+/* ==============================================
+Desktop header nav auto-fit (single line)
+- Keep current size when items already fit in one line.
+- If they do not fit, reduce font size step-by-step until they fit.
+============================================== */
+(function(){
+  function isDesktop(){
+    try { return window.matchMedia('(min-width: 1180px)').matches; }
+    catch(_e){ return window.innerWidth >= 1180; }
+  }
+
+  function getMenu(){
+    return document.getElementById('header-main-menu');
+  }
+
+  function clearDesktopNavInlineStyles(menu){
+    if (!menu) return;
+    menu.style.fontSize = '';
+    menu.style.gap = '';
+    menu.style.flexWrap = '';
+    Array.from(menu.children || []).forEach(function(li){
+      li.style.minWidth = '';
+      li.style.flex = '';
+      li.style.whiteSpace = '';
+      const a = li.querySelector('a');
+      if (a) {
+        a.style.fontSize = '';
+        a.style.whiteSpace = '';
+        a.style.lineHeight = '';
+        a.style.wordBreak = '';
+      }
+    });
+  }
+
+  function menuFitsSingleLine(menu){
+    if (!menu) return true;
+
+    const items = Array.from(menu.children || []).filter(function(li){
+      return li && li.offsetParent !== null;
+    });
+    if (!items.length) return true;
+
+    const firstRect = items[0].getBoundingClientRect();
+    const firstTop = Math.round(firstRect.top);
+    const firstBottom = Math.round(firstRect.bottom);
+    const scrollFits = menu.scrollWidth <= (menu.clientWidth + 1);
+
+    const allItemsSameRow = items.every(function(li){
+      const rect = li.getBoundingClientRect();
+      return Math.abs(Math.round(rect.top) - firstTop) <= 1 && Math.abs(Math.round(rect.bottom) - firstBottom) <= 2;
+    });
+
+    const anchorsSingleLine = items.every(function(li){
+      const a = li.querySelector('a');
+      return !a || a.scrollHeight <= (a.clientHeight + 1);
+    });
+
+    return scrollFits && allItemsSameRow && anchorsSingleLine;
+  }
+
+  function applyDesktopNavAutofit(){
+    const menu = getMenu();
+    if (!menu) return;
+
+    clearDesktopNavInlineStyles(menu);
+
+    if (!isDesktop()) return;
+
+    if (menuFitsSingleLine(menu)) return;
+
+    const anchors = Array.from(menu.querySelectorAll('a'));
+    const firstAnchor = anchors[0];
+    if (!firstAnchor) return;
+
+    menu.style.flexWrap = 'nowrap';
+    Array.from(menu.children || []).forEach(function(li){
+      li.style.whiteSpace = 'nowrap';
+      const a = li.querySelector('a');
+      if (a) {
+        a.style.whiteSpace = 'nowrap';
+        a.style.wordBreak = 'keep-all';
+        a.style.lineHeight = '1.2';
+      }
+    });
+
+    if (menuFitsSingleLine(menu)) return;
+
+    const baseFontSize = parseFloat(window.getComputedStyle(firstAnchor).fontSize) || 16;
+    for (var size = baseFontSize - 0.5; size >= 11; size -= 0.5) {
+      anchors.forEach(function(a){
+        a.style.fontSize = size + 'px';
+      });
+      if (menuFitsSingleLine(menu)) return;
+    }
+  }
+
+  var navFitTimer = null;
+  function scheduleDesktopNavAutofit(){
+    if (navFitTimer) window.clearTimeout(navFitTimer);
+    navFitTimer = window.setTimeout(function(){
+      try { applyDesktopNavAutofit(); } catch (e) { console.error('[header nav auto-fit] failed:', e); }
+    }, 0);
+  }
+
+  window.addEventListener('headerLoaded', function(){
+    scheduleDesktopNavAutofit();
+    window.setTimeout(scheduleDesktopNavAutofit, 100);
+    window.setTimeout(scheduleDesktopNavAutofit, 300);
+  });
+
+  window.addEventListener('resize', scheduleDesktopNavAutofit);
+  window.addEventListener('load', scheduleDesktopNavAutofit);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scheduleDesktopNavAutofit);
+  } else {
+    scheduleDesktopNavAutofit();
+  }
+})();
