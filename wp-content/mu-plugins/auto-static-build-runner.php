@@ -14,6 +14,7 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
     private const QUEUE_DIR = 'wp-content/uploads/static-build-queue';
     private const REQUESTED_JSON = 'wp-content/uploads/static-build-queue/requested.json';
     private const BUILD_LOG = 'wp-content/uploads/static-build-queue/build.log';
+    private const LOCK_STALE_SECONDS = 300;
 
     private static function lock_path(): string {
       return ABSPATH . ltrim(self::LOCK_FILE, '/');
@@ -39,7 +40,35 @@ if (!class_exists('Tomato_Auto_Static_Build_Runner')) {
     }
 
     private static function is_locked(): bool {
-      return file_exists(self::lock_path());
+      $path = self::lock_path();
+      if (!file_exists($path)) {
+        return false;
+      }
+
+      $lock_time = 0;
+      $raw = @file_get_contents($path);
+      if ($raw !== false) {
+        $raw = trim((string) $raw);
+        if ($raw !== '' && ctype_digit($raw)) {
+          $lock_time = (int) $raw;
+        }
+      }
+
+      if ($lock_time <= 0) {
+        $mtime = @filemtime($path);
+        if ($mtime !== false) {
+          $lock_time = (int) $mtime;
+        }
+      }
+
+      if ($lock_time > 0 && (time() - $lock_time) > self::LOCK_STALE_SECONDS) {
+        self::append_log('Stale lock detected; removing .lock (age=' . (time() - $lock_time) . 's)');
+        @unlink($path);
+        clearstatcache(true, $path);
+        return file_exists($path);
+      }
+
+      return true;
     }
 
     private static function lock(): void {

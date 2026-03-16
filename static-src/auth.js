@@ -82,13 +82,106 @@
     const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,20}$/;
     return re.test(String(pw || ''));
   }
-  function getRegisterApiUrl(){
+  function normalizeApiRoot(root){
+    const value = String(root || '').trim();
+    if (!value) return '';
+    return value.replace(/\/$/, '');
+  }
+
+  function getRegisterApiCandidates(){
+    const seen = new Set();
+    const urls = [];
+
+    function addUrl(url){
+      const value = String(url || '').trim();
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      urls.push(value);
+    }
+
+    function addRoot(root){
+      const normalized = normalizeApiRoot(root);
+      if (!normalized) return;
+      addUrl(normalized + '/tomato-members/v1/register');
+      addUrl(normalized + '/member-registration/v1/register');
+    }
+
     try{
       if (global.wpApiSettings && wpApiSettings.root) {
-        return String(wpApiSettings.root).replace(/\/$/, '') + '/tomato-members/v1/register';
+        addRoot(wpApiSettings.root);
       }
     }catch(_e){}
-    return '/wp-json/tomato-members/v1/register';
+
+    try{
+      if (global.TOMATO_AUTH_API_ROOT) {
+        addRoot(global.TOMATO_AUTH_API_ROOT);
+      }
+      if (global.TOMATO_AUTH_CMS_URL) {
+        addRoot(String(global.TOMATO_AUTH_CMS_URL).replace(/\/$/, '') + '/wp-json');
+      }
+    }catch(_e){}
+
+    try{
+      const savedApiRoot = localStorage.getItem('tomato_auth_api_root_v1');
+      if (savedApiRoot) addRoot(savedApiRoot);
+      const savedCmsUrl = localStorage.getItem('tomato_auth_cms_url_v1');
+      if (savedCmsUrl) addRoot(String(savedCmsUrl).replace(/\/$/, '') + '/wp-json');
+    }catch(_e){}
+
+    try{
+      const sp = new URLSearchParams(window.location.search || '');
+      const apiRoot = sp.get('api_root') || sp.get('wp_api_root') || '';
+      const cmsUrl = sp.get('cms_url') || sp.get('cms_origin') || '';
+      if (apiRoot) addRoot(apiRoot);
+      if (cmsUrl) addRoot(String(cmsUrl).replace(/\/$/, '') + '/wp-json');
+    }catch(_e){}
+
+    addRoot(window.location.origin.replace(/\/$/, '') + '/wp-json');
+    addUrl('/wp-json/tomato-members/v1/register');
+    addUrl('/wp-json/member-registration/v1/register');
+
+    return urls;
+  }
+
+  async function parseResponseBody(response){
+    const contentType = String(response && response.headers && response.headers.get('content-type') || '').toLowerCase();
+    const rawText = await response.text().catch(function(){ return ''; });
+    let json = null;
+
+    if (rawText) {
+      try{
+        json = JSON.parse(rawText);
+      }catch(_e){
+        json = null;
+      }
+    }
+
+    return {
+      json,
+      text: rawText,
+      contentType
+    };
+  }
+
+  function buildRegistrationErrorMessage(result){
+    if (result && result.json && result.json.message) {
+      return String(result.json.message);
+    }
+
+    if (result && result.text) {
+      const compact = String(result.text).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (compact) return compact.slice(0, 220);
+    }
+
+    if (result && result.error && result.error.message) {
+      const message = String(result.error.message || '');
+      if (/Failed to fetch|Load failed|NetworkError/i.test(message)) {
+        return '会員登録APIに接続できませんでした。公開サイト配下の /wp-json ではなく、WordPress 側の REST API を参照できているか確認してください。';
+      }
+      return message;
+    }
+
+    return '会員登録に失敗しました。';
   }
 
 
@@ -188,25 +281,47 @@
 
     let apiData = null;
     let apiError = '';
+    let lastErrorMessage = '';
+    const apiCandidates = getRegisterApiCandidates();
 
-    try{
-      const response = await fetch(getRegisterApiUrl(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify(payload)
-      });
+    for (let i = 0; i < apiCandidates.length; i++) {
+      const apiUrl = apiCandidates[i];
+      try{
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
 
-      apiData = await response.json().catch(function(){ return null; });
-      if (!response.ok || !apiData || apiData.success !== true) {
-        apiError = apiData && apiData.message ? String(apiData.message) : '会員登録に失敗しました。';
-        throw new Error(apiError);
+        const parsed = await parseResponseBody(response);
+        apiData = parsed.json;
+
+        if (response.ok && apiData && apiData.success === true) {
+          break;
+        }
+
+        const message = buildRegistrationErrorMessage(parsed) || ('会員登録に失敗しました。（HTTP ' + response.status + '）');
+        lastErrorMessage = message;
+
+        if (response.status === 404 || response.status === 405) {
+          continue;
+        }
+
+        throw new Error(message);
+      }catch(err){
+        lastErrorMessage = (err && err.message) ? String(err.message) : lastErrorMessage;
+        if (i === apiCandidates.length - 1) {
+          throw new Error(lastErrorMessage || apiError || '会員登録に失敗しました。');
+        }
       }
-    }catch(err){
-      throw new Error((err && err.message) || apiError || '会員登録に失敗しました。');
+    }
+
+    if (!apiData || apiData.success !== true) {
+      throw new Error(lastErrorMessage || apiError || '会員登録に失敗しました。');
     }
 
     const returnedUser = apiData && apiData.user ? apiData.user : {};
