@@ -116,6 +116,49 @@
     return Number(status) === 403 && /The request could not be satisfied/i.test(text) && /distribution is not configured to allow the HTTP request method/i.test(text);
   }
 
+  function getLikelyCmsOrigins(){
+    const origins = [];
+    const seen = new Set();
+
+    function addOrigin(url){
+      const value = normalizeCmsUrl(url);
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      origins.push(value);
+    }
+
+    try{
+      const loc = window.location;
+      const protocol = String(loc.protocol || 'https:');
+      const host = String(loc.hostname || '').toLowerCase().replace(/:\d+$/, '');
+      const port = String(loc.port || '').trim();
+
+      if (host === 'localhost' || host === '127.0.0.1') {
+        addOrigin(protocol + '//' + host + (port ? ':' + port : ''));
+        addOrigin('http://localhost:8080');
+        addOrigin('http://127.0.0.1:8080');
+      }
+
+      const stgMatch = host.match(/^stg-([a-z0-9-]+)\.agrinews\.jp$/i);
+      if (stgMatch) {
+        addOrigin(protocol + '//' + host + ':8080');
+        addOrigin('http://' + host + ':8080');
+      }
+    }catch(_e){}
+
+    return origins;
+  }
+
+  function persistApiHints(){
+    try{
+      const sp = new URLSearchParams(window.location.search || '');
+      const apiRoot = sp.get('api_root') || sp.get('wp_api_root') || '';
+      const cmsUrl = sp.get('cms_url') || sp.get('cms_origin') || '';
+      if (apiRoot) localStorage.setItem('tomato_auth_api_root_v1', normalizeApiRoot(apiRoot));
+      if (cmsUrl) localStorage.setItem('tomato_auth_cms_url_v1', normalizeCmsUrl(cmsUrl));
+    }catch(_e){}
+  }
+
   function getRegisterApiCandidates(){
     const seen = new Set();
     const urls = [];
@@ -139,6 +182,8 @@
       if (!normalized) return;
       addRoot(normalized + '/wp-json');
     }
+
+    persistApiHints();
 
     try{
       if (global.wpApiSettings && wpApiSettings.root) {
@@ -175,6 +220,8 @@
       addUrl('/wp-json/tomato-members/v1/register');
       addUrl('/wp-json/member-registration/v1/register');
     }
+
+    getLikelyCmsOrigins().forEach(addCmsUrl);
 
     return urls;
   }
@@ -319,6 +366,10 @@
     let apiError = '';
     let lastErrorMessage = '';
     const apiCandidates = getRegisterApiCandidates();
+
+    if (!apiCandidates.length) {
+      throw new Error('会員登録APIの接続先が見つかりませんでした。WordPress 側の URL を ?cms_url=... で渡すか、tomato_auth_cms_url_v1 / TOMATO_AUTH_CMS_URL を設定してください。');
+    }
 
     for (let i = 0; i < apiCandidates.length; i++) {
       const apiUrl = apiCandidates[i];
