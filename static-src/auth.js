@@ -88,6 +88,34 @@
     return value.replace(/\/$/, '');
   }
 
+  function normalizeCmsUrl(url){
+    const value = String(url || '').trim();
+    if (!value) return '';
+    return value.replace(/\/$/, '');
+  }
+
+  function isStaticFrontendHost(hostname){
+    const host = String(hostname || '').trim().toLowerCase();
+    if (!host) return false;
+    return /(?:^|\.)agrinews\.jp$/i.test(host) && /^(?:stg-)?[a-z0-9-]+\.agrinews\.jp$/i.test(host);
+  }
+
+  function isStaticFrontendRequestContext(){
+    try{
+      const pathname = String(window.location.pathname || '');
+      if (/^\/static\//.test(pathname) || /\/static\//.test(pathname)) return true;
+    }catch(_e){}
+    try{
+      return isStaticFrontendHost(window.location.hostname);
+    }catch(_e){}
+    return false;
+  }
+
+  function isCloudFrontMethodBlocked(result, status){
+    const text = String(result && result.text || '');
+    return Number(status) === 403 && /The request could not be satisfied/i.test(text) && /distribution is not configured to allow the HTTP request method/i.test(text);
+  }
+
   function getRegisterApiCandidates(){
     const seen = new Set();
     const urls = [];
@@ -106,6 +134,12 @@
       addUrl(normalized + '/member-registration/v1/register');
     }
 
+    function addCmsUrl(cmsUrl){
+      const normalized = normalizeCmsUrl(cmsUrl);
+      if (!normalized) return;
+      addRoot(normalized + '/wp-json');
+    }
+
     try{
       if (global.wpApiSettings && wpApiSettings.root) {
         addRoot(wpApiSettings.root);
@@ -117,7 +151,7 @@
         addRoot(global.TOMATO_AUTH_API_ROOT);
       }
       if (global.TOMATO_AUTH_CMS_URL) {
-        addRoot(String(global.TOMATO_AUTH_CMS_URL).replace(/\/$/, '') + '/wp-json');
+        addCmsUrl(global.TOMATO_AUTH_CMS_URL);
       }
     }catch(_e){}
 
@@ -125,7 +159,7 @@
       const savedApiRoot = localStorage.getItem('tomato_auth_api_root_v1');
       if (savedApiRoot) addRoot(savedApiRoot);
       const savedCmsUrl = localStorage.getItem('tomato_auth_cms_url_v1');
-      if (savedCmsUrl) addRoot(String(savedCmsUrl).replace(/\/$/, '') + '/wp-json');
+      if (savedCmsUrl) addCmsUrl(savedCmsUrl);
     }catch(_e){}
 
     try{
@@ -133,12 +167,14 @@
       const apiRoot = sp.get('api_root') || sp.get('wp_api_root') || '';
       const cmsUrl = sp.get('cms_url') || sp.get('cms_origin') || '';
       if (apiRoot) addRoot(apiRoot);
-      if (cmsUrl) addRoot(String(cmsUrl).replace(/\/$/, '') + '/wp-json');
+      if (cmsUrl) addCmsUrl(cmsUrl);
     }catch(_e){}
 
-    addRoot(window.location.origin.replace(/\/$/, '') + '/wp-json');
-    addUrl('/wp-json/tomato-members/v1/register');
-    addUrl('/wp-json/member-registration/v1/register');
+    if (!isStaticFrontendRequestContext()) {
+      addRoot(window.location.origin.replace(/\/$/, '') + '/wp-json');
+      addUrl('/wp-json/tomato-members/v1/register');
+      addUrl('/wp-json/member-registration/v1/register');
+    }
 
     return urls;
   }
@@ -307,7 +343,7 @@
         const message = buildRegistrationErrorMessage(parsed) || ('会員登録に失敗しました。（HTTP ' + response.status + '）');
         lastErrorMessage = message;
 
-        if (response.status === 404 || response.status === 405) {
+        if (response.status === 404 || response.status === 405 || isCloudFrontMethodBlocked(parsed, response.status)) {
           continue;
         }
 
@@ -315,7 +351,7 @@
       }catch(err){
         lastErrorMessage = (err && err.message) ? String(err.message) : lastErrorMessage;
         if (i === apiCandidates.length - 1) {
-          throw new Error(lastErrorMessage || apiError || '会員登録に失敗しました。');
+          throw new Error(lastErrorMessage || apiError || '会員登録に失敗しました。WordPress 側の REST API URL を TOMATO_AUTH_CMS_URL / tomato_auth_cms_url_v1 / ?cms_url= で指定してください。');
         }
       }
     }
