@@ -451,7 +451,12 @@
         const message = buildRegistrationErrorMessage(parsed) || ('会員登録に失敗しました。（HTTP ' + response.status + '）');
         lastErrorMessage = message;
 
-        if (response.status === 404 || response.status === 405 || isCloudFrontMethodBlocked(parsed, response.status)) {
+        if (isCloudFrontMethodBlocked(parsed, response.status)) {
+          lastErrorMessage = '会員登録に失敗しました。公開サイト（stg/prod）の /wp-json は CloudFront 側で POST が許可されていません。WordPress CMS 側の HTTPS REST API URL を TOMATO_AUTH_CMS_URL / tomato_auth_cms_url_v1 / ?cms_url= で指定してください。';
+          continue;
+        }
+
+        if (response.status === 404 || response.status === 405) {
           continue;
         }
 
