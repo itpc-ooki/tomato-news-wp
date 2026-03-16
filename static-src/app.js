@@ -7645,6 +7645,21 @@ Desktop header nav auto-fit (single line)
     });
   }
 
+  function getElementLineHeight(el){
+    if (!el) return 0;
+    const cs = window.getComputedStyle(el);
+    const fontSize = parseFloat(cs.fontSize) || 16;
+    const lineHeight = parseFloat(cs.lineHeight);
+    return Number.isFinite(lineHeight) ? lineHeight : (fontSize * 1.4);
+  }
+
+  function anchorIsWrapped(a){
+    if (!a || a.offsetParent === null) return false;
+    const rect = a.getBoundingClientRect();
+    const lineHeight = getElementLineHeight(a);
+    return rect.height > (lineHeight * 1.45);
+  }
+
   function menuFitsSingleLine(menu){
     if (!menu) return true;
 
@@ -7665,7 +7680,7 @@ Desktop header nav auto-fit (single line)
 
     const anchorsSingleLine = items.every(function(li){
       const a = li.querySelector('a');
-      return !a || a.scrollHeight <= (a.clientHeight + 1);
+      return !a || !anchorIsWrapped(a);
     });
 
     return scrollFits && allItemsSameRow && anchorsSingleLine;
@@ -7688,11 +7703,13 @@ Desktop header nav auto-fit (single line)
     menu.style.flexWrap = 'nowrap';
     Array.from(menu.children || []).forEach(function(li){
       li.style.whiteSpace = 'nowrap';
+      li.style.minWidth = '0';
       const a = li.querySelector('a');
       if (a) {
         a.style.whiteSpace = 'nowrap';
         a.style.wordBreak = 'keep-all';
         a.style.lineHeight = '1.2';
+        a.style.display = 'inline-block';
       }
     });
 
