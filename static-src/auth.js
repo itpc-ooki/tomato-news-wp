@@ -116,6 +116,82 @@
     return Number(status) === 403 && /The request could not be satisfied/i.test(text) && /distribution is not configured to allow the HTTP request method/i.test(text);
   }
 
+  function persistApiHints(){
+    try{
+      const sp = new URLSearchParams(window.location.search || '');
+      const apiRoot = normalizeApiRoot(sp.get('api_root') || sp.get('wp_api_root') || '');
+      const cmsUrl = normalizeCmsUrl(sp.get('cms_url') || sp.get('cms_origin') || '');
+
+      if (apiRoot) {
+        localStorage.setItem('tomato_auth_api_root_v1', apiRoot);
+      }
+      if (cmsUrl) {
+        localStorage.setItem('tomato_auth_cms_url_v1', cmsUrl);
+      }
+    }catch(_e){}
+
+    try{
+      if (global && global.TOMATO_AUTH_API_ROOT) {
+        const apiRoot = normalizeApiRoot(global.TOMATO_AUTH_API_ROOT);
+        if (apiRoot) localStorage.setItem('tomato_auth_api_root_v1', apiRoot);
+      }
+      if (global && global.TOMATO_AUTH_CMS_URL) {
+        const cmsUrl = normalizeCmsUrl(global.TOMATO_AUTH_CMS_URL);
+        if (cmsUrl) localStorage.setItem('tomato_auth_cms_url_v1', cmsUrl);
+      }
+    }catch(_e){}
+
+    try{
+      if (global.wpApiSettings && global.wpApiSettings.root) {
+        const apiRoot = normalizeApiRoot(global.wpApiSettings.root);
+        if (apiRoot) localStorage.setItem('tomato_auth_api_root_v1', apiRoot);
+      }
+    }catch(_e){}
+  }
+
+  function getLikelyCmsOrigins(){
+    const seen = new Set();
+    const origins = [];
+
+    function add(origin){
+      const value = normalizeCmsUrl(origin);
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      origins.push(value);
+    }
+
+    try{
+      add(window.location.origin || '');
+    }catch(_e){}
+
+    try{
+      const referrer = String(document.referrer || '').trim();
+      if (referrer) {
+        add(new URL(referrer).origin);
+      }
+    }catch(_e){}
+
+    try{
+      const savedCmsUrl = localStorage.getItem('tomato_auth_cms_url_v1');
+      if (savedCmsUrl) add(savedCmsUrl);
+      const savedApiRoot = localStorage.getItem('tomato_auth_api_root_v1');
+      if (savedApiRoot) {
+        add(String(savedApiRoot).replace(/\/wp-json\/?$/, ''));
+      }
+    }catch(_e){}
+
+    try{
+      const host = String(window.location.hostname || '').toLowerCase();
+      const protocol = String(window.location.protocol || 'https:');
+      if (/^(localhost|127\.0\.0\.1)$/.test(host)) {
+        add(protocol + '//' + host + (window.location.port ? ':' + window.location.port : ''));
+        add(protocol + '://localhost:8080');
+      }
+    }catch(_e){}
+
+    return origins;
+  }
+
   function getRegisterApiCandidates(){
     const seen = new Set();
     const urls = [];
@@ -952,14 +1028,11 @@ var currentStep = 1;
             }
         }
 
-        function initRegisterPage() {
-            if (initRegisterPage.__done) return;
-            initRegisterPage.__done = true;
-
+        // フォームの初期化
+        document.addEventListener('DOMContentLoaded', function() {
             // paper-aware TOP links
-            document.querySelectorAll('[data-paper-top-link="1"]').forEach(function(a){
-                a.href = window.__paperTop();
-            });
+            document.querySelectorAll('[data-paper-top-link="1"]').forEach(function(a){ a.href = window.__paperTop(); });
+
 
             // --- Edit mode (when already logged in) ---
             // If user is logged in, this page works as "profile edit":
@@ -975,20 +1048,18 @@ var currentStep = 1;
                 // Prefill all fields (email/nickname/gender/prefecture/city/occupation/farm_scale/crops/interests/newsletter_preference)
                 try {
                     var formElForPrefill = document.getElementById('registrationForm');
-                    if (formElForPrefill) {
-                        window.TomatoAuth.prefillMypageForm(formElForPrefill, __currentUser);
+                    window.TomatoAuth.prefillMypageForm(formElForPrefill, __currentUser);
 
-                        // Password becomes optional in edit mode
-                        var pw = formElForPrefill.querySelector('input[name="password"]');
-                        var pwc = formElForPrefill.querySelector('input[name="password_confirm"]');
-                        if (pw) {
-                            pw.required = false;
-                            pw.placeholder = '変更する場合のみ入力（8〜20文字：英大文字・小文字・数字）';
-                        }
-                        if (pwc) {
-                            pwc.required = false;
-                            pwc.placeholder = '変更する場合のみ入力';
-                        }
+                    // Password becomes optional in edit mode
+                    var pw = formElForPrefill.querySelector('input[name="password"]');
+                    var pwc = formElForPrefill.querySelector('input[name="password_confirm"]');
+                    if (pw) {
+                        pw.required = false;
+                        pw.placeholder = '変更する場合のみ入力（8〜20文字：英大文字・小文字・数字）';
+                    }
+                    if (pwc) {
+                        pwc.required = false;
+                        pwc.placeholder = '変更する場合のみ入力';
                     }
 
                     // Update page title (optional)
@@ -1008,35 +1079,20 @@ var currentStep = 1;
             var checkboxItems = document.querySelectorAll('.checkbox-item');
 
             radioItems.forEach(function(item) {
-                if (item.__wired) return;
-                item.__wired = true;
-
                 var input = item.querySelector('input[type="radio"]');
-                if (!input) return;
-
                 input.addEventListener('change', function() {
                     var group = document.querySelectorAll('input[name="' + this.name + '"]');
                     group.forEach(function(radio) {
-                        var wrap = radio.closest('.radio-item');
-                        if (wrap) wrap.classList.remove('selected');
+                        radio.closest('.radio-item').classList.remove('selected');
                     });
                     if (this.checked) {
                         item.classList.add('selected');
                     }
                 });
-
-                if (input.checked) {
-                    item.classList.add('selected');
-                }
             });
 
             checkboxItems.forEach(function(item) {
-                if (item.__wired) return;
-                item.__wired = true;
-
                 var input = item.querySelector('input[type="checkbox"]');
-                if (!input) return;
-
                 input.addEventListener('change', function() {
                     if (this.checked) {
                         item.classList.add('selected');
@@ -1044,30 +1100,14 @@ var currentStep = 1;
                         item.classList.remove('selected');
                     }
                 });
-
-                if (input.checked) {
-                    item.classList.add('selected');
-                }
             });
 
             // フォーム送信処理
-            var registerForm = document.getElementById('registrationForm');
-            if (registerForm && !registerForm.__wired) {
-                registerForm.__wired = true;
-                registerForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    submitForm();
-                });
-            }
-
-            showStep(currentStep);
-        }
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initRegisterPage);
-        } else {
-            initRegisterPage();
-        }
+            document.getElementById('registrationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitForm();
+            });
+        });
 
         function updateProgressBar() {
             for (var i = 1; i <= totalSteps; i++) {
