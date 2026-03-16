@@ -952,11 +952,14 @@ var currentStep = 1;
             }
         }
 
-        // フォームの初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            // paper-aware TOP links
-            document.querySelectorAll('[data-paper-top-link="1"]').forEach(function(a){ a.href = window.__paperTop(); });
+        function initRegisterPage() {
+            if (initRegisterPage.__done) return;
+            initRegisterPage.__done = true;
 
+            // paper-aware TOP links
+            document.querySelectorAll('[data-paper-top-link="1"]').forEach(function(a){
+                a.href = window.__paperTop();
+            });
 
             // --- Edit mode (when already logged in) ---
             // If user is logged in, this page works as "profile edit":
@@ -972,18 +975,20 @@ var currentStep = 1;
                 // Prefill all fields (email/nickname/gender/prefecture/city/occupation/farm_scale/crops/interests/newsletter_preference)
                 try {
                     var formElForPrefill = document.getElementById('registrationForm');
-                    window.TomatoAuth.prefillMypageForm(formElForPrefill, __currentUser);
+                    if (formElForPrefill) {
+                        window.TomatoAuth.prefillMypageForm(formElForPrefill, __currentUser);
 
-                    // Password becomes optional in edit mode
-                    var pw = formElForPrefill.querySelector('input[name="password"]');
-                    var pwc = formElForPrefill.querySelector('input[name="password_confirm"]');
-                    if (pw) {
-                        pw.required = false;
-                        pw.placeholder = '変更する場合のみ入力（8〜20文字：英大文字・小文字・数字）';
-                    }
-                    if (pwc) {
-                        pwc.required = false;
-                        pwc.placeholder = '変更する場合のみ入力';
+                        // Password becomes optional in edit mode
+                        var pw = formElForPrefill.querySelector('input[name="password"]');
+                        var pwc = formElForPrefill.querySelector('input[name="password_confirm"]');
+                        if (pw) {
+                            pw.required = false;
+                            pw.placeholder = '変更する場合のみ入力（8〜20文字：英大文字・小文字・数字）';
+                        }
+                        if (pwc) {
+                            pwc.required = false;
+                            pwc.placeholder = '変更する場合のみ入力';
+                        }
                     }
 
                     // Update page title (optional)
@@ -1003,20 +1008,35 @@ var currentStep = 1;
             var checkboxItems = document.querySelectorAll('.checkbox-item');
 
             radioItems.forEach(function(item) {
+                if (item.__wired) return;
+                item.__wired = true;
+
                 var input = item.querySelector('input[type="radio"]');
+                if (!input) return;
+
                 input.addEventListener('change', function() {
                     var group = document.querySelectorAll('input[name="' + this.name + '"]');
                     group.forEach(function(radio) {
-                        radio.closest('.radio-item').classList.remove('selected');
+                        var wrap = radio.closest('.radio-item');
+                        if (wrap) wrap.classList.remove('selected');
                     });
                     if (this.checked) {
                         item.classList.add('selected');
                     }
                 });
+
+                if (input.checked) {
+                    item.classList.add('selected');
+                }
             });
 
             checkboxItems.forEach(function(item) {
+                if (item.__wired) return;
+                item.__wired = true;
+
                 var input = item.querySelector('input[type="checkbox"]');
+                if (!input) return;
+
                 input.addEventListener('change', function() {
                     if (this.checked) {
                         item.classList.add('selected');
@@ -1024,14 +1044,30 @@ var currentStep = 1;
                         item.classList.remove('selected');
                     }
                 });
+
+                if (input.checked) {
+                    item.classList.add('selected');
+                }
             });
 
             // フォーム送信処理
-            document.getElementById('registrationForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                submitForm();
-            });
-        });
+            var registerForm = document.getElementById('registrationForm');
+            if (registerForm && !registerForm.__wired) {
+                registerForm.__wired = true;
+                registerForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    submitForm();
+                });
+            }
+
+            showStep(currentStep);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initRegisterPage);
+        } else {
+            initRegisterPage();
+        }
 
         function updateProgressBar() {
             for (var i = 1; i <= totalSteps; i++) {
