@@ -116,82 +116,6 @@
     return Number(status) === 403 && /The request could not be satisfied/i.test(text) && /distribution is not configured to allow the HTTP request method/i.test(text);
   }
 
-  function persistApiHints(){
-    try{
-      const sp = new URLSearchParams(window.location.search || '');
-      const apiRoot = normalizeApiRoot(sp.get('api_root') || sp.get('wp_api_root') || '');
-      const cmsUrl = normalizeCmsUrl(sp.get('cms_url') || sp.get('cms_origin') || '');
-
-      if (apiRoot) {
-        localStorage.setItem('tomato_auth_api_root_v1', apiRoot);
-      }
-      if (cmsUrl) {
-        localStorage.setItem('tomato_auth_cms_url_v1', cmsUrl);
-      }
-    }catch(_e){}
-
-    try{
-      if (global && global.TOMATO_AUTH_API_ROOT) {
-        const apiRoot = normalizeApiRoot(global.TOMATO_AUTH_API_ROOT);
-        if (apiRoot) localStorage.setItem('tomato_auth_api_root_v1', apiRoot);
-      }
-      if (global && global.TOMATO_AUTH_CMS_URL) {
-        const cmsUrl = normalizeCmsUrl(global.TOMATO_AUTH_CMS_URL);
-        if (cmsUrl) localStorage.setItem('tomato_auth_cms_url_v1', cmsUrl);
-      }
-    }catch(_e){}
-
-    try{
-      if (global.wpApiSettings && global.wpApiSettings.root) {
-        const apiRoot = normalizeApiRoot(global.wpApiSettings.root);
-        if (apiRoot) localStorage.setItem('tomato_auth_api_root_v1', apiRoot);
-      }
-    }catch(_e){}
-  }
-
-  function getLikelyCmsOrigins(){
-    const seen = new Set();
-    const origins = [];
-
-    function add(origin){
-      const value = normalizeCmsUrl(origin);
-      if (!value || seen.has(value)) return;
-      seen.add(value);
-      origins.push(value);
-    }
-
-    try{
-      add(window.location.origin || '');
-    }catch(_e){}
-
-    try{
-      const referrer = String(document.referrer || '').trim();
-      if (referrer) {
-        add(new URL(referrer).origin);
-      }
-    }catch(_e){}
-
-    try{
-      const savedCmsUrl = localStorage.getItem('tomato_auth_cms_url_v1');
-      if (savedCmsUrl) add(savedCmsUrl);
-      const savedApiRoot = localStorage.getItem('tomato_auth_api_root_v1');
-      if (savedApiRoot) {
-        add(String(savedApiRoot).replace(/\/wp-json\/?$/, ''));
-      }
-    }catch(_e){}
-
-    try{
-      const host = String(window.location.hostname || '').toLowerCase();
-      const protocol = String(window.location.protocol || 'https:');
-      if (/^(localhost|127\.0\.0\.1)$/.test(host)) {
-        add(protocol + '//' + host + (window.location.port ? ':' + window.location.port : ''));
-        add(protocol + '://localhost:8080');
-      }
-    }catch(_e){}
-
-    return origins;
-  }
-
   function getRegisterApiCandidates(){
     const seen = new Set();
     const urls = [];
@@ -261,6 +185,178 @@
 
     return urls;
   }
+
+  function getFallbackCmsOrigins(){
+    const seen = new Set();
+    const origins = [];
+
+    function add(origin){
+      const value = normalizeCmsUrl(origin);
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      origins.push(value);
+    }
+
+    try{
+      const sp = new URLSearchParams(window.location.search || '');
+      add(sp.get('cms_url') || sp.get('cms_origin') || '');
+    }catch(_e){}
+
+    try{
+      if (global && global.TOMATO_AUTH_CMS_URL) add(global.TOMATO_AUTH_CMS_URL);
+    }catch(_e){}
+
+    try{
+      add(localStorage.getItem('tomato_auth_cms_url_v1') || '');
+    }catch(_e){}
+
+    try{
+      const host = String(window.location.hostname || '').toLowerCase();
+      if (/^stg-[a-z0-9-]+\.agrinews\.jp$/i.test(host)) {
+        add('http://54.92.118.106:8080');
+        add('http://13.231.151.241:8080');
+      }
+      if (/^(localhost|127\.0\.0\.1)$/i.test(host)) {
+        add('http://localhost:8080');
+        add('http://127.0.0.1:8080');
+      }
+    }catch(_e){}
+
+    return origins;
+  }
+
+  function buildFormPostCandidates(){
+    const seen = new Set();
+    const urls = [];
+
+    function add(url){
+      const value = String(url || '').trim();
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      urls.push(value);
+    }
+
+    getFallbackCmsOrigins().forEach(function(origin){
+      const root = normalizeCmsUrl(origin);
+      if (!root) return;
+      add(root + '/wp-json/tomato-members/v1/register');
+      add(root + '/wp-json/member-registration/v1/register');
+    });
+
+    return urls;
+  }
+
+  function submitViaHiddenForm(url, payload, timeoutMs){
+    return new Promise(function(resolve, reject){
+      const actionUrl = String(url || '').trim();
+      if (!actionUrl) {
+        reject(new Error('会員登録に失敗しました。CMS URL が未設定です。'));
+        return;
+      }
+
+      const frameName = 'tomato_register_iframe_' + Math.random().toString(36).slice(2);
+      const iframe = document.createElement('iframe');
+      const form = document.createElement('form');
+      const ms = Number(timeoutMs) > 0 ? Number(timeoutMs) : 15000;
+      let done = false;
+      let timer = null;
+
+      function cleanup(){
+        try{ if (timer) clearTimeout(timer); }catch(_e){}
+        try{ form.remove(); }catch(_e){}
+        try{ iframe.remove(); }catch(_e){}
+      }
+
+      function finish(err){
+        if (done) return;
+        done = true;
+        cleanup();
+        if (err) reject(err);
+        else resolve({ success: true, viaFormPost: true, url: actionUrl });
+      }
+
+      iframe.name = frameName;
+      iframe.style.display = 'none';
+      form.method = 'POST';
+      form.action = actionUrl;
+      form.target = frameName;
+      form.style.display = 'none';
+      form.acceptCharset = 'UTF-8';
+      form.enctype = 'application/x-www-form-urlencoded';
+
+      Object.keys(payload || {}).forEach(function(key){
+        const value = payload[key];
+        if (Array.isArray(value)) {
+          value.forEach(function(item){
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = item == null ? '' : String(item);
+            form.appendChild(input);
+          });
+          return;
+        }
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value == null ? '' : String(value);
+        form.appendChild(input);
+      });
+
+      iframe.addEventListener('load', function(){
+        setTimeout(function(){ finish(); }, 250);
+      }, { once: true });
+
+      timer = setTimeout(function(){
+        finish(new Error('会員登録の送信は開始されましたが、CMS からの応答を確認できませんでした。CMS URL / mixed content 設定を確認してください。'));
+      }, ms);
+
+      document.body.appendChild(iframe);
+      document.body.appendChild(form);
+
+      try{
+        form.submit();
+      }catch(err){
+        finish(err instanceof Error ? err : new Error(String(err || 'フォーム送信に失敗しました。')));
+      }
+    });
+  }
+
+  async function submitRegistrationViaFormFallback(payload){
+    const candidates = buildFormPostCandidates();
+    let lastErr = null;
+
+    for (let i = 0; i < candidates.length; i++) {
+      try{
+        await submitViaHiddenForm(candidates[i], payload, 15000);
+        return {
+          success: true,
+          user: {
+            email: payload.email,
+            nickname: payload.nickname,
+            gender: payload.gender,
+            prefecture: payload.prefecture,
+            city: payload.city,
+            occupation: payload.occupation,
+            farm_scale: payload.farm_scale,
+            crop_1: payload.crop_1,
+            crop_2: payload.crop_2,
+            future_crop: payload.future_crop,
+            interests: payload.interests,
+            newsletter_preference: payload.newsletter_preference,
+            paper: payload.paper,
+            created_at: nowIso(),
+            updated_at: nowIso()
+          }
+        };
+      }catch(err){
+        lastErr = err;
+      }
+    }
+
+    throw lastErr || new Error('会員登録に失敗しました。CMS 側へフォーム送信できませんでした。');
+  }
+
 
   async function fetchWithTimeout(url, options, timeoutMs){
     const ms = Number(timeoutMs) > 0 ? Number(timeoutMs) : 4500;
@@ -451,12 +547,7 @@
         const message = buildRegistrationErrorMessage(parsed) || ('会員登録に失敗しました。（HTTP ' + response.status + '）');
         lastErrorMessage = message;
 
-        if (isCloudFrontMethodBlocked(parsed, response.status)) {
-          lastErrorMessage = '会員登録に失敗しました。公開サイト（stg/prod）の /wp-json は CloudFront 側で POST が許可されていません。WordPress CMS 側の HTTPS REST API URL を TOMATO_AUTH_CMS_URL / tomato_auth_cms_url_v1 / ?cms_url= で指定してください。';
-          continue;
-        }
-
-        if (response.status === 404 || response.status === 405) {
+        if (response.status === 404 || response.status === 405 || isCloudFrontMethodBlocked(parsed, response.status)) {
           continue;
         }
 
@@ -470,7 +561,11 @@
     }
 
     if (!apiData || apiData.success !== true) {
-      throw new Error(lastErrorMessage || apiError || '会員登録に失敗しました。');
+      if (isStaticFrontendRequestContext() && /CloudFront 側で POST が許可されていません/.test(String(lastErrorMessage || ''))) {
+        apiData = await submitRegistrationViaFormFallback(payload);
+      } else {
+        throw new Error(lastErrorMessage || apiError || '会員登録に失敗しました。');
+      }
     }
 
     const returnedUser = apiData && apiData.user ? apiData.user : {};
