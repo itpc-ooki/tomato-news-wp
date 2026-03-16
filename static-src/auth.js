@@ -116,6 +116,22 @@
     return Number(status) === 403 && /The request could not be satisfied/i.test(text) && /distribution is not configured to allow the HTTP request method/i.test(text);
   }
 
+  function isLikelyMixedContentError(err){
+    const message = String(err && err.message || '');
+    return /Failed to fetch|Load failed|NetworkError/i.test(message);
+  }
+
+  function isHttpsPage(){
+    try{
+      return String(window.location.protocol || '').toLowerCase() === 'https:';
+    }catch(_e){}
+    return false;
+  }
+
+  function isInsecureHttpUrl(url){
+    return /^http:\/\//i.test(String(url || '').trim());
+  }
+
   function persistApiHints(){
     try{
       const sp = new URLSearchParams(window.location.search || '');
@@ -166,9 +182,14 @@
 
     try{
       const host = String(window.location.hostname || '').toLowerCase();
+      const protocol = String(window.location.protocol || '').toLowerCase();
+      const isHttpsPage = protocol === 'https:';
+
       if (/^stg-[a-z0-9-]+\.agrinews\.jp$/i.test(host)) {
-        add('http://54.92.118.106:8080');
-        add('http://13.231.151.241:8080');
+        if (!isHttpsPage) {
+          add('http://54.92.118.106:8080');
+          add('http://13.231.151.241:8080');
+        }
       }
       if (/^(localhost|127\.0\.0\.1)$/i.test(host)) {
         add('http://localhost:8080');
@@ -246,7 +267,10 @@
 
     getLikelyCmsOrigins().forEach(addCmsUrl);
 
-    return urls;
+    return urls.filter(function(url){
+      if (!isHttpsPage()) return true;
+      return !isInsecureHttpUrl(url);
+    });
   }
 
   function getFallbackCmsOrigins(){
@@ -275,9 +299,14 @@
 
     try{
       const host = String(window.location.hostname || '').toLowerCase();
+      const protocol = String(window.location.protocol || '').toLowerCase();
+      const isHttpsPage = protocol === 'https:';
+
       if (/^stg-[a-z0-9-]+\.agrinews\.jp$/i.test(host)) {
-        add('http://54.92.118.106:8080');
-        add('http://13.231.151.241:8080');
+        if (!isHttpsPage) {
+          add('http://54.92.118.106:8080');
+          add('http://13.231.151.241:8080');
+        }
       }
       if (/^(localhost|127\.0\.0\.1)$/i.test(host)) {
         add('http://localhost:8080');
@@ -306,7 +335,10 @@
       add(root + '/wp-json/member-registration/v1/register');
     });
 
-    return urls;
+    return urls.filter(function(url){
+      if (!isHttpsPage()) return true;
+      return !isInsecureHttpUrl(url);
+    });
   }
 
   function submitViaHiddenForm(url, payload, timeoutMs){
@@ -388,6 +420,10 @@
   async function submitRegistrationViaFormFallback(payload){
     const candidates = buildFormPostCandidates();
     let lastErr = null;
+
+    if (!candidates.length) {
+      throw new Error('会員登録に失敗しました。HTTPS ページから送信可能な CMS URL が見つかりません。');
+    }
 
     for (let i = 0; i < candidates.length; i++) {
       try{
@@ -479,6 +515,9 @@
     if (result && result.error && result.error.message) {
       const message = String(result.error.message || '');
       if (/Failed to fetch|Load failed|NetworkError/i.test(message)) {
+        if (isHttpsPage()) {
+          return '会員登録APIに接続できませんでした。現在の公開ページは HTTPS ですが、登録API候補に HTTP の CMS URL が含まれているか、公開側 /wp-json への POST が CloudFront で遮断されています。HTTPS で到達できる WordPress REST API URL を設定してください。';
+        }
         return '会員登録APIに接続できませんでした。公開サイト配下の /wp-json ではなく、WordPress 側の REST API を参照できているか確認してください。';
       }
       return message;
@@ -585,7 +624,13 @@
     let apiData = null;
     let apiError = '';
     let lastErrorMessage = '';
+    let sawCloudFront403 = false;
+    let sawNetworkFetchError = false;
     const apiCandidates = getRegisterApiCandidates();
+
+    if (!apiCandidates.length) {
+      throw new Error('会員登録に失敗しました。HTTPS で到達可能な WordPress REST API URL が見つかりません。');
+    }
 
     for (let i = 0; i < apiCandidates.length; i++) {
       const apiUrl = apiCandidates[i];
@@ -610,22 +655,36 @@
         const message = buildRegistrationErrorMessage(parsed) || ('会員登録に失敗しました。（HTTP ' + response.status + '）');
         lastErrorMessage = message;
 
-        if (response.status === 404 || response.status === 405 || isCloudFrontMethodBlocked(parsed, response.status)) {
+        if (isCloudFrontMethodBlocked(parsed, response.status)) {
+          sawCloudFront403 = true;
+          continue;
+        }
+
+        if (response.status === 404 || response.status === 405) {
           continue;
         }
 
         throw new Error(message);
       }catch(err){
-        lastErrorMessage = (err && err.message) ? String(err.message) : lastErrorMessage;
+        if (isLikelyMixedContentError(err)) {
+          sawNetworkFetchError = true;
+        }
+        lastErrorMessage = buildRegistrationErrorMessage({ error: err }) || ((err && err.message) ? String(err.message) : lastErrorMessage);
         if (i === apiCandidates.length - 1) {
-          throw new Error(lastErrorMessage || apiError || '会員登録に失敗しました。WordPress 側の REST API URL を TOMATO_AUTH_CMS_URL / tomato_auth_cms_url_v1 / ?cms_url= で指定してください。');
+          break;
         }
       }
     }
 
     if (!apiData || apiData.success !== true) {
-      if (isStaticFrontendRequestContext() && /CloudFront 側で POST が許可されていません/.test(String(lastErrorMessage || ''))) {
-        apiData = await submitRegistrationViaFormFallback(payload);
+      if (isStaticFrontendRequestContext() && sawCloudFront403) {
+        try{
+          apiData = await submitRegistrationViaFormFallback(payload);
+        }catch(formErr){
+          throw new Error(buildRegistrationErrorMessage({ error: formErr }) || (formErr && formErr.message) || lastErrorMessage || apiError || '会員登録に失敗しました。');
+        }
+      } else if (sawNetworkFetchError && isHttpsPage()) {
+        throw new Error(lastErrorMessage || '会員登録に失敗しました。現在のページは HTTPS ですが、登録先 CMS が HTTP のためブラウザで遮断されています。HTTPS で公開された WordPress REST API または HTTPS プロキシが必要です。');
       } else {
         throw new Error(lastErrorMessage || apiError || '会員登録に失敗しました。');
       }
