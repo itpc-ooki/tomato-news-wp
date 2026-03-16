@@ -116,6 +116,69 @@
     return Number(status) === 403 && /The request could not be satisfied/i.test(text) && /distribution is not configured to allow the HTTP request method/i.test(text);
   }
 
+  function persistApiHints(){
+    try{
+      const sp = new URLSearchParams(window.location.search || '');
+      const apiRoot = normalizeApiRoot(sp.get('api_root') || sp.get('wp_api_root') || '');
+      const cmsUrl = normalizeCmsUrl(sp.get('cms_url') || sp.get('cms_origin') || '');
+      if (apiRoot) localStorage.setItem('tomato_auth_api_root_v1', apiRoot);
+      if (cmsUrl) localStorage.setItem('tomato_auth_cms_url_v1', cmsUrl);
+    }catch(_e){}
+
+    try{
+      const apiRoot = normalizeApiRoot(global && global.TOMATO_AUTH_API_ROOT);
+      const cmsUrl = normalizeCmsUrl(global && global.TOMATO_AUTH_CMS_URL);
+      if (apiRoot) localStorage.setItem('tomato_auth_api_root_v1', apiRoot);
+      if (cmsUrl) localStorage.setItem('tomato_auth_cms_url_v1', cmsUrl);
+    }catch(_e){}
+
+    try{
+      if (global && global.wpApiSettings && global.wpApiSettings.root) {
+        const root = normalizeApiRoot(global.wpApiSettings.root);
+        if (root) localStorage.setItem('tomato_auth_api_root_v1', root);
+      }
+    }catch(_e){}
+  }
+
+  function getLikelyCmsOrigins(){
+    const seen = new Set();
+    const origins = [];
+
+    function add(origin){
+      const value = normalizeCmsUrl(origin);
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      origins.push(value);
+    }
+
+    try{
+      const sp = new URLSearchParams(window.location.search || '');
+      add(sp.get('cms_url') || sp.get('cms_origin') || '');
+    }catch(_e){}
+
+    try{
+      add(global && global.TOMATO_AUTH_CMS_URL);
+    }catch(_e){}
+
+    try{
+      add(localStorage.getItem('tomato_auth_cms_url_v1') || '');
+    }catch(_e){}
+
+    try{
+      const host = String(window.location.hostname || '').toLowerCase();
+      if (/^stg-[a-z0-9-]+\.agrinews\.jp$/i.test(host)) {
+        add('http://54.92.118.106:8080');
+        add('http://13.231.151.241:8080');
+      }
+      if (/^(localhost|127\.0\.0\.1)$/i.test(host)) {
+        add('http://localhost:8080');
+        add('http://127.0.0.1:8080');
+      }
+    }catch(_e){}
+
+    return origins;
+  }
+
   function getRegisterApiCandidates(){
     const seen = new Set();
     const urls = [];
