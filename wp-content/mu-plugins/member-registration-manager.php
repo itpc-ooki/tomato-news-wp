@@ -19,10 +19,14 @@ if (!class_exists('Member_Registration_Manager')) {
         const LOG_LIMIT = 100;
         const MENU_SLUG = 'member-registration-mail-settings';
 
+        private $mail_diagnostics = array();
+
         public function __construct() {
             add_action('rest_api_init', array($this, 'register_rest_routes'));
             add_action('admin_menu', array($this, 'register_admin_menu'));
             add_action('admin_init', array($this, 'handle_admin_actions'));
+            add_action('wp_mail_failed', array($this, 'capture_wp_mail_failed'), 10, 1);
+            add_action('phpmailer_init', array($this, 'capture_phpmailer_diagnostics'));
         }
 
         public function register_rest_routes() {
@@ -86,6 +90,85 @@ if (!class_exists('Member_Registration_Manager')) {
             );
             wp_safe_redirect($redirect);
             exit;
+        }
+
+
+        public function capture_wp_mail_failed($wp_error) {
+            if (!is_wp_error($wp_error)) {
+                return;
+            }
+
+            $data = $wp_error->get_error_data();
+            $this->mail_diagnostics['wp_mail_failed'] = array(
+                'message' => $wp_error->get_error_message(),
+                'data'    => is_array($data) ? $data : array(),
+            );
+        }
+
+        public function capture_phpmailer_diagnostics($phpmailer) {
+            if (!is_object($phpmailer)) {
+                return;
+            }
+
+            $this->mail_diagnostics['phpmailer'] = array(
+                'mailer'      => isset($phpmailer->Mailer) ? (string) $phpmailer->Mailer : '',
+                'host'        => isset($phpmailer->Host) ? (string) $phpmailer->Host : '',
+                'port'        => isset($phpmailer->Port) ? (string) $phpmailer->Port : '',
+                'sendmail'    => isset($phpmailer->Sendmail) ? (string) $phpmailer->Sendmail : '',
+                'from'        => isset($phpmailer->From) ? (string) $phpmailer->From : '',
+                'from_name'   => isset($phpmailer->FromName) ? (string) $phpmailer->FromName : '',
+                'sender'      => isset($phpmailer->Sender) ? (string) $phpmailer->Sender : '',
+                'contenttype' => isset($phpmailer->ContentType) ? (string) $phpmailer->ContentType : '',
+            );
+        }
+
+        private function reset_mail_diagnostics() {
+            $this->mail_diagnostics = array();
+        }
+
+        private function build_mail_failure_message($fallback = '') {
+            $parts = array();
+
+            if (!empty($this->mail_diagnostics['wp_mail_failed']['message'])) {
+                $parts[] = 'wp_mail_failed: ' . $this->mail_diagnostics['wp_mail_failed']['message'];
+            }
+
+            if (!empty($this->mail_diagnostics['phpmailer'])) {
+                $phpmailer = $this->mail_diagnostics['phpmailer'];
+                $mailer = isset($phpmailer['mailer']) ? $phpmailer['mailer'] : '';
+                $host = isset($phpmailer['host']) ? $phpmailer['host'] : '';
+                $port = isset($phpmailer['port']) ? $phpmailer['port'] : '';
+                $sendmail = isset($phpmailer['sendmail']) ? $phpmailer['sendmail'] : '';
+
+                $diag = array();
+                if ($mailer !== '') {
+                    $diag[] = 'mailer=' . $mailer;
+                }
+                if ($host !== '') {
+                    $diag[] = 'host=' . $host;
+                }
+                if ($port !== '') {
+                    $diag[] = 'port=' . $port;
+                }
+                if ($sendmail !== '') {
+                    $diag[] = 'sendmail=' . $sendmail;
+                }
+                if (!empty($diag)) {
+                    $parts[] = 'PHPMailer(' . implode(', ', $diag) . ')';
+                }
+
+                if ($mailer === 'mail' && !function_exists('mail')) {
+                    $parts[] = 'PHP mail() が無効です。';
+                }
+            }
+
+            if (empty($parts)) {
+                $parts[] = $fallback ? $fallback : 'wp_mail() が false を返しました。';
+            }
+
+            $parts[] = '送信基盤（SMTP / sendmail / Postfix 等）が未設定、またはサーバー側で mail() が利用できない可能性があります。';
+
+            return implode(' ', array_unique(array_filter($parts)));
         }
 
         public function render_admin_page() {
@@ -232,6 +315,19 @@ if (!class_exists('Member_Registration_Manager')) {
                             </tbody>
                         </table>
                     <?php endif; ?>
+
+                <div style="max-width:1200px; margin-top:24px; background:#fff; border:1px solid #ccd0d4; padding:18px;">
+                    <h2 style="margin-top:0;">メール診断</h2>
+                    <table class="widefat striped">
+                        <tbody>
+                            <tr><th style="width:240px;">home_url()</th><td><?php echo esc_html(home_url('/')); ?></td></tr>
+                            <tr><th>PHP mail()</th><td><?php echo function_exists('mail') ? 'available' : 'unavailable'; ?></td></tr>
+                            <tr><th>SMTP host (php.ini)</th><td><?php echo esc_html((string) ini_get('SMTP')); ?></td></tr>
+                            <tr><th>sendmail_path</th><td><?php echo esc_html((string) ini_get('sendmail_path')); ?></td></tr>
+                            <tr><th>想定される原因</th><td>このプラグイン自体は wp_mail() まで到達しています。ログに <code>wp_mail() が false</code> と出る場合、アプリ側テンプレートではなく、WordPress / PHPMailer の送信基盤（SMTP・sendmail・Postfix など）未設定が主原因です。</td></tr>
+                        </tbody>
+                    </table>
+                </div>
                 </div>
             </div>
             <?php
@@ -391,8 +487,9 @@ if (!class_exists('Member_Registration_Manager')) {
                 $headers[] = 'From: ' . $formatted_from;
             }
 
+            $this->reset_mail_diagnostics();
             $sent = wp_mail($to, $subject, $body, $headers);
-            $message = $sent ? 'メール送信に成功しました。' : 'wp_mail() が false を返しました。';
+            $message = $sent ? 'メール送信に成功しました。' : $this->build_mail_failure_message('wp_mail() が false を返しました。');
 
             $this->add_log(array(
                 'type'    => $type,
@@ -667,7 +764,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 'paper'      => isset($log['paper']) ? sanitize_text_field($log['paper']) : '',
                 'to'         => isset($log['to']) ? sanitize_email($log['to']) : '',
                 'success'    => !empty($log['success']) ? 1 : 0,
-                'message'    => isset($log['message']) ? sanitize_text_field($log['message']) : '',
+                'message'    => isset($log['message']) ? sanitize_textarea_field($log['message']) : '',
             ));
             if (count($logs) > self::LOG_LIMIT) {
                 $logs = array_slice($logs, 0, self::LOG_LIMIT);

@@ -12622,7 +12622,6 @@ border-color:#0f172a;
   }
 }
 
-
 /* =====================================================
    TOP page NEW badge (.vtile only)
    ===================================================== */
@@ -12632,22 +12631,21 @@ border-color:#0f172a;
 
 .vtile-badge-new{
   position: absolute;
-  top: 12px;
-  left: 8px;
+  top: 10px;
+  left: 10px;
   z-index: 5;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 92px;
-  height: 38px;
-  padding: 0 20px;
-  background: #e9745f;
+  padding: 4px 8px;
+  background: linear-gradient(135deg,var(--accent),var(--accent-2));
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
   border-radius: 999px;
-  letter-spacing: 0.04em;
+  letter-spacing: .01em;
+  white-space: nowrap;
   pointer-events: none;
 }
 
@@ -12658,11 +12656,9 @@ border-color:#0f172a;
 @media (max-width: 768px){
   .vtile-badge-new{
     top: 10px;
-    left: 8px;
-    min-width: 82px;
-    height: 34px;
-    padding: 0 18px;
-    font-size: 0.85rem;
+    left: 10px;
+    padding: 4px 8px;
+    font-size: 12px;
   }
 }
 
@@ -12794,5 +12790,64 @@ border-color:#0f172a;
 
   .page-company .company-more-link{
     font-size:0.9rem;
+  }
+}
+/* =====================================================
+   REGISTER PAGE MOBILE HEADER ACTION BUTTON OVERRIDES
+   - Match TOMATO_REGISTRATION_20260122.html mockup
+   - Mobile only
+   ===================================================== */
+@media (max-width:768px){
+  .page-register .page-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:12px;
+    margin:0 0 12px;
+  }
+
+  .page-register .page-actions .btn,
+  .page-register .page-actions button.btn,
+  .page-register .registration-container .page-actions .btn{
+    border:1px solid var(--border) !important;
+    background:#fff !important;
+    color:#0f172a !important;
+    padding:.55rem 1rem !important;
+    border-radius:20px !important;
+    cursor:pointer !important;
+    font-size:0.9rem !important;
+    font-weight:400 !important;
+    line-height:1.2 !important;
+    letter-spacing:0 !important;
+    transition:all 0.3s ease !important;
+    text-decoration:none !important;
+    display:inline-block !important;
+    white-space:nowrap !important;
+    min-height:auto !important;
+    box-shadow:none !important;
+    appearance:none !important;
+    -webkit-appearance:none !important;
+  }
+
+  .page-register .page-actions .btn:first-child,
+  .page-register .page-actions button.btn:first-child,
+  .page-register .registration-container .page-actions .btn:first-child{
+    background:#f8f9fa !important;
+    color:#6c757d !important;
+    border-color:#dee2e6 !important;
+  }
+
+  .page-register .page-actions .btn:first-child:hover,
+  .page-register .page-actions button.btn:first-child:hover,
+  .page-register .registration-container .page-actions .btn:first-child:hover{
+    background:#e9ecef !important;
+    color:#495057 !important;
+    transform:none !important;
+  }
+
+  .page-register .page-actions .btn:last-child:hover,
+  .page-register .page-actions button.btn:last-child:hover,
+  .page-register .registration-container .page-actions .btn:last-child:hover{
+    background:#f8f9fa !important;
+    transform:none !important;
   }
 }

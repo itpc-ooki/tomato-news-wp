@@ -113,6 +113,10 @@ private static function remove_queue_items(array $papers): void {
       @file_put_contents($path, sprintf("[%s] %s\n", $ts, $line), FILE_APPEND);
     }
 
+    public static function external_log(string $line): void {
+      self::append_log($line);
+    }
+
     /**
      * Run build+sync if due.
      *
@@ -125,6 +129,9 @@ private static function remove_queue_items(array $papers): void {
         self::append_log('Skip: locked');
         return;
       }
+
+      self::run_scheduled_actions();
+      self::run_due_future_publications();
 
       $queue = self::read_queue_option();
 if (!$queue) {
@@ -236,6 +243,138 @@ private static function run_static_build(array $papers): void {
 }
 
 
+
+
+    private static function run_scheduled_actions(): void {
+      if (!defined('WP_CLI') || !WP_CLI) {
+        self::append_log('Skip scheduled-actions: not WP_CLI');
+        return;
+      }
+
+      $exit_code = 0;
+      $result = \WP_CLI::runcommand('tomato scheduled-actions-run', [
+        'launch' => true,
+        'return' => 'all',
+        'exit_error' => false,
+      ], $exit_code);
+
+      if ((int) $exit_code !== 0) {
+        self::append_log('Scheduled actions runner failed (exit=' . $exit_code . ')');
+        return;
+      }
+
+      $stdout = '';
+      if (is_object($result) && isset($result->stdout)) {
+        $stdout = (string) $result->stdout;
+      } elseif (is_array($result) && isset($result['stdout'])) {
+        $stdout = (string) $result['stdout'];
+      } elseif (is_string($result)) {
+        $stdout = $result;
+      }
+
+      $stdout = trim($stdout);
+      if ($stdout !== '') {
+        self::append_log('Scheduled actions: ' . preg_replace('/\s+/', ' ', $stdout));
+      }
+    }
+
+
+    private static function run_due_future_publications(): void {
+      $now_gmt = gmdate('Y-m-d H:i:s');
+
+      $query = new \WP_Query([
+        'post_type' => ['post', 'page'],
+        'post_status' => 'future',
+        'posts_per_page' => 100,
+        'fields' => 'ids',
+        'orderby' => 'date',
+        'order' => 'ASC',
+        'no_found_rows' => true,
+        'cache_results' => false,
+        'update_post_meta_cache' => false,
+        'update_post_term_cache' => false,
+        'date_query' => [[
+          'column' => 'post_date_gmt',
+          'before' => $now_gmt,
+          'inclusive' => true,
+        ]],
+      ]);
+
+      if (empty($query->posts)) {
+        return;
+      }
+
+      $processed = 0;
+      foreach ($query->posts as $post_id) {
+        $post_id = (int) $post_id;
+        $post = get_post($post_id);
+        if (!($post instanceof \WP_Post)) {
+          continue;
+        }
+
+        if ($post->post_status !== 'future') {
+          continue;
+        }
+
+        if (function_exists('check_and_publish_future_post')) {
+          check_and_publish_future_post($post_id);
+        } else {
+          wp_publish_post($post_id);
+        }
+
+        clean_post_cache($post_id);
+        $updated_post = get_post($post_id);
+        if (!($updated_post instanceof \WP_Post) || $updated_post->post_status !== 'publish') {
+          self::append_log('Future publish skipped/failed for post ID ' . $post_id . '. Current status: ' . (($updated_post instanceof \WP_Post) ? $updated_post->post_status : 'missing'));
+          continue;
+        }
+
+        self::queue_build_for_post($updated_post, 'future_publish');
+        self::append_log('Future publish OK for post ID ' . $post_id . '.');
+        $processed++;
+      }
+
+      if ($processed > 0) {
+        self::append_log('Processed due future publications: ' . $processed);
+      }
+
+      wp_reset_postdata();
+    }
+
+    private static function queue_build_for_post(\WP_Post $post, string $reason): void {
+      if (!class_exists('Tomato_Auto_Static_Build_Queue')) {
+        return;
+      }
+
+      $papers = [];
+      if ($post->post_type === 'post') {
+        $cat_slugs = wp_get_post_terms($post->ID, 'category', ['fields' => 'slugs']);
+        if (is_array($cat_slugs)) {
+          foreach ($cat_slugs as $slug) {
+            $normalized = self::normalize_paper_key((string) $slug);
+            if ($normalized !== null) {
+              $papers[] = $normalized;
+            }
+          }
+        }
+      }
+
+      if (empty($papers) && class_exists('Tomato_Auto_Static_Build_Queue') && method_exists('Tomato_Auto_Static_Build_Queue', 'get_papers_from_newspaper_master')) {
+        $papers = Tomato_Auto_Static_Build_Queue::get_papers_from_newspaper_master();
+      }
+
+      if (empty($papers)) {
+        $papers = ['tomato'];
+      }
+
+      $papers = array_values(array_unique(array_filter($papers, function ($paper) {
+        return is_string($paper) && $paper !== '';
+      })));
+
+      if (!empty($papers)) {
+        Tomato_Auto_Static_Build_Queue::request_build($papers, $reason);
+      }
+    }
 
     /**
      * Run a shell command and return its output.
