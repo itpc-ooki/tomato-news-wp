@@ -7747,3 +7747,282 @@ Desktop header nav auto-fit (single line)
     scheduleDesktopNavAutofit();
   }
 })();
+
+
+// ==========================
+// Contact form submit
+// ==========================
+(function initContactFormSubmit() {
+  function normalizeApiRoot(root){
+    var value = String(root || '').trim();
+    return value ? value.replace(/\/$/, '') : '';
+  }
+
+  function normalizeCmsUrl(url){
+    var value = String(url || '').trim();
+    return value ? value.replace(/\/$/, '') : '';
+  }
+
+  function isHttpsPage(){
+    try {
+      return String(window.location.protocol || '').toLowerCase() === 'https:';
+    } catch(_e) {
+      return false;
+    }
+  }
+
+  function isInsecureHttpUrl(url){
+    return /^http:\/\//i.test(String(url || '').trim());
+  }
+
+  function getLikelyCmsOrigins(){
+    var seen = new Set();
+    var origins = [];
+
+    function add(origin){
+      var value = normalizeCmsUrl(origin);
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      origins.push(value);
+    }
+
+    try {
+      var sp = new URLSearchParams(window.location.search || '');
+      add(sp.get('cms_url') || sp.get('cms_origin') || '');
+    } catch(_e) {}
+
+    try {
+      add(window.TOMATO_AUTH_CMS_URL || '');
+    } catch(_e) {}
+
+    try {
+      add(localStorage.getItem('tomato_auth_cms_url_v1') || '');
+    } catch(_e) {}
+
+    try {
+      var host = String(window.location.hostname || '').toLowerCase();
+      var protocol = String(window.location.protocol || '').toLowerCase();
+      var https = protocol === 'https:';
+      if (/^stg-[a-z0-9-]+\.agrinews\.jp$/i.test(host)) {
+        if (!https) {
+          add('http://54.92.118.106:8080');
+          add('http://13.231.151.241:8080');
+        }
+      }
+      if (/^(localhost|127\.0\.0\.1)$/i.test(host)) {
+        add('http://localhost:8080');
+        add('http://127.0.0.1:8080');
+      }
+    } catch(_e) {}
+
+    return origins;
+  }
+
+  function getContactApiCandidates(){
+    var seen = new Set();
+    var urls = [];
+
+    function addUrl(url){
+      var value = String(url || '').trim();
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      urls.push(value);
+    }
+
+    function addRoot(root){
+      var normalized = normalizeApiRoot(root);
+      if (!normalized) return;
+      addUrl(normalized + '/tomato-contact/v1/submit');
+    }
+
+    function addCmsUrl(cmsUrl){
+      var normalized = normalizeCmsUrl(cmsUrl);
+      if (!normalized) return;
+      addRoot(normalized + '/wp-json');
+    }
+
+    try {
+      var sameOrigin = String(window.location.origin || '').replace(/\/$/, '');
+      if (sameOrigin) addRoot(sameOrigin + '/wp-json');
+      addUrl('/wp-json/tomato-contact/v1/submit');
+    } catch(_e) {}
+
+    try {
+      if (window.wpApiSettings && window.wpApiSettings.root) addRoot(window.wpApiSettings.root);
+    } catch(_e) {}
+
+    try {
+      if (window.TOMATO_AUTH_API_ROOT) addRoot(window.TOMATO_AUTH_API_ROOT);
+      if (window.TOMATO_AUTH_CMS_URL) addCmsUrl(window.TOMATO_AUTH_CMS_URL);
+    } catch(_e) {}
+
+    try {
+      var savedApiRoot = localStorage.getItem('tomato_auth_api_root_v1');
+      if (savedApiRoot) addRoot(savedApiRoot);
+      var savedCmsUrl = localStorage.getItem('tomato_auth_cms_url_v1');
+      if (savedCmsUrl) addCmsUrl(savedCmsUrl);
+    } catch(_e) {}
+
+    try {
+      var searchParams = new URLSearchParams(window.location.search || '');
+      var apiRoot = searchParams.get('api_root') || searchParams.get('wp_api_root') || '';
+      var cmsUrl = searchParams.get('cms_url') || searchParams.get('cms_origin') || '';
+      if (apiRoot) addRoot(apiRoot);
+      if (cmsUrl) addCmsUrl(cmsUrl);
+    } catch(_e) {}
+
+    getLikelyCmsOrigins().forEach(addCmsUrl);
+
+    return urls.filter(function(url){
+      if (!isHttpsPage()) return true;
+      return !isInsecureHttpUrl(url);
+    });
+  }
+
+  function resolvePaperSlug(){
+    try {
+      var classes = Array.from(document.body.classList || []);
+      for (var i = 0; i < classes.length; i++) {
+        var match = classes[i].match(/^paper-([a-z0-9-]+)$/);
+        if (match) return match[1];
+      }
+    } catch(_e) {}
+
+    try {
+      var host = String(window.location.hostname || '').toLowerCase();
+      var match = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
+      if (match && match[1] && match[1] !== 'www') return match[1];
+    } catch(_e) {}
+
+    try {
+      var path = String(window.location.pathname || '');
+      var pathMatch = path.match(/\/static\/([^\/]+)\//i);
+      if (pathMatch && pathMatch[1]) return pathMatch[1].toLowerCase();
+    } catch(_e) {}
+
+    return 'tomato';
+  }
+
+  function setMessage(el, html, isError){
+    if (!el) return;
+    el.hidden = false;
+    el.innerHTML = html;
+    if (isError) {
+      el.style.borderColor = '#dc2626';
+      el.style.background = '#fef2f2';
+      el.style.color = '#991b1b';
+    } else {
+      el.style.borderColor = '';
+      el.style.background = '';
+      el.style.color = '';
+    }
+  }
+
+  async function submitContactForm(event){
+    var form = event && event.currentTarget ? event.currentTarget : document.getElementById('contactForm');
+    if (!form) return;
+    event.preventDefault();
+
+    var submitButton = document.getElementById('contactSubmitButton') || form.querySelector('button[type="submit"]');
+    var successBox = document.getElementById('formSuccess');
+    var errorBox = document.getElementById('formError');
+
+    if (successBox) successBox.hidden = true;
+    if (errorBox) errorBox.hidden = true;
+
+    if (!form.reportValidity()) return;
+
+    var formData = new FormData(form);
+    var payload = {
+      paper: resolvePaperSlug(),
+      category: String(formData.get('category') || '').trim(),
+      name: String(formData.get('name') || '').trim(),
+      organization: String(formData.get('organization') || '').trim(),
+      email: String(formData.get('email') || '').trim(),
+      tel: String(formData.get('tel') || '').trim(),
+      message: String(formData.get('message') || '').trim(),
+      agreement: formData.get('agreement') ? 1 : 0,
+      page_url: String(window.location.href || ''),
+      user_agent: String(navigator.userAgent || '')
+    };
+
+    if (!payload.category || !payload.name || !payload.email || !payload.message || !payload.agreement) {
+      setMessage(errorBox, '<h3>送信に失敗しました</h3><p>必須項目を入力し、同意チェックを入れてください。</p>', true);
+      return;
+    }
+
+    var originalText = submitButton ? submitButton.textContent : '';
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = '送信中...';
+    }
+
+    var candidates = getContactApiCandidates();
+    var lastError = '';
+
+    try {
+      if (!candidates.length) {
+        throw new Error('お問い合わせ送信先の WordPress REST API URL が見つかりませんでした。');
+      }
+
+      for (var i = 0; i < candidates.length; i++) {
+        var url = candidates[i];
+        try {
+          var response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload),
+            credentials: 'omit'
+          });
+
+          var result = null;
+          try {
+            result = await response.json();
+          } catch(_jsonError) {
+            result = null;
+          }
+
+          if (!response.ok || !result || result.success !== true) {
+            var message = result && result.message ? result.message : ('HTTP ' + response.status);
+            throw new Error(message);
+          }
+
+          form.reset();
+          setMessage(successBox, '<h3>✓ 送信が完了しました</h3><p>お問い合わせいただきありがとうございます。<br>内容を確認の上、担当者よりご連絡いたします。<br>通常3営業日以内にご返信いたします。</p>', false);
+          form.hidden = true;
+          if (successBox && typeof successBox.scrollIntoView === 'function') {
+            successBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          return;
+        } catch (err) {
+          lastError = err && err.message ? err.message : '送信に失敗しました。';
+        }
+      }
+
+      throw new Error(lastError || 'お問い合わせ送信に失敗しました。');
+    } catch (error) {
+      setMessage(errorBox, '<h3>送信に失敗しました</h3><p>' + String(error && error.message ? error.message : 'お問い合わせ送信に失敗しました。時間をおいて再度お試しください。') + '</p>', true);
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText || '送信する';
+      }
+    }
+  }
+
+  function setup(){
+    var form = document.getElementById('contactForm');
+    if (!form || form.dataset.contactSubmitReady === '1') return;
+    form.dataset.contactSubmitReady = '1';
+    form.addEventListener('submit', submitContactForm);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setup);
+  } else {
+    setup();
+  }
+})();

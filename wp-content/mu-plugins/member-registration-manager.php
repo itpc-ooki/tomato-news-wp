@@ -3,7 +3,6 @@
  * Plugin Name: Member Registration Manager
  * Description: WordPress-backed member registration with per-paper registration email templates, preview, test send, logging, and safer paper detection.
  * Version: 2.0.0
- * Author: OpenAI
  */
 
 if (!defined('ABSPATH')) {
