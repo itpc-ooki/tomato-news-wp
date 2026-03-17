@@ -1825,7 +1825,7 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
               border-radius:0; box-shadow: var(--shadow); background:linear-gradient(180deg,#fafafa,#fff); position:relative}
 .left-hero .mark {
     color: #334155;
-    font-size: 1.75rem;
+    font-size: 1.1rem;
     letter-spacing: .08em;
     margin-bottom: 12px;
     text-align: center;
@@ -8638,7 +8638,7 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
   }
 
   .sp-hero-copy .mark{
-    font-size:1.75rem;
+    font-size:1.1rem;
     letter-spacing:.08em;
     margin-bottom:12px;
     text-align:center;
