@@ -4,73 +4,154 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>ログイン｜トマト新聞 デジタル版</title>
+  <title>ログイン｜トマト新聞</title>
 
-  <!-- Same CSS as index.html -->
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body class="page-login">
 
   <div id="header-container"></div>
 
-  <!-- メインコンテンツ -->
   <div class="main">
     <div class="login-container">
-      <div class="login-header">
-        <h1 class="login-title">ログイン</h1>
-        <p class="login-subtitle">トマト新聞デジタル版にログイン</p>
-      </div>
-
-      <form id="loginForm">
-        <div class="form-group">
-          <label class="form-label" for="email">メールアドレス</label>
-          <input
-            type="email"
-            id="email"
-            class="form-input"
-            placeholder="example@email.com"
-            required
-          />
+      <section class="account-panel" data-login-panel="login">
+        <div class="login-header">
+          <h1 class="login-title">ログイン</h1>
+          <p class="login-subtitle">トマト新聞デジタル版にログイン</p>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="password">パスワード</label>
-          <input
-            type="password"
-            id="password"
-            class="form-input"
-            placeholder="パスワードを入力"
-            required
-          />
+        <form id="loginForm">
+          <div class="form-group">
+            <label class="form-label" for="email">メールアドレス</label>
+            <input
+              type="email"
+              id="email"
+              class="form-input"
+              placeholder="example@email.com"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">パスワード</label>
+            <input
+              type="password"
+              id="password"
+              class="form-input"
+              placeholder="パスワードを入力"
+              required
+            />
+          </div>
+
+          <div class="form-checkbox">
+            <input type="checkbox" id="remember" />
+            <label for="remember">ログイン状態を保持する</label>
+          </div>
+
+          <div class="form-link">
+            <a href="#" id="forgotPasswordLink">パスワードをお忘れの方</a>
+          </div>
+
+          <button type="submit" class="login-btn">ログイン</button>
+        </form>
+
+        <div class="divider">
+          <span>または</span>
         </div>
 
-        <div class="form-checkbox">
-          <input type="checkbox" id="remember" />
-          <label for="remember">ログイン状態を保持する</label>
+        <div class="signup-link">
+          アカウントをお持ちでない方は<br>
+          <a href="./register.html" id="registerLink">新規会員登録（無料）</a>
+        </div>
+      </section>
+
+      <section class="account-panel" data-login-panel="forgot-request" hidden>
+        <a href="#" class="reset-back-link" id="backToLoginFromForgot"><span class="arrow">‹</span><span>戻る</span></a>
+        <div class="login-header">
+          <h1 class="login-title reset-screen-title">パスワードの再設定</h1>
+          <p class="login-subtitle reset-screen-subtitle">パスワードを再設定するための<br>メールをお送りします。</p>
         </div>
 
-        <div class="form-link">
-          <a href="#" id="forgotPasswordLink">パスワードをお忘れの方</a>
+        <form id="forgotPasswordForm">
+          <div class="form-group">
+            <label class="form-label" for="forgotEmail">メールアドレス</label>
+            <input
+              type="email"
+              id="forgotEmail"
+              class="form-input"
+              placeholder="example@email.com"
+              required
+            />
+          </div>
+
+          <button type="submit" class="login-btn">送信</button>
+        </form>
+      </section>
+
+      <section class="account-panel" data-login-panel="forgot-sent" hidden>
+        <a href="#" class="reset-back-link" id="backToLoginFromSent"><span class="arrow">‹</span><span>戻る</span></a>
+        <div class="login-header">
+          <h1 class="login-title reset-screen-title">パスワードの再設定</h1>
+          <p class="reset-screen-email" id="forgotSentEmail"></p>
+          <p class="login-subtitle reset-screen-subtitle">にパスワード変更用のURLを送信しました。</p>
+          <p class="reset-screen-note">※未登録のメールアドレスが入力された場合はメールは届きません。</p>
         </div>
 
-        <button type="submit" class="login-btn">ログイン</button>
-      </form>
+        <div class="reset-screen-actions">
+          <button type="button" class="login-btn" id="backToLoginLink">ログイン画面に戻る</button>
+        </div>
+      </section>
 
-      <div class="divider">
-        <span>または</span>
-      </div>
+      <section class="account-panel" data-login-panel="reset-password" hidden>
+        <a href="#" class="reset-back-link" id="backToLoginFromReset"><span class="arrow">‹</span><span>戻る</span></a>
+        <div class="login-header">
+          <h1 class="login-title reset-screen-title">パスワードの再設定</h1>
+          <p class="login-subtitle reset-screen-subtitle">新しいパスワードを入力してください。</p>
+        </div>
 
-      <div class="signup-link">
-        アカウントをお持ちでない方は<br>
-        <a href="./register.html" id="registerLink">新規会員登録（無料）</a>
-      </div>
+        <form id="resetPasswordForm">
+          <div class="form-group">
+            <label class="form-label" for="resetPassword">新しいパスワード</label>
+            <input
+              type="password"
+              id="resetPassword"
+              class="form-input"
+              placeholder="新しいパスワードを入力"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="resetPasswordConfirm">新しいパスワード（確認）</label>
+            <input
+              type="password"
+              id="resetPasswordConfirm"
+              class="form-input"
+              placeholder="もう一度入力してください"
+              required
+            />
+          </div>
+
+          <button type="submit" class="login-btn">再設定する</button>
+        </form>
+      </section>
+
+      <section class="account-panel" data-login-panel="reset-complete" hidden>
+        <a href="#" class="reset-back-link" id="backToLoginFromResetDone"><span class="arrow">‹</span><span>戻る</span></a>
+        <div class="login-header">
+          <h1 class="login-title reset-screen-title">パスワードの再設定</h1>
+          <p class="login-subtitle reset-screen-subtitle">パスワードを再設定しました。</p>
+        </div>
+
+        <div class="reset-screen-actions">
+          <button type="button" class="login-btn" id="goToLoginAfterReset">ログインする</button>
+        </div>
+      </section>
     </div>
   </div>
 
-  <!-- Footer will be loaded here by JavaScript -->
   <div id="footer-container"></div>
 
-  <!-- Same scripts as index.html -->
   <script src="/static/auth.js"></script>
   <script src="/static/app.js"></script>
 </body>

@@ -34,6 +34,18 @@ if (!class_exists('Member_Registration_Manager')) {
                 'callback'            => array($this, 'handle_register'),
                 'permission_callback' => '__return_true',
             ));
+
+            register_rest_route('tomato-members/v1', '/password-reset/request', array(
+                'methods'             => 'POST',
+                'callback'            => array($this, 'handle_password_reset_request'),
+                'permission_callback' => '__return_true',
+            ));
+
+            register_rest_route('tomato-members/v1', '/password-reset/confirm', array(
+                'methods'             => 'POST',
+                'callback'            => array($this, 'handle_password_reset_confirm'),
+                'permission_callback' => '__return_true',
+            ));
         }
 
         public function register_admin_menu() {
@@ -419,6 +431,114 @@ if (!class_exists('Member_Registration_Manager')) {
             ), 200);
         }
 
+
+        public function handle_password_reset_request(WP_REST_Request $request) {
+            $params = $request->get_json_params();
+            if (!is_array($params)) {
+                $params = $request->get_params();
+            }
+
+            $email = sanitize_email(isset($params['email']) ? $params['email'] : '');
+            $paper = $this->resolve_paper($params, $request);
+            $generic_message = '入力されたメールアドレス宛に、パスワード再設定用のURLを送信しました。';
+
+            if (!$email) {
+                return new WP_REST_Response(array('success' => false, 'message' => 'メールアドレスを入力してください。'), 400);
+            }
+
+            $user = get_user_by('email', $email);
+            if (!$user) {
+                $this->add_log(array(
+                    'type'    => 'password_reset_request',
+                    'paper'   => $paper,
+                    'to'      => $email,
+                    'success' => true,
+                    'message' => '未登録メールアドレスのためメール送信は行いませんでした。',
+                ));
+                return new WP_REST_Response(array(
+                    'success'    => true,
+                    'message'    => $generic_message,
+                    'email'      => $email,
+                    'email_sent' => false,
+                ), 200);
+            }
+
+            $result = $this->send_password_reset_email($user, $paper);
+
+            return new WP_REST_Response(array(
+                'success'    => true,
+                'message'    => $generic_message,
+                'email'      => $email,
+                'email_sent' => !empty($result['success']),
+            ), 200);
+        }
+
+        public function handle_password_reset_confirm(WP_REST_Request $request) {
+            $params = $request->get_json_params();
+            if (!is_array($params)) {
+                $params = $request->get_params();
+            }
+
+            $login            = isset($params['login']) ? wp_unslash($params['login']) : '';
+            $key              = isset($params['key']) ? wp_unslash($params['key']) : '';
+            $password         = isset($params['password']) ? (string) $params['password'] : '';
+            $password_confirm = isset($params['password_confirm']) ? (string) $params['password_confirm'] : '';
+            $paper            = $this->resolve_paper($params, $request);
+
+            if ($login === '' || $key === '') {
+                return new WP_REST_Response(array('success' => false, 'message' => 'パスワード再設定URLが不正です。'), 400);
+            }
+
+            if (!$password) {
+                return new WP_REST_Response(array('success' => false, 'message' => '新しいパスワードを入力してください。'), 400);
+            }
+
+            if ($password !== $password_confirm) {
+                return new WP_REST_Response(array('success' => false, 'message' => 'パスワードが一致しません。'), 400);
+            }
+
+            if (!$this->password_pattern_ok($password)) {
+                return new WP_REST_Response(array('success' => false, 'message' => 'パスワードはアルファベット大文字・小文字、数字を含む8文字以上20字以内で入力してください。'), 400);
+            }
+
+            $user = check_password_reset_key($key, $login);
+            if (is_wp_error($user) || !$user instanceof WP_User) {
+                $message = is_wp_error($user) ? $user->get_error_message() : 'パスワード再設定URLが無効です。';
+                return new WP_REST_Response(array('success' => false, 'message' => $message), 400);
+            }
+
+            reset_password($user, $password);
+
+            $user_id = (int) $user->ID;
+            $nickname = get_user_meta($user_id, self::META_PREFIX . 'nickname', true);
+            if (!$nickname) {
+                $nickname = $user->display_name ? $user->display_name : $user->user_email;
+            }
+            $stored_paper = get_user_meta($user_id, self::META_PREFIX . 'paper', true);
+            if ($stored_paper) {
+                $paper = $this->sanitize_paper_slug($stored_paper);
+            }
+
+            $this->add_log(array(
+                'type'    => 'password_reset_confirm',
+                'paper'   => $paper,
+                'to'      => $user->user_email,
+                'success' => true,
+                'message' => 'パスワード再設定に成功しました。',
+            ));
+
+            return new WP_REST_Response(array(
+                'success' => true,
+                'message' => 'パスワードを再設定しました。',
+                'user'    => array(
+                    'id'       => $user_id,
+                    'email'    => $user->user_email,
+                    'nickname' => $nickname,
+                    'paper'    => $paper,
+                ),
+            ), 200);
+        }
+
         private function send_test_email($paper, $to) {
             $paper = $this->sanitize_paper_slug($paper);
             $fake_user = (object) array(
@@ -499,6 +619,118 @@ if (!class_exists('Member_Registration_Manager')) {
             ));
 
             return array('success' => (bool) $sent, 'message' => $message);
+        }
+
+
+        private function send_password_reset_email(WP_User $user, $paper) {
+            $paper = $this->sanitize_paper_slug($paper);
+            $user_id = (int) $user->ID;
+            $nickname = get_user_meta($user_id, self::META_PREFIX . 'nickname', true);
+            if (!$nickname) {
+                $nickname = $user->display_name ? $user->display_name : $user->user_email;
+            }
+
+            $stored_paper = get_user_meta($user_id, self::META_PREFIX . 'paper', true);
+            if ($stored_paper) {
+                $paper = $this->sanitize_paper_slug($stored_paper);
+            }
+
+            $reset_key = get_password_reset_key($user);
+            if (is_wp_error($reset_key)) {
+                $message = $reset_key->get_error_message();
+                $this->add_log(array(
+                    'type'    => 'password_reset_request',
+                    'paper'   => $paper,
+                    'to'      => $user->user_email,
+                    'success' => false,
+                    'message' => $message,
+                ));
+                return array('success' => false, 'message' => $message);
+            }
+
+            $reset_url = $this->build_password_reset_url($paper, $user, $reset_key);
+            $paper_label = $this->get_paper_label($paper);
+            $subject = $paper_label . ': パスワード再設定';
+            $body = $this->build_password_reset_email_html($paper_label, $nickname, $reset_url);
+
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+            $headers[] = 'From: ' . sprintf('%s <%s>', $paper_label, 'noreply@agrinews.jp');
+
+            $this->reset_mail_diagnostics();
+            $sent = wp_mail($user->user_email, $subject, $body, $headers);
+            $message = $sent ? 'パスワード再設定メール送信に成功しました。' : $this->build_mail_failure_message('wp_mail() が false を返しました。');
+
+            $this->add_log(array(
+                'type'    => 'password_reset_request',
+                'paper'   => $paper,
+                'to'      => $user->user_email,
+                'success' => (bool) $sent,
+                'message' => $message,
+            ));
+
+            return array('success' => (bool) $sent, 'message' => $message, 'reset_url' => $reset_url);
+        }
+
+        private function build_password_reset_email_html($paper_label, $nickname, $reset_url) {
+            $safe_paper_label = esc_html($paper_label);
+            $safe_nickname = esc_html($nickname);
+            $safe_reset_url = esc_url($reset_url);
+
+            return <<<HTML
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+</head>
+<body style="margin:0;padding:0;background:#f5f5f5;color:#555;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic',Meiryo,sans-serif;">
+  <div style="max-width:860px;margin:0 auto;padding:56px 32px;background:#f5f5f5;">
+    <p style="margin:0 0 44px;font-size:24px;line-height:1.7;font-weight:700;">{$safe_nickname} さん</p>
+    <p style="margin:0 0 28px;font-size:22px;line-height:1.8;">{$safe_paper_label}をご利用いただきありがとうございます。</p>
+    <p style="margin:0 0 42px;font-size:22px;line-height:1.8;">以下のリンクからパスワードを再設定してください。</p>
+    <div style="text-align:center;margin:0 0 42px;">
+      <a href="{$safe_reset_url}" style="display:inline-block;min-width:280px;padding:28px 52px;background:#c9654b;color:#ffffff;text-decoration:none;font-size:26px;font-weight:700;border-radius:4px;">再設定する</a>
+    </div>
+    <p style="margin:0 0 8px;font-size:18px;line-height:1.8;">※ボタンが動作しない場合は、以下のURLからアクセスしてください。</p>
+    <p style="margin:0 0 48px;font-size:18px;line-height:1.8;word-break:break-all;"><a href="{$safe_reset_url}">{$safe_reset_url}</a></p>
+    <hr style="border:none;border-top:1px solid #d9dce4;margin:0 0 48px;">
+    <p style="margin:0 0 12px;font-size:18px;line-height:1.8;">※このメールは送信専用のメールアドレスからお送りしています。<br>ご返信いただいても回答はできませんので、あらかじめご了承ください。</p>
+    <p style="margin:0;font-size:18px;line-height:1.8;">※このメールに心当たりがない場合、どなたかが誤って入力したものと思われます。お手数ですが、メールを破棄してください。</p>
+  </div>
+</body>
+</html>
+HTML;
+        }
+
+        private function build_password_reset_url($paper, WP_User $user, $reset_key) {
+            $paper = $this->sanitize_paper_slug($paper);
+            $base_url = $this->build_account_login_url($paper);
+            $query = array(
+                'paper'    => $paper,
+                'mode'     => 'reset',
+                'login'    => $user->user_login,
+                'key'      => $reset_key,
+                'cms_url'  => home_url(),
+            );
+            return add_query_arg($query, $base_url);
+        }
+
+        private function build_account_login_url($paper) {
+            $paper = $this->sanitize_paper_slug($paper);
+            $host = wp_parse_url(home_url(), PHP_URL_HOST);
+            $home = trailingslashit(home_url('/'));
+            if (!$host) {
+                return $home . 'static/account/login.html';
+            }
+
+            if (preg_match('/(^|\.)localhost$/i', $host) || preg_match('/^127\.0\.0\.1$/', $host)) {
+                return $home . 'static/account/login.html';
+            }
+
+            if (stripos($host, 'stg-') === 0 || stripos($host, '.stg.') !== false || preg_match('/(^|\.)stg[-.]/i', $host)) {
+                return 'https://stg-' . $paper . '.agrinews.jp/static/account/login.html';
+            }
+
+            return 'https://' . $paper . '.agrinews.jp/static/account/login.html';
         }
 
         private function render_template_for_preview(array $paper_settings, $paper) {

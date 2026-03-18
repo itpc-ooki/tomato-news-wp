@@ -271,6 +271,71 @@
     });
   }
 
+  function getMemberApiCandidates(endpointPath){
+    const seen = new Set();
+    const urls = [];
+    const suffix = String(endpointPath || '').trim().replace(/^\/+/, '');
+    if (!suffix) return urls;
+
+    function addUrl(url){
+      const value = String(url || '').trim();
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      urls.push(value);
+    }
+
+    function addRoot(root){
+      const normalized = normalizeApiRoot(root);
+      if (!normalized) return;
+      addUrl(normalized + '/' + suffix);
+    }
+
+    function addCmsUrl(cmsUrl){
+      const normalized = normalizeCmsUrl(cmsUrl);
+      if (!normalized) return;
+      addRoot(normalized + '/wp-json');
+    }
+
+    persistApiHints();
+
+    try{
+      const sameOrigin = String(window.location.origin || '').replace(/\/$/, '');
+      if (sameOrigin) addRoot(sameOrigin + '/wp-json');
+      addUrl('/wp-json/' + suffix);
+    }catch(_e){}
+
+    try{
+      if (global.wpApiSettings && wpApiSettings.root) addRoot(wpApiSettings.root);
+    }catch(_e){}
+
+    try{
+      if (global.TOMATO_AUTH_API_ROOT) addRoot(global.TOMATO_AUTH_API_ROOT);
+      if (global.TOMATO_AUTH_CMS_URL) addCmsUrl(global.TOMATO_AUTH_CMS_URL);
+    }catch(_e){}
+
+    try{
+      const savedApiRoot = localStorage.getItem('tomato_auth_api_root_v1');
+      if (savedApiRoot) addRoot(savedApiRoot);
+      const savedCmsUrl = localStorage.getItem('tomato_auth_cms_url_v1');
+      if (savedCmsUrl) addCmsUrl(savedCmsUrl);
+    }catch(_e){}
+
+    try{
+      const sp = new URLSearchParams(window.location.search || '');
+      const apiRoot = sp.get('api_root') || sp.get('wp_api_root') || '';
+      const cmsUrl = sp.get('cms_url') || sp.get('cms_origin') || '';
+      if (apiRoot) addRoot(apiRoot);
+      if (cmsUrl) addCmsUrl(cmsUrl);
+    }catch(_e){}
+
+    getLikelyCmsOrigins().forEach(addCmsUrl);
+
+    return urls.filter(function(url){
+      if (!isHttpsPage()) return true;
+      return !isInsecureHttpUrl(url);
+    });
+  }
+
   function getFallbackCmsOrigins(){
     const seen = new Set();
     const origins = [];
@@ -330,6 +395,31 @@
       const root = normalizeCmsUrl(origin);
       if (!root) return;
       add(root + '/wp-json/tomato-members/v1/register');
+    });
+
+    return urls.filter(function(url){
+      if (!isHttpsPage()) return true;
+      return !isInsecureHttpUrl(url);
+    });
+  }
+
+  function buildFormPostCandidatesForEndpoint(endpointPath){
+    const seen = new Set();
+    const urls = [];
+    const suffix = String(endpointPath || '').trim().replace(/^\/+/, '');
+    if (!suffix) return urls;
+
+    function add(url){
+      const value = String(url || '').trim();
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      urls.push(value);
+    }
+
+    getFallbackCmsOrigins().forEach(function(origin){
+      const root = normalizeCmsUrl(origin);
+      if (!root) return;
+      add(root + '/wp-json/' + suffix);
     });
 
     return urls.filter(function(url){
@@ -451,6 +541,86 @@
     }
 
     throw lastErr || new Error('会員登録に失敗しました。CMS 側へフォーム送信できませんでした。');
+  }
+
+
+  async function submitMemberEndpoint(endpointPath, payload, options){
+    const opts = options || {};
+    const allowFormFallback = !!opts.allowFormFallback;
+    const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : 4500;
+    const candidates = getMemberApiCandidates(endpointPath);
+    let apiData = null;
+    let lastErrorMessage = '';
+    let sawCloudFront403 = false;
+    let sawNetworkFetchError = false;
+
+    if (!candidates.length) {
+      throw new Error(opts.noCandidateMessage || 'API URL が見つかりません。');
+    }
+
+    for (let i = 0; i < candidates.length; i++) {
+      const apiUrl = candidates[i];
+      try{
+        const response = await fetchWithTimeout(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload || {})
+        }, timeoutMs);
+
+        const parsed = await parseResponseBody(response);
+        apiData = parsed.json;
+
+        if (response.ok && apiData && apiData.success === true) {
+          return apiData;
+        }
+
+        const message = buildRegistrationErrorMessage(parsed) || ((opts.actionLabel || '処理') + 'に失敗しました。（HTTP ' + response.status + '）');
+        lastErrorMessage = message;
+
+        if (isCloudFrontMethodBlocked(parsed, response.status)) {
+          sawCloudFront403 = true;
+          continue;
+        }
+
+        if (response.status === 404 || response.status === 405) {
+          continue;
+        }
+
+        throw new Error(message);
+      }catch(err){
+        if (isLikelyMixedContentError(err)) {
+          sawNetworkFetchError = true;
+        }
+        lastErrorMessage = buildRegistrationErrorMessage({ error: err }) || ((err && err.message) ? String(err.message) : lastErrorMessage);
+        if (i === candidates.length - 1) break;
+      }
+    }
+
+    if (allowFormFallback && isStaticFrontendRequestContext() && sawCloudFront403) {
+      const formCandidates = buildFormPostCandidatesForEndpoint(endpointPath);
+      let lastErr = null;
+      for (let i = 0; i < formCandidates.length; i++) {
+        try{
+          await submitViaHiddenForm(formCandidates[i], payload || {}, 15000);
+          return { success: true, viaFormPost: true };
+        }catch(err){
+          lastErr = err;
+        }
+      }
+      if (lastErr) {
+        throw new Error(buildRegistrationErrorMessage({ error: lastErr }) || lastErrorMessage || ((opts.actionLabel || '処理') + 'に失敗しました。'));
+      }
+    }
+
+    if (sawNetworkFetchError && isHttpsPage()) {
+      throw new Error(lastErrorMessage || ((opts.actionLabel || '処理') + 'に失敗しました。現在のページは HTTPS ですが、接続先 CMS が HTTP のためブラウザで遮断されています。'));
+    }
+
+    throw new Error(lastErrorMessage || ((opts.actionLabel || '処理') + 'に失敗しました。'));
   }
 
 
@@ -718,6 +888,81 @@
     return user;
   }
 
+  async function requestPasswordReset(email, paper){
+    const payload = {
+      email: normalizeEmail(email),
+      paper: String(paper || detectActivePaper() || 'tomato')
+    };
+
+    if (!payload.email) {
+      throw new Error('メールアドレスを入力してください。');
+    }
+
+    return submitMemberEndpoint('tomato-members/v1/password-reset/request', payload, {
+      actionLabel: 'パスワード再設定メール送信',
+      allowFormFallback: true,
+      timeoutMs: 4500,
+      noCandidateMessage: 'パスワード再設定APIの送信先が見つかりません。'
+    });
+  }
+
+  async function confirmPasswordReset(params){
+    const payload = {
+      login: String(params && params.login || ''),
+      key: String(params && params.key || ''),
+      password: String(params && params.password || ''),
+      password_confirm: String(params && params.password_confirm || ''),
+      paper: String(params && params.paper || detectActivePaper() || 'tomato')
+    };
+
+    const result = await submitMemberEndpoint('tomato-members/v1/password-reset/confirm', payload, {
+      actionLabel: 'パスワード再設定',
+      allowFormFallback: false,
+      timeoutMs: 4500,
+      noCandidateMessage: 'パスワード再設定APIの送信先が見つかりません。'
+    });
+
+    if (result && result.success && result.user && result.user.email) {
+      const users = loadUsers();
+      const email = normalizeEmail(result.user.email);
+      const idx = users.findIndex(function(u){ return normalizeEmail(u && u.email) === email; });
+      const passwordHash = await sha256Hex(payload.password);
+      if (idx >= 0) {
+        users[idx] = Object.assign({}, users[idx], {
+          email: email,
+          passwordHash: passwordHash,
+          nickname: String(result.user.nickname || users[idx].nickname || ''),
+          paper: String(result.user.paper || users[idx].paper || payload.paper || 'tomato'),
+          updated_at: nowIso()
+        });
+      } else {
+        users.push({
+          id: result.user.id ? 'wp_' + String(result.user.id) : ('u_' + Math.random().toString(36).slice(2, 10)),
+          email: email,
+          passwordHash: passwordHash,
+          nickname: String(result.user.nickname || ''),
+          gender: '',
+          prefecture: '',
+          city: '',
+          occupation: '',
+          farm_scale: '',
+          crop_1: '',
+          crop_2: '',
+          future_crop: '',
+          interests: [],
+          newsletter_preference: '希望する',
+          paper: String(result.user.paper || payload.paper || 'tomato'),
+          created_at: nowIso(),
+          updated_at: nowIso()
+        });
+      }
+      saveUsers(users);
+      setSessionEmail(email, true);
+    }
+
+    return result;
+  }
+
   async function login({email, password, remember}){
     const e = normalizeEmail(email);
     const pw = String(password || '');
@@ -863,6 +1108,8 @@
     currentUser,
     requireLogin,
     registerFromFormData,
+    requestPasswordReset,
+    confirmPasswordReset,
     prefillMypageForm,
     updateProfileFromMypageForm
   };
@@ -974,9 +1221,7 @@
 
 
 // ===============================
-// Login page behavior (moved from login.html)
-// - Early redirect if already logged in
-// - Handle login form submit
+// Login / password-reset page behavior
 // ===============================
 (function(){
   const path = String(location.pathname || '');
@@ -1000,15 +1245,11 @@
     }catch(e){}
 
     try{
-      // Saved by auth.js (Active paper memory)
       const saved = String(localStorage.getItem('tomato_active_paper_v1') || '').toLowerCase();
       if (allowed.indexOf(saved) >= 0) return saved;
-
-      // Back-compat: find any localStorage key/value that looks like it stores the paper name
       for (let j=0;j<localStorage.length;j++){
         const k = localStorage.key(j);
-        if (!k) continue;
-        if (!/paper/i.test(k)) continue;
+        if (!k || !/paper/i.test(k)) continue;
         const v = String(localStorage.getItem(k) || '').toLowerCase();
         if (allowed.indexOf(v) >= 0) return v;
       }
@@ -1017,17 +1258,76 @@
     return 'tomato';
   }
 
-  // ---- Early redirect: already logged in -> go back to paper top ----
+  function searchParam(name){
+    try{
+      const sp = new URLSearchParams(location.search || '');
+      return String(sp.get(name) || '');
+    }catch(_e){}
+    return '';
+  }
+
+  function isResetMode(){
+    return searchParam('mode') === 'reset' && !!searchParam('login') && !!searchParam('key');
+  }
+
+  function showPanel(name){
+    const panels = document.querySelectorAll('[data-login-panel]');
+    panels.forEach(function(panel){
+      panel.hidden = panel.getAttribute('data-login-panel') !== name;
+    });
+  }
+
+  function setText(id, value){
+    const el = document.getElementById(id);
+    if (el) el.textContent = String(value || '');
+  }
+
+  function goToLogin(){
+    showPanel('login');
+  }
+
+  function goToForgot(){
+    showPanel('forgot-request');
+    const input = document.getElementById('forgotEmail');
+    if (input && !input.value) {
+      const loginEmail = document.getElementById('email');
+      if (loginEmail && loginEmail.value) input.value = loginEmail.value;
+    }
+  }
+
+  function goToForgotSent(email){
+    setText('forgotSentEmail', email || '');
+    showPanel('forgot-sent');
+  }
+
+  function goToReset(){
+    showPanel('reset-password');
+  }
+
+  function goToResetDone(){
+    showPanel('reset-complete');
+  }
+
   try{
     const paper = detectPaper();
     const user = (window.TomatoAuth && TomatoAuth.currentUser) ? TomatoAuth.currentUser() : null;
-    if (user){
+    if (user && !isResetMode()){
       location.replace('../' + paper + '/index.html');
       return;
     }
   }catch(_e){}
 
+  function bindClick(id, handler){
+    const el = document.getElementById(id);
+    if (!el || el.__wired) return;
+    el.__wired = true;
+    el.addEventListener('click', handler);
+  }
+
   function wireLogin(){
+    const paper = detectPaper();
+    try{ localStorage.setItem('tomato_active_paper_v1', paper); }catch(_e){}
+
     const form = document.getElementById('loginForm');
     if (form && !form.__wired){
       form.__wired = true;
@@ -1039,7 +1339,6 @@
 
         try{
           await TomatoAuth.login({ email, password, remember });
-          const paper = detectPaper();
           window.location.href = './mypage.html?paper=' + encodeURIComponent(paper);
         }catch(err){
           alert(err?.message || 'ログインに失敗しました。入力内容をご確認ください。');
@@ -1047,21 +1346,66 @@
       });
     }
 
-    const forgot = document.getElementById('forgotPasswordLink');
-    if (forgot && !forgot.__wired){
-      forgot.__wired = true;
-      forgot.addEventListener('click', function(ev){
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    if (forgotForm && !forgotForm.__wired){
+      forgotForm.__wired = true;
+      forgotForm.addEventListener('submit', async function(ev){
         ev.preventDefault();
-        alert('パスワード再設定（仮）');
+        const email = String(document.getElementById('forgotEmail')?.value || '').trim();
+        try{
+          await TomatoAuth.requestPasswordReset(email, paper);
+          goToForgotSent(email);
+        }catch(err){
+          alert(err?.message || 'パスワード再設定メールの送信に失敗しました。');
+        }
       });
     }
 
+    const resetForm = document.getElementById('resetPasswordForm');
+    if (resetForm && !resetForm.__wired){
+      resetForm.__wired = true;
+      resetForm.addEventListener('submit', async function(ev){
+        ev.preventDefault();
+        const password = String(document.getElementById('resetPassword')?.value || '');
+        const passwordConfirm = String(document.getElementById('resetPasswordConfirm')?.value || '');
+        try{
+          await TomatoAuth.confirmPasswordReset({
+            login: searchParam('login'),
+            key: searchParam('key'),
+            password: password,
+            password_confirm: passwordConfirm,
+            paper: paper
+          });
+          goToResetDone();
+        }catch(err){
+          alert(err?.message || 'パスワードの再設定に失敗しました。');
+        }
+      });
+    }
+
+    bindClick('forgotPasswordLink', function(ev){
+      ev.preventDefault();
+      goToForgot();
+    });
+    bindClick('backToLoginFromForgot', function(ev){ ev.preventDefault(); goToLogin(); });
+    bindClick('backToLoginFromSent', function(ev){ ev.preventDefault(); goToLogin(); });
+    bindClick('backToLoginFromReset', function(ev){ ev.preventDefault(); goToLogin(); });
+    bindClick('backToLoginFromResetDone', function(ev){ ev.preventDefault(); goToLogin(); });
+    bindClick('backToLoginLink', function(ev){ ev.preventDefault(); goToLogin(); });
+    bindClick('goToLoginAfterReset', function(ev){
+      ev.preventDefault();
+      window.location.href = './login.html?paper=' + encodeURIComponent(paper);
+    });
+
     const register = document.getElementById('registerLink');
     if (register){
-      const paper = detectPaper();
-      // Keep existing relative link, just ensure paper is preserved
-      const base = './register.html';
-      register.setAttribute('href', base + '?paper=' + encodeURIComponent(paper));
+      register.setAttribute('href', './register.html?paper=' + encodeURIComponent(paper));
+    }
+
+    if (isResetMode()) {
+      goToReset();
+    } else {
+      goToLogin();
     }
   }
 
