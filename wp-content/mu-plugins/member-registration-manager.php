@@ -716,6 +716,11 @@ HTML;
 
         private function build_account_login_url($paper) {
             $paper = $this->sanitize_paper_slug($paper);
+            $frontend_base = $this->detect_frontend_base_url();
+            if ($frontend_base) {
+                return trailingslashit($frontend_base) . 'static/account/login.html';
+            }
+
             $host = wp_parse_url(home_url(), PHP_URL_HOST);
             $home = trailingslashit(home_url('/'));
             if (!$host) {
@@ -731,6 +736,52 @@ HTML;
             }
 
             return 'https://' . $paper . '.agrinews.jp/static/account/login.html';
+        }
+
+        private function detect_frontend_base_url() {
+            $candidates = array();
+
+            if (!empty($_SERVER['HTTP_ORIGIN'])) {
+                $candidates[] = wp_unslash($_SERVER['HTTP_ORIGIN']);
+            }
+
+            if (!empty($_SERVER['HTTP_REFERER'])) {
+                $candidates[] = wp_unslash($_SERVER['HTTP_REFERER']);
+            }
+
+            if (!empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+                $proto = !empty($_SERVER['HTTP_X_FORWARDED_PROTO']) ? wp_unslash($_SERVER['HTTP_X_FORWARDED_PROTO']) : 'https';
+                $host = trim(wp_unslash($_SERVER['HTTP_X_FORWARDED_HOST']));
+                if ($host) {
+                    $candidates[] = $proto . '://' . $host;
+                }
+            }
+
+            foreach ($candidates as $candidate) {
+                $candidate = trim((string) $candidate);
+                if ($candidate === '') {
+                    continue;
+                }
+
+                $parts = wp_parse_url($candidate);
+                if (empty($parts['host'])) {
+                    continue;
+                }
+
+                $host = strtolower((string) $parts['host']);
+                if (!preg_match('/(^|\.)agrinews\.jp$/i', $host)) {
+                    continue;
+                }
+
+                $scheme = !empty($parts['scheme']) ? strtolower((string) $parts['scheme']) : 'https';
+                if ($scheme !== 'http' && $scheme !== 'https') {
+                    $scheme = 'https';
+                }
+
+                return $scheme . '://' . $host;
+            }
+
+            return '';
         }
 
         private function render_template_for_preview(array $paper_settings, $paper) {
