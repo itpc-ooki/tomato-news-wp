@@ -15,7 +15,7 @@
 
 
   /* =====================================================================
-   * JA部会アンケート: early-safe initializer
+   * 産地データ大全: early-safe initializer
    * - page-survey is data-driven from /static/{paper}/survey.json
    * - define this early so later unrelated runtime errors do not block survey
    * ===================================================================== */
@@ -117,7 +117,7 @@
         `<div class="association-tile-img">${
           image
             ? `<img src="${escapeHtmlLocal(image)}" alt="${escapeHtmlLocal(title)}" loading="lazy">`
-            : `<div class="association-tile-placeholder">JA部会アンケート</div>`
+            : `<div class="association-tile-placeholder">産地データ大全</div>`
         }</div>` +
         `<div class="association-tile-overlay">` +
           `<div class="association-tile-prefecture">${escapeHtmlLocal(prefectureName)}</div>` +
@@ -593,14 +593,14 @@ function renderGraphItems(items) {
       const seasonLabel = requestedSeason === "winter" ? "冬春" : (requestedSeason === "summer" ? "夏秋" : "");
       const heading = [requestedYear ? requestedYear + "年" : "", seasonLabel].filter(Boolean).join(" ") || "選択中の条件";
 
-      if (pageTitle) pageTitle.textContent = "JA部会アンケート結果";
+      if (pageTitle) pageTitle.textContent = "産地データ大全";
       if (pageSubtitle) pageSubtitle.textContent = heading + " のTOPデータはまだありません。";
       if (heroTitle) heroTitle.textContent = heading + " のデータ準備中";
-      if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する JA部会アンケートTOP が見つかりませんでした。";
+      if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する産地データTOPが見つかりませんでした。";
       if (totalProducers) totalProducers.textContent = "—";
       if (responseRate) responseRate.textContent = "—";
       if (root) {
-        root.innerHTML = '<div class="survey-top-empty">選択された年度・シーズンに一致する JA部会アンケートTOP データがありません。</div>';
+        root.innerHTML = '<div class="survey-top-empty">選択された年度・シーズンに一致する産地データTOPデータがありません。</div>';
       }
     }
 
@@ -651,7 +651,7 @@ function renderGraphItems(items) {
           if (section) section.style.display = "";
           if (empty) {
             empty.hidden = false;
-            empty.textContent = "JA部会アンケートのデータがまだありません。";
+            empty.textContent = "産地データ大全のデータがまだありません。";
           }
           return;
         }
@@ -689,13 +689,13 @@ function renderGraphItems(items) {
 
         rerender();
       } catch (error) {
-        console.error("[JA部会アンケート] render failed:", error);
+        console.error("[産地データ大全] render failed:", error);
         const section = document.getElementById("associationSection");
         const empty = document.getElementById("associationEmptyMessage");
         if (section) section.style.display = "";
         if (empty) {
           empty.hidden = false;
-          empty.textContent = "JA部会アンケートの読み込みに失敗しました。survey.json を確認してください。";
+          empty.textContent = "産地データ大全の読み込みに失敗しました。survey.json を確認してください。";
         }
       }
     }
@@ -1248,14 +1248,14 @@ function renderGraphItems(items) {
       const seasonLabel = requestedSeason === "winter" ? "冬春" : (requestedSeason === "summer" ? "夏秋" : "");
       const heading = [requestedYear ? requestedYear + "年" : "", seasonLabel].filter(Boolean).join(" ") || "選択中の条件";
 
-      if (pageTitle) pageTitle.textContent = "JA部会アンケート結果";
+      if (pageTitle) pageTitle.textContent = "産地データ大全";
       if (pageSubtitle) pageSubtitle.textContent = heading + " のTOPデータはまだありません。";
       if (heroTitle) heroTitle.textContent = heading + " のデータ準備中";
-      if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する JA部会アンケートTOP が見つかりませんでした。";
+      if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する産地データTOPが見つかりませんでした。";
       if (totalProducers) totalProducers.textContent = "—";
       if (responseRate) responseRate.textContent = "—";
       if (root) {
-        root.innerHTML = '<div class="survey-top-empty">選択された年度・シーズンに一致する JA部会アンケートTOP データがありません。</div>';
+        root.innerHTML = '<div class="survey-top-empty">選択された年度・シーズンに一致する産地データTOPデータがありません。</div>';
       }
     }
 
@@ -6827,7 +6827,7 @@ if (typeof window.switchPestTab !== "function") {
   }
 
   /* =====================================================================
-   * JA部会アンケート: survey.json から動的表示
+   * 産地データ大全: survey.json から動的表示
    * - Source: /static/{paper}/survey.json
    * - 都道府県プルダウン、地域別都道府県一覧、部会一覧を動的生成
    * - 既存の静的HTMLは残し、該当DOMがある場合のみ動作
@@ -6936,7 +6936,7 @@ if (typeof window.switchPestTab !== "function") {
         `<div class="association-tile-img">${
           image
             ? `<img src="${escapeHtmlLocal(image)}" alt="${escapeHtmlLocal(title)}" loading="lazy">`
-            : `<div class="association-tile-placeholder">JA部会アンケート</div>`
+            : `<div class="association-tile-placeholder">産地データ大全</div>`
         }</div>` +
         `<div class="association-tile-overlay">` +
           `<div class="association-tile-prefecture">${escapeHtmlLocal(prefectureName)}</div>` +
@@ -7412,14 +7412,14 @@ function renderGraphItems(items) {
       const seasonLabel = requestedSeason === "winter" ? "冬春" : (requestedSeason === "summer" ? "夏秋" : "");
       const heading = [requestedYear ? requestedYear + "年" : "", seasonLabel].filter(Boolean).join(" ") || "選択中の条件";
 
-      if (pageTitle) pageTitle.textContent = "JA部会アンケート結果";
+      if (pageTitle) pageTitle.textContent = "産地データ大全";
       if (pageSubtitle) pageSubtitle.textContent = heading + " のTOPデータはまだありません。";
       if (heroTitle) heroTitle.textContent = heading + " のデータ準備中";
-      if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する JA部会アンケートTOP が見つかりませんでした。";
+      if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する産地データTOPが見つかりませんでした。";
       if (totalProducers) totalProducers.textContent = "—";
       if (responseRate) responseRate.textContent = "—";
       if (root) {
-        root.innerHTML = '<div class="survey-top-empty">選択された年度・シーズンに一致する JA部会アンケートTOP データがありません。</div>';
+        root.innerHTML = '<div class="survey-top-empty">選択された年度・シーズンに一致する産地データTOPデータがありません。</div>';
       }
     }
 
@@ -7469,7 +7469,7 @@ function renderGraphItems(items) {
           if (section) section.style.display = "";
           if (empty) {
             empty.hidden = false;
-            empty.textContent = "JA部会アンケートのデータがまだありません。";
+            empty.textContent = "産地データ大全のデータがまだありません。";
           }
           return;
         }
@@ -7504,13 +7504,13 @@ function renderGraphItems(items) {
 
         rerender();
       } catch (error) {
-        console.error("[JA部会アンケート] render failed:", error);
+        console.error("[産地データ大全] render failed:", error);
         const section = document.getElementById("associationSection");
         const empty = document.getElementById("associationEmptyMessage");
         if (section) section.style.display = "";
         if (empty) {
           empty.hidden = false;
-          empty.textContent = "JA部会アンケートの読み込みに失敗しました。survey.json を確認してください。";
+          empty.textContent = "産地データ大全の読み込みに失敗しました。survey.json を確認してください。";
         }
       }
     }

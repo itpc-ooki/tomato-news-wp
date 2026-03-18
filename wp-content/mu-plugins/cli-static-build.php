@@ -1346,8 +1346,8 @@ $list[] = [
     self::build_menu_json($paper);
 
     // survey.json
-    // - Dedicated dataset for JA部会アンケート page
-    // - Source: normal posts whose 記事タイプ contains "JA部会アンケート"
+    // - Dedicated dataset for 産地データ大全 page
+    // - Source: normal posts whose 記事タイプ contains "産地データ大全"
     $survey_list = [];
     foreach ($list as $item) {
       if (!is_array($item)) continue;
@@ -1361,9 +1361,9 @@ $list[] = [
         : [];
 
       $is_survey = false;
-      if ($article_type_name === 'JA部会アンケート') {
+      if ($article_type_name === '産地データ大全') {
         $is_survey = true;
-      } elseif (in_array('JA部会アンケート', $article_type_names, true)) {
+      } elseif (in_array('産地データ大全', $article_type_names, true)) {
         $is_survey = true;
       } elseif (in_array('survey', $article_type_slugs, true)) {
         $is_survey = true;
