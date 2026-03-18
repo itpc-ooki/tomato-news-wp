@@ -215,7 +215,6 @@
       const normalized = normalizeApiRoot(root);
       if (!normalized) return;
       addUrl(normalized + '/tomato-members/v1/register');
-      addUrl(normalized + '/member-registration/v1/register');
     }
 
     function addCmsUrl(cmsUrl){
@@ -232,7 +231,6 @@
         addRoot(sameOrigin + '/wp-json');
       }
       addUrl('/wp-json/tomato-members/v1/register');
-      addUrl('/wp-json/member-registration/v1/register');
     }catch(_e){}
 
     try{
@@ -332,7 +330,6 @@
       const root = normalizeCmsUrl(origin);
       if (!root) return;
       add(root + '/wp-json/tomato-members/v1/register');
-      add(root + '/wp-json/member-registration/v1/register');
     });
 
     return urls.filter(function(url){
