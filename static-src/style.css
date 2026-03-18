@@ -1673,7 +1673,8 @@ footer{
       padding:20px 0;}
 }
 .main{ max-width:1400px; margin:0 auto; padding:20px;}
-.page-header{ margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid var(--border);}
+.page-header{ display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid var(--border);}
+.page-header-content{ flex:1; min-width:0;}
 .page-title{ font-size:1.75rem; font-weight:700; margin-bottom:8px;}
 .page-desc{ font-size:0.875rem; color:var(--muted); margin:0;}
 .controls{
@@ -1758,6 +1759,7 @@ footer{
     .pagination{
       padding-left: 15px;
       padding-right: 15px;}
+  .page-header{ flex-direction:column; align-items:flex-start; gap:12px;}
   .page-title{ font-size:1.5rem; margin-bottom:6px;}
   .controls{ grid-template-columns:1fr; gap:12px; padding:12px 15px; margin-bottom:15px;}
 
