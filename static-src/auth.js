@@ -94,6 +94,42 @@
     return value.replace(/\/$/, '');
   }
 
+  function normalizeBase64Url(value){
+    return String(value || '').trim().replace(/-/g, '+').replace(/_/g, '/');
+  }
+
+  function decodeCmsHint(value){
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+
+    try{
+      const decoded = decodeURIComponent(raw);
+      if (/^https?:\/\//i.test(decoded)) {
+        return normalizeCmsUrl(decoded);
+      }
+    }catch(_e){}
+
+    try{
+      const normalized = normalizeBase64Url(raw);
+      const padding = normalized.length % 4;
+      const padded = padding ? normalized + '='.repeat(4 - padding) : normalized;
+      const decoded = atob(padded);
+      if (/^https?:\/\//i.test(decoded)) {
+        return normalizeCmsUrl(decoded);
+      }
+    }catch(_e){}
+
+    return '';
+  }
+
+  function getQueryCmsHint(searchParams){
+    try{
+      const sp = searchParams instanceof URLSearchParams ? searchParams : new URLSearchParams(window.location.search || '');
+      return decodeCmsHint(sp.get('cms_hint') || '');
+    }catch(_e){}
+    return '';
+  }
+
   function isStaticFrontendHost(hostname){
     const host = String(hostname || '').trim().toLowerCase();
     if (!host) return false;
@@ -136,7 +172,7 @@
     try{
       const sp = new URLSearchParams(window.location.search || '');
       const apiRoot = normalizeApiRoot(sp.get('api_root') || sp.get('wp_api_root') || '');
-      const cmsUrl = normalizeCmsUrl(sp.get('cms_url') || sp.get('cms_origin') || '');
+      const cmsUrl = normalizeCmsUrl(getQueryCmsHint(sp) || sp.get('cms_url') || sp.get('cms_origin') || '');
       if (apiRoot) localStorage.setItem('tomato_auth_api_root_v1', apiRoot);
       if (cmsUrl) localStorage.setItem('tomato_auth_cms_url_v1', cmsUrl);
     }catch(_e){}
@@ -169,7 +205,7 @@
 
     try{
       const sp = new URLSearchParams(window.location.search || '');
-      add(sp.get('cms_url') || sp.get('cms_origin') || '');
+      add(getQueryCmsHint(sp) || sp.get('cms_url') || sp.get('cms_origin') || '');
     }catch(_e){}
 
     try{
@@ -258,7 +294,7 @@
     try{
       const sp = new URLSearchParams(window.location.search || '');
       const apiRoot = sp.get('api_root') || sp.get('wp_api_root') || '';
-      const cmsUrl = sp.get('cms_url') || sp.get('cms_origin') || '';
+      const cmsUrl = getQueryCmsHint(sp) || sp.get('cms_url') || sp.get('cms_origin') || '';
       if (apiRoot) addRoot(apiRoot);
       if (cmsUrl) addCmsUrl(cmsUrl);
     }catch(_e){}
@@ -323,7 +359,7 @@
     try{
       const sp = new URLSearchParams(window.location.search || '');
       const apiRoot = sp.get('api_root') || sp.get('wp_api_root') || '';
-      const cmsUrl = sp.get('cms_url') || sp.get('cms_origin') || '';
+      const cmsUrl = getQueryCmsHint(sp) || sp.get('cms_url') || sp.get('cms_origin') || '';
       if (apiRoot) addRoot(apiRoot);
       if (cmsUrl) addCmsUrl(cmsUrl);
     }catch(_e){}
@@ -349,7 +385,7 @@
 
     try{
       const sp = new URLSearchParams(window.location.search || '');
-      add(sp.get('cms_url') || sp.get('cms_origin') || '');
+      add(getQueryCmsHint(sp) || sp.get('cms_url') || sp.get('cms_origin') || '');
     }catch(_e){}
 
     try{
@@ -917,7 +953,7 @@
 
     const result = await submitMemberEndpoint('tomato-members/v1/password-reset/confirm', payload, {
       actionLabel: 'パスワード再設定',
-      allowFormFallback: false,
+      allowFormFallback: true,
       timeoutMs: 4500,
       noCandidateMessage: 'パスワード再設定APIの送信先が見つかりません。'
     });

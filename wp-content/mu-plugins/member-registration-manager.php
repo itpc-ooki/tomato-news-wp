@@ -705,13 +705,22 @@ HTML;
             $paper = $this->sanitize_paper_slug($paper);
             $base_url = $this->build_account_login_url($paper);
             $query = array(
-                'paper'    => $paper,
-                'mode'     => 'reset',
-                'login'    => $user->user_login,
-                'key'      => $reset_key,
-                'cms_url'  => home_url(),
+                'paper'     => $paper,
+                'mode'      => 'reset',
+                'login'     => $user->user_login,
+                'key'       => $reset_key,
+                'cms_hint'  => $this->encode_frontend_cms_hint(home_url()),
             );
             return add_query_arg($query, $base_url);
+        }
+
+        private function encode_frontend_cms_hint($url) {
+            $normalized = untrailingslashit((string) $url);
+            if ($normalized === '') {
+                return '';
+            }
+
+            return rtrim(strtr(base64_encode($normalized), '+/', '-_'), '=');
         }
 
         private function build_account_login_url($paper) {
