@@ -8073,3 +8073,48 @@ Desktop header nav auto-fit (single line)
     setup();
   }
 })();
+
+(function () {
+  function isSharedAccountPage() {
+    return window.location.pathname.includes('/static/account/');
+  }
+
+  function getPaper() {
+    try {
+      const sp = new URLSearchParams(window.location.search || "");
+      return sp.get("paper") || "tomato";
+    } catch (e) {
+      return "tomato";
+    }
+  }
+
+  function applyFavicon() {
+    if (!isSharedAccountPage()) return;
+
+    const paper = getPaper();
+    const href = `/static/${paper}/assets/images/favicon.ico`;
+
+    document.querySelectorAll("link[rel='icon'], link[rel='shortcut icon']").forEach(function (el) {
+      el.remove();
+    });
+
+    const icon = document.createElement("link");
+    icon.rel = "icon";
+    icon.href = href;
+    icon.type = "image/x-icon";
+
+    const shortcut = document.createElement("link");
+    shortcut.rel = "shortcut icon";
+    shortcut.href = href;
+    shortcut.type = "image/x-icon";
+
+    document.head.appendChild(icon);
+    document.head.appendChild(shortcut);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", applyFavicon);
+  } else {
+    applyFavicon();
+  }
+})();
