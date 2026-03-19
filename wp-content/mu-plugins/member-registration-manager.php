@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Member Registration Manager
  * Description: WordPress-backed member registration with per-paper registration email templates, preview, test send, logging, and safer paper detection.
- * Version: 2.0.0
+ * Version: 2.1.0
  */
 
 if (!defined('ABSPATH')) {
@@ -17,6 +17,10 @@ if (!class_exists('Member_Registration_Manager')) {
         const META_PREFIX = 'tomato_member_';
         const LOG_LIMIT = 100;
         const MENU_SLUG = 'member-registration-mail-settings';
+        const MEMBERS_MENU_SLUG = 'member-registration-members';
+        const AUTH_TOKEN_HASH_META_KEY = 'tomato_member_auth_token_hash';
+        const AUTH_TOKEN_EXPIRES_META_KEY = 'tomato_member_auth_token_expires';
+        const AUTH_TOKEN_TTL = 2592000;
 
         private $mail_diagnostics = array();
 
@@ -46,6 +50,24 @@ if (!class_exists('Member_Registration_Manager')) {
                 'callback'            => array($this, 'handle_password_reset_confirm'),
                 'permission_callback' => '__return_true',
             ));
+
+            register_rest_route('tomato-members/v1', '/login', array(
+                'methods'             => 'POST',
+                'callback'            => array($this, 'handle_login'),
+                'permission_callback' => '__return_true',
+            ));
+
+            register_rest_route('tomato-members/v1', '/me', array(
+                'methods'             => 'POST',
+                'callback'            => array($this, 'handle_me'),
+                'permission_callback' => '__return_true',
+            ));
+
+            register_rest_route('tomato-members/v1', '/profile', array(
+                'methods'             => 'POST',
+                'callback'            => array($this, 'handle_profile'),
+                'permission_callback' => '__return_true',
+            ));
         }
 
         public function register_admin_menu() {
@@ -56,10 +78,35 @@ if (!class_exists('Member_Registration_Manager')) {
                 self::MENU_SLUG,
                 array($this, 'render_admin_page')
             );
+
+            add_users_page(
+                '会員情報一覧',
+                '会員情報一覧',
+                'list_users',
+                self::MEMBERS_MENU_SLUG,
+                array($this, 'render_members_page')
+            );
         }
 
         public function handle_admin_actions() {
-            if (!is_admin() || !current_user_can('manage_options')) {
+            if (!is_admin()) {
+                return;
+            }
+
+            if (!empty($_GET['page']) && $_GET['page'] === self::MEMBERS_MENU_SLUG && !empty($_GET['member_registration_export_csv'])) {
+                if (!$this->current_user_can_manage_members()) {
+                    return;
+                }
+                check_admin_referer('member_registration_export_csv');
+                $paper = isset($_GET['paper']) ? wp_unslash($_GET['paper']) : '';
+                $search = isset($_GET['s']) ? wp_unslash($_GET['s']) : '';
+                $this->export_members_csv(array(
+                    'paper'  => $paper,
+                    'search' => $search,
+                ));
+            }
+
+            if (!current_user_can('manage_options')) {
                 return;
             }
 
@@ -344,6 +391,328 @@ if (!class_exists('Member_Registration_Manager')) {
             <?php
         }
 
+
+        public function render_members_page() {
+            if (!$this->current_user_can_manage_members()) {
+                return;
+            }
+
+            $paper_filter = isset($_GET['paper']) ? $this->sanitize_member_filter_paper(wp_unslash($_GET['paper'])) : '';
+            $search_filter = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
+            $paged = isset($_GET['paged']) ? max(1, absint($_GET['paged'])) : 1;
+            $per_page = 50;
+
+            $result = $this->get_registered_members(array(
+                'paper'    => $paper_filter,
+                'search'   => $search_filter,
+                'paged'    => $paged,
+                'per_page' => $per_page,
+            ));
+
+            $export_url = wp_nonce_url(add_query_arg(array(
+                'page'                           => self::MEMBERS_MENU_SLUG,
+                'paper'                          => $paper_filter,
+                's'                              => $search_filter,
+                'member_registration_export_csv' => '1',
+            ), admin_url('users.php')), 'member_registration_export_csv');
+
+            $base_url = add_query_arg(array(
+                'page'  => self::MEMBERS_MENU_SLUG,
+                'paper' => $paper_filter,
+                's'     => $search_filter,
+            ), admin_url('users.php'));
+            ?>
+            <div class="wrap">
+                <h1>会員情報一覧</h1>
+                <p>フロントエンド会員登録から作成されたユーザー情報を確認できます。絞り込み結果をCSVでダウンロードすることもできます。</p>
+
+                <form method="get" action="" style="margin:16px 0 20px;">
+                    <input type="hidden" name="page" value="<?php echo esc_attr(self::MEMBERS_MENU_SLUG); ?>">
+                    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                        <div>
+                            <label for="member-paper-filter" style="display:block; font-weight:600; margin-bottom:4px;">紙面</label>
+                            <select id="member-paper-filter" name="paper">
+                                <option value="">すべて</option>
+                                <?php foreach ($this->get_papers() as $paper) : ?>
+                                    <option value="<?php echo esc_attr($paper); ?>" <?php selected($paper_filter, $paper); ?>><?php echo esc_html($this->get_paper_label($paper)); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="member-search-filter" style="display:block; font-weight:600; margin-bottom:4px;">検索</label>
+                            <input id="member-search-filter" type="search" name="s" value="<?php echo esc_attr($search_filter); ?>" placeholder="メールアドレス / ニックネーム / 都道府県 など" class="regular-text">
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <?php submit_button('絞り込む', 'secondary', '', false); ?>
+                            <a href="<?php echo esc_url($export_url); ?>" class="button button-primary">CSVダウンロード</a>
+                        </div>
+                    </div>
+                </form>
+
+                <p>対象件数: <strong><?php echo esc_html(number_format_i18n($result['total'])); ?></strong> 件</p>
+
+                <?php if (empty($result['items'])) : ?>
+                    <div class="notice notice-info"><p>該当する会員情報はありません。</p></div>
+                <?php else : ?>
+                    <table class="widefat striped" style="margin-top:12px;">
+                        <thead>
+                            <tr>
+                                <th style="width:70px;">ID</th>
+                                <th style="width:140px;">登録日時</th>
+                                <th style="width:110px;">紙面</th>
+                                <th style="width:160px;">メールアドレス</th>
+                                <th style="width:120px;">ニックネーム</th>
+                                <th style="width:80px;">性別</th>
+                                <th style="width:100px;">都道府県</th>
+                                <th style="width:120px;">市町村</th>
+                                <th style="width:120px;">職業</th>
+                                <th style="width:110px;">営農規模</th>
+                                <th style="width:120px;">栽培品目1</th>
+                                <th style="width:120px;">栽培品目2</th>
+                                <th style="width:140px;">今後栽培したい品目</th>
+                                <th>興味・関心</th>
+                                <th style="width:110px;">情報配信</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($result['items'] as $item) : ?>
+                                <tr>
+                                    <td><?php echo esc_html($item['id']); ?></td>
+                                    <td><?php echo esc_html($item['registered_at']); ?></td>
+                                    <td><?php echo esc_html($item['paper_label']); ?></td>
+                                    <td><a href="mailto:<?php echo esc_attr($item['email']); ?>"><?php echo esc_html($item['email']); ?></a></td>
+                                    <td><?php echo esc_html($item['nickname']); ?></td>
+                                    <td><?php echo esc_html($item['gender']); ?></td>
+                                    <td><?php echo esc_html($item['prefecture']); ?></td>
+                                    <td><?php echo esc_html($item['city']); ?></td>
+                                    <td><?php echo esc_html($item['occupation']); ?></td>
+                                    <td><?php echo esc_html($item['farm_scale']); ?></td>
+                                    <td><?php echo esc_html($item['crop_1']); ?></td>
+                                    <td><?php echo esc_html($item['crop_2']); ?></td>
+                                    <td><?php echo esc_html($item['future_crop']); ?></td>
+                                    <td><?php echo esc_html($item['interests']); ?></td>
+                                    <td><?php echo esc_html($item['newsletter_preference']); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+
+                    <?php
+                    $total_pages = max(1, (int) ceil($result['total'] / $per_page));
+                    if ($total_pages > 1) {
+                        echo '<div class="tablenav"><div class="tablenav-pages" style="margin:12px 0 0;">';
+                        echo wp_kses_post(paginate_links(array(
+                            'base'      => add_query_arg('paged', '%#%', $base_url),
+                            'format'    => '',
+                            'current'   => $paged,
+                            'total'     => $total_pages,
+                            'prev_text' => '«',
+                            'next_text' => '»',
+                        )));
+                        echo '</div></div>';
+                    }
+                    ?>
+                <?php endif; ?>
+            </div>
+            <?php
+        }
+
+        private function current_user_can_manage_members() {
+            return current_user_can('list_users') || current_user_can('manage_options');
+        }
+
+        private function sanitize_member_filter_paper($paper) {
+            $paper = sanitize_key((string) $paper);
+            if ($paper === '') {
+                return '';
+            }
+
+            $papers = $this->get_papers();
+            return in_array($paper, $papers, true) ? $paper : '';
+        }
+
+        private function get_registered_members(array $args = array()) {
+            $paper = isset($args['paper']) ? $this->sanitize_member_filter_paper($args['paper']) : '';
+            $search = isset($args['search']) ? sanitize_text_field($args['search']) : '';
+            $paged = isset($args['paged']) ? max(1, (int) $args['paged']) : 1;
+            $per_page = isset($args['per_page']) ? max(1, (int) $args['per_page']) : 50;
+
+            $users = get_users(array(
+                'number'  => -1,
+                'orderby' => 'registered',
+                'order'   => 'DESC',
+                'fields'  => 'all',
+            ));
+
+            $items = array();
+            foreach ($users as $user) {
+                if (!$this->is_registered_member_user($user)) {
+                    continue;
+                }
+
+                $row = $this->build_member_row($user);
+
+                if ($paper !== '' && $row['paper'] !== $paper) {
+                    continue;
+                }
+
+                if ($search !== '' && !$this->member_row_matches_search($row, $search)) {
+                    continue;
+                }
+
+                $items[] = $row;
+            }
+
+            $total = count($items);
+            $offset = ($paged - 1) * $per_page;
+            $paged_items = array_slice($items, $offset, $per_page);
+
+            return array(
+                'items' => $paged_items,
+                'total' => $total,
+            );
+        }
+
+        private function is_registered_member_user($user) {
+            if (!($user instanceof WP_User)) {
+                return false;
+            }
+
+            $user_id = (int) $user->ID;
+            if ($user_id <= 0) {
+                return false;
+            }
+
+            $meta_keys = array(
+                self::META_PREFIX . 'paper',
+                self::META_PREFIX . 'nickname',
+                self::META_PREFIX . 'gender',
+                self::META_PREFIX . 'prefecture',
+                self::META_PREFIX . 'city',
+                self::META_PREFIX . 'occupation',
+                self::META_PREFIX . 'farm_scale',
+                self::META_PREFIX . 'crop_1',
+                self::META_PREFIX . 'crop_2',
+                self::META_PREFIX . 'future_crop',
+                self::META_PREFIX . 'interests',
+                self::META_PREFIX . 'newsletter_preference',
+            );
+
+            foreach ($meta_keys as $meta_key) {
+                $value = get_user_meta($user_id, $meta_key, true);
+                if (is_array($value) && !empty($value)) {
+                    return true;
+                }
+                if (!is_array($value) && $value !== '' && $value !== null) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private function build_member_row(WP_User $user) {
+            $user_id = (int) $user->ID;
+            $paper = $this->sanitize_paper_slug(get_user_meta($user_id, self::META_PREFIX . 'paper', true));
+            if ($paper === '') {
+                $paper = 'tomato';
+            }
+            $interests = get_user_meta($user_id, self::META_PREFIX . 'interests', true);
+            if (!is_array($interests)) {
+                $interests = array_filter(array_map('trim', explode(',', (string) $interests)));
+            }
+
+            return array(
+                'id'                    => $user_id,
+                'registered_at'         => mysql2date('Y-m-d H:i:s', $user->user_registered, false),
+                'paper'                 => $paper,
+                'paper_label'           => $this->get_paper_label($paper),
+                'email'                 => (string) $user->user_email,
+                'nickname'              => (string) get_user_meta($user_id, self::META_PREFIX . 'nickname', true),
+                'gender'                => (string) get_user_meta($user_id, self::META_PREFIX . 'gender', true),
+                'prefecture'            => (string) get_user_meta($user_id, self::META_PREFIX . 'prefecture', true),
+                'city'                  => (string) get_user_meta($user_id, self::META_PREFIX . 'city', true),
+                'occupation'            => (string) get_user_meta($user_id, self::META_PREFIX . 'occupation', true),
+                'farm_scale'            => (string) get_user_meta($user_id, self::META_PREFIX . 'farm_scale', true),
+                'crop_1'                => (string) get_user_meta($user_id, self::META_PREFIX . 'crop_1', true),
+                'crop_2'                => (string) get_user_meta($user_id, self::META_PREFIX . 'crop_2', true),
+                'future_crop'           => (string) get_user_meta($user_id, self::META_PREFIX . 'future_crop', true),
+                'interests'             => implode('、', array_map('strval', $interests)),
+                'newsletter_preference' => (string) get_user_meta($user_id, self::META_PREFIX . 'newsletter_preference', true),
+            );
+        }
+
+        private function member_row_matches_search(array $row, $search) {
+            $needle = function_exists('mb_strtolower') ? mb_strtolower((string) $search) : strtolower((string) $search);
+            foreach ($row as $value) {
+                if (is_array($value)) {
+                    $value = implode(' ', array_map('strval', $value));
+                }
+                $haystack = function_exists('mb_strtolower') ? mb_strtolower((string) $value) : strtolower((string) $value);
+                if ($needle !== '' && strpos($haystack, $needle) !== false) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private function export_members_csv(array $args = array()) {
+            $result = $this->get_registered_members(array(
+                'paper'    => isset($args['paper']) ? $args['paper'] : '',
+                'search'   => isset($args['search']) ? $args['search'] : '',
+                'paged'    => 1,
+                'per_page' => PHP_INT_MAX,
+            ));
+
+            $filename = 'member-accounts-' . current_time('Ymd-His') . '.csv';
+
+            nocache_headers();
+            header('Content-Type: text/csv; charset=UTF-8');
+            header('Content-Disposition: attachment; filename=' . $filename);
+
+            $output = fopen('php://output', 'w');
+            if ($output === false) {
+                exit;
+            }
+
+            fwrite($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            $columns = $this->get_member_csv_columns();
+            fputcsv($output, array_values($columns));
+
+            foreach ($result['items'] as $item) {
+                $row = array();
+                foreach (array_keys($columns) as $key) {
+                    $row[] = isset($item[$key]) ? $item[$key] : '';
+                }
+                fputcsv($output, $row);
+            }
+
+            fclose($output);
+            exit;
+        }
+
+        private function get_member_csv_columns() {
+            return array(
+                'id'                    => 'ID',
+                'registered_at'         => '登録日時',
+                'paper'                 => '紙面スラッグ',
+                'paper_label'           => '紙面名',
+                'email'                 => 'メールアドレス',
+                'nickname'              => 'ニックネーム',
+                'gender'                => '性別',
+                'prefecture'            => '都道府県',
+                'city'                  => '市町村',
+                'occupation'            => '職業',
+                'farm_scale'            => '営農規模',
+                'crop_1'                => '栽培品目（1品目目）',
+                'crop_2'                => '栽培品目（2品目目）',
+                'future_crop'           => '今後栽培したい品目',
+                'interests'             => '興味・関心',
+                'newsletter_preference' => '情報配信の希望',
+            );
+        }
+
         public function handle_register(WP_REST_Request $request) {
             $params = $request->get_json_params();
             if (!is_array($params)) {
@@ -404,30 +773,17 @@ if (!class_exists('Member_Registration_Manager')) {
             update_user_meta($user_id, self::META_PREFIX . 'paper', $paper);
 
             $email_result = $this->send_registration_email($user_id, $paper, 'register');
+            $token_bundle = $this->issue_auth_token($user_id);
+            $user_payload = $this->build_member_user_payload(get_userdata($user_id), $paper);
 
             return new WP_REST_Response(array(
                 'success'       => true,
                 'message'       => '会員登録が完了しました。',
                 'email_sent'    => !empty($email_result['success']),
                 'email_message' => isset($email_result['message']) ? $email_result['message'] : '',
-                'user'          => array(
-                    'id'                    => (int) $user_id,
-                    'email'                 => $email,
-                    'nickname'              => $nickname,
-                    'gender'                => (string) $profile[self::META_PREFIX . 'gender'],
-                    'prefecture'            => (string) $profile[self::META_PREFIX . 'prefecture'],
-                    'city'                  => (string) $profile[self::META_PREFIX . 'city'],
-                    'occupation'            => (string) $profile[self::META_PREFIX . 'occupation'],
-                    'farm_scale'            => (string) $profile[self::META_PREFIX . 'farm_scale'],
-                    'crop_1'                => (string) $profile[self::META_PREFIX . 'crop_1'],
-                    'crop_2'                => (string) $profile[self::META_PREFIX . 'crop_2'],
-                    'future_crop'           => (string) $profile[self::META_PREFIX . 'future_crop'],
-                    'interests'             => isset($profile[self::META_PREFIX . 'interests']) ? (array) $profile[self::META_PREFIX . 'interests'] : array(),
-                    'newsletter_preference' => (string) $profile[self::META_PREFIX . 'newsletter_preference'],
-                    'paper'                 => $paper,
-                    'created_at'            => current_time('c'),
-                    'updated_at'            => current_time('c'),
-                ),
+                'token'         => $token_bundle['token'],
+                'token_expires' => $token_bundle['expires'],
+                'user'          => $user_payload,
             ), 200);
         }
 
@@ -527,16 +883,253 @@ if (!class_exists('Member_Registration_Manager')) {
                 'message' => 'パスワード再設定に成功しました。',
             ));
 
+            $token_bundle = $this->issue_auth_token($user_id);
+
+            return new WP_REST_Response(array(
+                'success'       => true,
+                'message'       => 'パスワードを再設定しました。',
+                'token'         => $token_bundle['token'],
+                'token_expires' => $token_bundle['expires'],
+                'user'          => $this->build_member_user_payload($user, $paper),
+            ), 200);
+        }
+
+        public function handle_login(WP_REST_Request $request) {
+            $params = $request->get_json_params();
+            if (!is_array($params)) {
+                $params = $request->get_params();
+            }
+
+            $email = sanitize_email(isset($params['email']) ? $params['email'] : '');
+            $password = isset($params['password']) ? (string) $params['password'] : '';
+            $paper = $this->resolve_paper($params, $request);
+
+            if (!$email || !$password) {
+                return new WP_REST_Response(array('success' => false, 'message' => 'メールアドレスとパスワードを入力してください。'), 400);
+            }
+
+            $user = get_user_by('email', $email);
+            if (!$user || !$user instanceof WP_User || !wp_check_password($password, $user->user_pass, $user->ID)) {
+                return new WP_REST_Response(array('success' => false, 'message' => 'メールアドレスまたはパスワードが違います。'), 401);
+            }
+
+            if (!$this->is_member_user($user)) {
+                return new WP_REST_Response(array('success' => false, 'message' => '会員ログイン対象外のアカウントです。'), 403);
+            }
+
+            $stored_paper = get_user_meta((int) $user->ID, self::META_PREFIX . 'paper', true);
+            if ($stored_paper) {
+                $paper = $this->sanitize_paper_slug($stored_paper);
+            }
+
+            $token_bundle = $this->issue_auth_token((int) $user->ID);
+
+            return new WP_REST_Response(array(
+                'success'       => true,
+                'message'       => 'ログインしました。',
+                'token'         => $token_bundle['token'],
+                'token_expires' => $token_bundle['expires'],
+                'user'          => $this->build_member_user_payload($user, $paper),
+            ), 200);
+        }
+
+        public function handle_me(WP_REST_Request $request) {
+            $user = $this->authenticate_member_from_request($request);
+            if (is_wp_error($user)) {
+                return new WP_REST_Response(array('success' => false, 'message' => $user->get_error_message()), 401);
+            }
+
+            $paper = get_user_meta((int) $user->ID, self::META_PREFIX . 'paper', true);
+            if (!$paper) {
+                $paper = $this->resolve_paper($request->get_params(), $request);
+            }
+
             return new WP_REST_Response(array(
                 'success' => true,
-                'message' => 'パスワードを再設定しました。',
-                'user'    => array(
-                    'id'       => $user_id,
-                    'email'    => $user->user_email,
-                    'nickname' => $nickname,
-                    'paper'    => $paper,
-                ),
+                'user'    => $this->build_member_user_payload($user, $paper),
             ), 200);
+        }
+
+        public function handle_profile(WP_REST_Request $request) {
+            $user = $this->authenticate_member_from_request($request);
+            if (is_wp_error($user)) {
+                return new WP_REST_Response(array('success' => false, 'message' => $user->get_error_message()), 401);
+            }
+
+            $params = $request->get_json_params();
+            if (!is_array($params)) {
+                $params = $request->get_params();
+            }
+
+            $user_id = (int) $user->ID;
+            $email = sanitize_email(isset($params['email']) ? $params['email'] : $user->user_email);
+            if (!$email) {
+                return new WP_REST_Response(array('success' => false, 'message' => 'メールアドレスを入力してください。'), 400);
+            }
+
+            $existing = get_user_by('email', $email);
+            if ($existing instanceof WP_User && (int) $existing->ID !== $user_id) {
+                return new WP_REST_Response(array('success' => false, 'message' => 'このメールアドレスは既に使用されています。'), 409);
+            }
+
+            $nickname = sanitize_text_field(isset($params['nickname']) ? $params['nickname'] : get_user_meta($user_id, self::META_PREFIX . 'nickname', true));
+            $password = isset($params['password']) ? (string) $params['password'] : '';
+            $password_confirm = isset($params['password_confirm']) ? (string) $params['password_confirm'] : '';
+
+            if ($password !== '' || $password_confirm !== '') {
+                if ($password !== $password_confirm) {
+                    return new WP_REST_Response(array('success' => false, 'message' => 'パスワードが一致しません。'), 400);
+                }
+                if (!$this->password_pattern_ok($password)) {
+                    return new WP_REST_Response(array('success' => false, 'message' => 'パスワードはアルファベット大文字・小文字、数字を含む8文字以上20字以内で入力してください。'), 400);
+                }
+            }
+
+            $userdata = array(
+                'ID'           => $user_id,
+                'user_email'   => $email,
+                'display_name' => $nickname ? $nickname : $email,
+                'nickname'     => $nickname,
+            );
+            if ($password !== '') {
+                $userdata['user_pass'] = $password;
+            }
+
+            $updated_user_id = wp_update_user($userdata);
+            if (is_wp_error($updated_user_id)) {
+                return new WP_REST_Response(array('success' => false, 'message' => $updated_user_id->get_error_message()), 500);
+            }
+
+            $profile = $this->extract_profile_fields($params);
+            foreach ($profile as $meta_key => $value) {
+                update_user_meta($user_id, $meta_key, $value);
+            }
+
+            $paper = $this->resolve_paper($params, $request);
+            update_user_meta($user_id, self::META_PREFIX . 'paper', $paper);
+
+            return new WP_REST_Response(array(
+                'success' => true,
+                'message' => '会員情報を更新しました。',
+                'user'    => $this->build_member_user_payload(get_userdata($user_id), $paper),
+            ), 200);
+        }
+
+        private function extract_bearer_token(WP_REST_Request $request) {
+            $header = '';
+            if (method_exists($request, 'get_header')) {
+                $header = (string) $request->get_header('authorization');
+                if ($header === '') {
+                    $header = (string) $request->get_header('Authorization');
+                }
+            }
+            if ($header === '' && isset($_SERVER['HTTP_AUTHORIZATION'])) {
+                $header = (string) $_SERVER['HTTP_AUTHORIZATION'];
+            }
+            if ($header === '' && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+                $header = (string) $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+            }
+
+            if ($header && preg_match('/Bearer\s+(.+)/i', $header, $matches)) {
+                return trim($matches[1]);
+            }
+
+            return '';
+        }
+
+        private function authenticate_member_from_request(WP_REST_Request $request) {
+            $token = $this->extract_bearer_token($request);
+            if ($token === '') {
+                return new WP_Error('member_auth_required', 'ログインが必要です。');
+            }
+
+            $user = null;
+            $found = get_users(array(
+                'meta_key'    => self::AUTH_TOKEN_HASH_META_KEY,
+                'number'      => -1,
+                'count_total' => false,
+                'fields'      => 'all',
+            ));
+            foreach ($found as $candidate) {
+                $hash = (string) get_user_meta((int) $candidate->ID, self::AUTH_TOKEN_HASH_META_KEY, true);
+                if ($hash && wp_check_password($token, $hash, (int) $candidate->ID)) {
+                    $user = $candidate;
+                    break;
+                }
+            }
+
+            if (!$user instanceof WP_User || !$this->is_member_user($user)) {
+                return new WP_Error('member_auth_invalid', 'ログイン状態を確認できませんでした。');
+            }
+
+            $expires = (int) get_user_meta((int) $user->ID, self::AUTH_TOKEN_EXPIRES_META_KEY, true);
+            if ($expires <= 0 || $expires < time()) {
+                return new WP_Error('member_auth_expired', 'ログインの有効期限が切れています。もう一度ログインしてください。');
+            }
+
+            return $user;
+        }
+
+        private function issue_auth_token($user_id) {
+            $token = wp_generate_password(48, false, false);
+            $expires = time() + self::AUTH_TOKEN_TTL;
+            update_user_meta($user_id, self::AUTH_TOKEN_HASH_META_KEY, wp_hash_password($token));
+            update_user_meta($user_id, self::AUTH_TOKEN_EXPIRES_META_KEY, $expires);
+
+            return array(
+                'token'   => $token,
+                'expires' => gmdate('c', $expires),
+            );
+        }
+
+        private function is_member_user($user) {
+            if (!$user instanceof WP_User) {
+                return false;
+            }
+
+            $paper = get_user_meta((int) $user->ID, self::META_PREFIX . 'paper', true);
+            if ($paper !== '') {
+                return true;
+            }
+
+            $roles = is_array($user->roles) ? $user->roles : array();
+            return in_array('subscriber', $roles, true);
+        }
+
+        private function build_member_user_payload($user, $paper = '') {
+            if (!$user instanceof WP_User) {
+                return array();
+            }
+
+            $user_id = (int) $user->ID;
+            $resolved_paper = $paper ? $this->sanitize_paper_slug($paper) : $this->sanitize_paper_slug(get_user_meta($user_id, self::META_PREFIX . 'paper', true));
+            if ($resolved_paper === '') {
+                $resolved_paper = 'tomato';
+            }
+
+            $nickname = get_user_meta($user_id, self::META_PREFIX . 'nickname', true);
+            if ($nickname === '') {
+                $nickname = $user->display_name ? $user->display_name : $user->user_email;
+            }
+
+            return array(
+                'id'                    => $user_id,
+                'email'                 => $user->user_email,
+                'nickname'              => (string) $nickname,
+                'gender'                => (string) get_user_meta($user_id, self::META_PREFIX . 'gender', true),
+                'prefecture'            => (string) get_user_meta($user_id, self::META_PREFIX . 'prefecture', true),
+                'city'                  => (string) get_user_meta($user_id, self::META_PREFIX . 'city', true),
+                'occupation'            => (string) get_user_meta($user_id, self::META_PREFIX . 'occupation', true),
+                'farm_scale'            => (string) get_user_meta($user_id, self::META_PREFIX . 'farm_scale', true),
+                'crop_1'                => (string) get_user_meta($user_id, self::META_PREFIX . 'crop_1', true),
+                'crop_2'                => (string) get_user_meta($user_id, self::META_PREFIX . 'crop_2', true),
+                'future_crop'           => (string) get_user_meta($user_id, self::META_PREFIX . 'future_crop', true),
+                'interests'             => array_values(array_filter((array) get_user_meta($user_id, self::META_PREFIX . 'interests', true), 'strlen')),
+                'newsletter_preference' => (string) get_user_meta($user_id, self::META_PREFIX . 'newsletter_preference', true),
+                'paper'                 => $resolved_paper,
+                'created_at'            => get_date_from_gmt($user->user_registered, 'c'),
+                'updated_at'            => current_time('c'),
+            );
         }
 
         private function send_test_email($paper, $to) {

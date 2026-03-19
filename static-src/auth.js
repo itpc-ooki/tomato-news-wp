@@ -4,9 +4,8 @@
  * - Registration is submitted to WordPress REST API when available
  */
 (function(global){
-  const USERS_KEY = 'tomato_users_v1';
-  const SESSION_LOCAL_KEY = 'tomato_session_email_v1';
-  const SESSION_SESSION_KEY = 'tomato_session_email_session_v1';
+  const AUTH_TOKEN_KEY = 'tomato_member_auth_token_v1';
+  const CURRENT_USER_KEY = 'tomato_member_current_user_v1';
 
   function nowIso(){ return new Date().toISOString(); }
 
@@ -16,18 +15,44 @@
     }catch(_e){}
   }
 
-  function loadUsers(){
+  function readJsonStorage(key){
     try{
-      const raw = localStorage.getItem(USERS_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
     }catch(_e){
-      return [];
+      return null;
     }
   }
 
-  function saveUsers(users){
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  function getCachedCurrentUser(){
+    const user = readJsonStorage(CURRENT_USER_KEY);
+    return user && typeof user === 'object' ? user : null;
+  }
+
+  function getAuthToken(){
+    try{
+      return String(localStorage.getItem(AUTH_TOKEN_KEY) || '').trim();
+    }catch(_e){}
+    return '';
+  }
+
+  function setAuthSession(token, user){
+    if (token) {
+      try{ localStorage.setItem(AUTH_TOKEN_KEY, String(token)); }catch(_e){}
+    }
+    if (user && typeof user === 'object') {
+      try{ localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user)); }catch(_e){}
+      try {
+        if (user.paper) localStorage.setItem('tomato_active_paper_v1', String(user.paper));
+      } catch (_e) {}
+    }
+    dispatchAuthChanged();
+  }
+
+  function clearAuthSession(){
+    try{ localStorage.removeItem(AUTH_TOKEN_KEY); }catch(_e){}
+    try{ localStorage.removeItem(CURRENT_USER_KEY); }catch(_e){}
+    dispatchAuthChanged();
   }
 
   function normalizeEmail(email){
@@ -41,40 +66,8 @@
     return bytes.map(b => b.toString(16).padStart(2,'0')).join('');
   }
 
-  function getSessionEmail(){
-    return localStorage.getItem(SESSION_LOCAL_KEY) || sessionStorage.getItem(SESSION_SESSION_KEY) || '';
-  }
-
-  // ✅ FIX: Always persist so login state is shared across pages/tabs
-  function setSessionEmail(email, remember){
-    const e = normalizeEmail(email);
-    localStorage.removeItem(SESSION_LOCAL_KEY);
-    sessionStorage.removeItem(SESSION_SESSION_KEY);
-    if (!e) return;
-
-    // Always persist for consistent behavior across pages/tabs
-    localStorage.setItem(SESSION_LOCAL_KEY, e);
-
-    // Optional: keep sessionStorage too when remember is false
-    if (!remember){
-      sessionStorage.setItem(SESSION_SESSION_KEY, e);
-    }
-
-    dispatchAuthChanged();
-  }
-
-
   function logout(){
-    localStorage.removeItem(SESSION_LOCAL_KEY);
-    sessionStorage.removeItem(SESSION_SESSION_KEY);
-
-    dispatchAuthChanged();
-  }
-
-
-  function findUserByEmail(users, email){
-    const e = normalizeEmail(email);
-    return users.find(u => normalizeEmail(u.email) === e) || null;
+    clearAuthSession();
   }
 
   function passwordPatternOk(pw){
@@ -597,15 +590,23 @@
     for (let i = 0; i < candidates.length; i++) {
       const apiUrl = candidates[i];
       try{
-        const response = await fetchWithTimeout(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify(payload || {})
-        }, timeoutMs);
+        const headers = Object.assign({
+          'Accept': 'application/json'
+        }, opts.headers || {});
+        const method = String(opts.method || 'POST').toUpperCase();
+        const requestOptions = {
+          method: method,
+          headers: headers,
+          credentials: 'include'
+        };
+        if (method !== 'GET') {
+          if (!headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+          }
+          requestOptions.body = JSON.stringify(payload || {});
+        }
+
+        const response = await fetchWithTimeout(apiUrl, requestOptions, timeoutMs);
 
         const parsed = await parseResponseBody(response);
         apiData = parsed.json;
@@ -796,11 +797,6 @@
       throw new Error('パスワードはアルファベット大文字・小文字、数字を含む8文字以上20字以内で入力してください。');
     }
 
-    const users = loadUsers();
-    if (findUserByEmail(users, email)) {
-      throw new Error('このメールアドレスは既に登録されています。');
-    }
-
     const interests = formData.getAll('interest')?.length ? formData.getAll('interest')
                     : formData.getAll('interests'); // support both names
     const newsletterPreference = String(formData.get('newsletter_preference') || '希望する');
@@ -895,9 +891,8 @@
 
     const returnedUser = apiData && apiData.user ? apiData.user : {};
     const user = {
-      id: returnedUser.id ? 'wp_' + String(returnedUser.id) : ('u_' + Math.random().toString(36).slice(2, 10)),
-      email,
-      passwordHash: await sha256Hex(password),
+      id: returnedUser.id || '',
+      email: String(returnedUser.email || email),
       nickname: String(returnedUser.nickname || payload.nickname || ''),
       gender: String(returnedUser.gender || payload.gender || ''),
       prefecture: String(returnedUser.prefecture || payload.prefecture || ''),
@@ -914,13 +909,7 @@
       updated_at: String(returnedUser.updated_at || nowIso())
     };
 
-    try {
-      localStorage.setItem('tomato_active_paper_v1', String(user.paper || paper || 'tomato'));
-    } catch (_e) {}
-
-    users.push(user);
-    saveUsers(users);
-    setSessionEmail(email, true);
+    setAuthSession(apiData && apiData.token ? apiData.token : '', user);
     return user;
   }
 
@@ -959,41 +948,20 @@
     });
 
     if (result && result.success && result.user && result.user.email) {
-      const users = loadUsers();
-      const email = normalizeEmail(result.user.email);
-      const idx = users.findIndex(function(u){ return normalizeEmail(u && u.email) === email; });
-      const passwordHash = await sha256Hex(payload.password);
-      if (idx >= 0) {
-        users[idx] = Object.assign({}, users[idx], {
-          email: email,
-          passwordHash: passwordHash,
-          nickname: String(result.user.nickname || users[idx].nickname || ''),
-          paper: String(result.user.paper || users[idx].paper || payload.paper || 'tomato'),
-          updated_at: nowIso()
-        });
-      } else {
-        users.push({
-          id: result.user.id ? 'wp_' + String(result.user.id) : ('u_' + Math.random().toString(36).slice(2, 10)),
-          email: email,
-          passwordHash: passwordHash,
-          nickname: String(result.user.nickname || ''),
-          gender: '',
-          prefecture: '',
-          city: '',
-          occupation: '',
-          farm_scale: '',
-          crop_1: '',
-          crop_2: '',
-          future_crop: '',
-          interests: [],
-          newsletter_preference: '希望する',
-          paper: String(result.user.paper || payload.paper || 'tomato'),
-          created_at: nowIso(),
-          updated_at: nowIso()
-        });
-      }
-      saveUsers(users);
-      setSessionEmail(email, true);
+      const user = Object.assign({
+        gender: '',
+        prefecture: '',
+        city: '',
+        occupation: '',
+        farm_scale: '',
+        crop_1: '',
+        crop_2: '',
+        future_crop: '',
+        interests: [],
+        newsletter_preference: '希望する',
+        updated_at: nowIso()
+      }, result.user || {});
+      setAuthSession(result.token || '', user);
     }
 
     return result;
@@ -1004,22 +972,46 @@
     const pw = String(password || '');
     if (!e || !pw) throw new Error('メールアドレスとパスワードを入力してください。');
 
-    const users = loadUsers();
-    const user = findUserByEmail(users, e);
-    if (!user) throw new Error('メールアドレスまたはパスワードが違います。');
+    const result = await submitMemberEndpoint('tomato-members/v1/login', {
+      email: e,
+      password: pw,
+      paper: detectActivePaper(),
+      remember: !!remember
+    }, {
+      actionLabel: 'ログイン',
+      timeoutMs: 4500,
+      noCandidateMessage: 'ログインAPIの送信先が見つかりません。'
+    });
 
-    const hash = await sha256Hex(pw);
-    if (hash !== user.passwordHash) throw new Error('メールアドレスまたはパスワードが違います。');
+    if (!result || !result.success || !result.user || !result.token) {
+      throw new Error('ログインに失敗しました。入力内容をご確認ください。');
+    }
 
-    setSessionEmail(e, !!remember);
-    return user;
+    setAuthSession(result.token, result.user);
+    return result.user;
   }
 
   function currentUser(){
-    const email = getSessionEmail();
-    if (!email) return null;
-    const users = loadUsers();
-    return findUserByEmail(users, email);
+    return getCachedCurrentUser();
+  }
+
+  async function refreshCurrentUser(){
+    const token = getAuthToken();
+    if (!token) return null;
+    const result = await submitMemberEndpoint('tomato-members/v1/me', {}, {
+      actionLabel: '会員情報取得',
+      timeoutMs: 4500,
+      noCandidateMessage: '会員情報取得APIの送信先が見つかりません。',
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    if (!result || !result.success || !result.user) {
+      clearAuthSession();
+      return null;
+    }
+    setAuthSession(token, result.user);
+    return result.user;
   }
 
   function requireLogin(loginPath){
@@ -1080,11 +1072,8 @@
 
   async function updateProfileFromMypageForm(form){
     const user = currentUser();
-    if (!user) throw new Error('ログインが必要です。');
-
-    const users = loadUsers();
-    const idx = users.findIndex(u => normalizeEmail(u.email) === normalizeEmail(user.email));
-    if (idx < 0) throw new Error('ユーザーが見つかりません。');
+    const token = getAuthToken();
+    if (!user || !token) throw new Error('ログインが必要です。');
 
     const email = normalizeEmail(form.querySelector('[name="email"]')?.value);
     const nickname = String(form.querySelector('[name="nickname"]')?.value || '');
@@ -1098,24 +1087,18 @@
     const future_crop = String(form.querySelector('[name="future_crop"]')?.value || '');
     const interests = Array.from(form.querySelectorAll('input[name="interests"]:checked')).map(n => n.value);
     const newsletter_preference = String(form.querySelector('input[name="newsletter_preference"]:checked')?.value || '希望する');
-
-    if (!email) throw new Error('メールアドレスを入力してください。');
-
-    const other = users.find(u => normalizeEmail(u.email) === email && u.id !== users[idx].id);
-    if (other) throw new Error('このメールアドレスは既に使用されています。');
-
     const pw = String(form.querySelector('[name="password"]')?.value || '');
     const pwc = String(form.querySelector('[name="password_confirm"]')?.value || '');
-    if (pw || pwc){
-      if (pw !== pwc) throw new Error('パスワードが一致しません。');
-      if (!passwordPatternOk(pw)){
-        throw new Error('パスワードはアルファベット大文字・小文字、数字を含む8文字以上20字以内で入力してください。');
-      }
-      users[idx].passwordHash = await sha256Hex(pw);
+
+    if (!email) throw new Error('メールアドレスを入力してください。');
+    if ((pw || pwc) && pw !== pwc) {
+      throw new Error('パスワードが一致しません。');
+    }
+    if ((pw || pwc) && !passwordPatternOk(pw)){
+      throw new Error('パスワードはアルファベット大文字・小文字、数字を含む8文字以上20字以内で入力してください。');
     }
 
-    users[idx] = {
-      ...users[idx],
+    const payload = {
       email,
       nickname,
       gender,
@@ -1128,20 +1111,35 @@
       future_crop,
       interests,
       newsletter_preference,
-      updated_at: nowIso()
+      paper: String(user.paper || detectActivePaper() || 'tomato')
     };
+    if (pw) {
+      payload.password = pw;
+      payload.password_confirm = pwc;
+    }
 
-    saveUsers(users);
+    const result = await submitMemberEndpoint('tomato-members/v1/profile', payload, {
+      actionLabel: '会員情報更新',
+      timeoutMs: 4500,
+      noCandidateMessage: '会員情報更新APIの送信先が見つかりません。',
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    });
 
-    const remember = !!localStorage.getItem(SESSION_LOCAL_KEY);
-    setSessionEmail(email, remember);
-    return users[idx];
+    if (!result || !result.success || !result.user) {
+      throw new Error('保存に失敗しました。');
+    }
+
+    setAuthSession(token, result.user);
+    return result.user;
   }
 
   global.TomatoAuth = {
     login,
     logout,
     currentUser,
+    refreshCurrentUser,
     requireLogin,
     registerFromFormData,
     requestPasswordReset,
@@ -1149,6 +1147,12 @@
     prefillMypageForm,
     updateProfileFromMypageForm
   };
+
+  try {
+    if (getAuthToken() && !getCachedCurrentUser()) {
+      refreshCurrentUser().catch(function(){ clearAuthSession(); });
+    }
+  } catch (_e) {}
 })(window);
 
 
@@ -1509,7 +1513,7 @@
 /* mypage.html behaviors (moved from mypage.html)
    - Requires login
    - Prefills profile form
-   - Saves updates back to localStorage
+   - Saves updates via WordPress REST API
 */
 (function(){
   function initMypage(){
@@ -1605,16 +1609,8 @@
 
   // If already logged in, block access to register and redirect to paper top
   try{
-    var USERS_KEY='tomato_users_v1';
-    var SESSION_LOCAL_KEY='tomato_session_email_v1';
-    var SESSION_SESSION_KEY='tomato_session_email_session_v1';
-    var email=(localStorage.getItem(SESSION_LOCAL_KEY)||sessionStorage.getItem(SESSION_SESSION_KEY)||'').trim().toLowerCase();
-    if(email){
-      var raw=localStorage.getItem(USERS_KEY)||'[]';
-      var users=JSON.parse(raw); if(!Array.isArray(users)) users=[];
-      var ok=users.some(function(u){ return (String(u && u.email || '').trim().toLowerCase()===email); });
-      if(ok) location.replace(window.__paperTop());
-    }
+    var currentUser = (window.TomatoAuth && typeof window.TomatoAuth.currentUser === 'function') ? window.TomatoAuth.currentUser() : null;
+    if (currentUser) location.replace(window.__paperTop());
   }catch(_e){}
 
 var currentStep = 1;
@@ -1919,7 +1915,7 @@ var currentStep = 1;
             var formEl = document.getElementById('registrationForm');
             var formData = new FormData(formEl);
 
-            // LocalStorageへ登録／更新（デモ実装）
+            // WordPress REST API へ登録／更新
             var isEditMode = !!window.__REGISTER_EDIT_MODE__;
             var p = isEditMode
                 ? TomatoAuth.updateProfileFromMypageForm(formEl)
