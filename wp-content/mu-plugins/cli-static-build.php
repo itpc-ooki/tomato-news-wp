@@ -1819,6 +1819,7 @@ $list[] = [
     self::ensure_dir($static_paper_root);
 
     $article_types = [];
+    $article_type_details = [];
     $article_type_terms = get_terms([
       'taxonomy' => 'article_type',
       'hide_empty' => false,
@@ -1829,6 +1830,11 @@ $list[] = [
       foreach ($article_type_terms as $term) {
         if ($term instanceof WP_Term && isset($term->name) && $term->name !== '') {
           $article_types[] = (string) $term->name;
+          $article_type_details[] = [
+            'name' => (string) $term->name,
+            'slug' => isset($term->slug) ? (string) $term->slug : '',
+            'description' => isset($term->description) ? (string) $term->description : '',
+          ];
         }
       }
     }
@@ -1865,6 +1871,7 @@ $list[] = [
 
     $payload = [
       'article_types' => array_values(array_unique(array_filter($article_types))),
+      'article_type_details' => array_values($article_type_details),
       'regions' => array_values(array_unique(array_filter($regions))),
       'variety_categories' => array_values(array_unique(array_filter($variety_categories))),
     ];

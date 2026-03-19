@@ -1676,7 +1676,8 @@ footer{
 .page-header{ display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid var(--border);}
 .page-header-content{ flex:1; min-width:0;}
 .page-title{ font-size:1.75rem; font-weight:700; margin-bottom:8px;}
-.page-desc{ font-size:0.875rem; color:var(--muted); margin:0;}
+.page-term-description{ margin:0 0 8px; color:var(--text,#1f2937); line-height:1.8; white-space:pre-line;}
+.page-desc{ font-size:0.785rem; color:var(--muted); margin:0;}
 .controls{
     display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center;
     margin-bottom:20px; padding:15px 20px; background:#f8f9fa;}

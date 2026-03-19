@@ -2110,7 +2110,7 @@ function shouldSkipHref(href) {
     return el;
   }
 
-  function updateListSearchHeader(filters, total) {
+  function updateListSearchHeader(filters, total, master) {
     const titleEl = document.querySelector('.page-header .page-title');
     const descEl = document.querySelector('.page-header .page-desc');
     const hasFilters = !!(
@@ -2124,8 +2124,41 @@ function shouldSkipHref(href) {
         filters.member_scope
       )
     );
-    if (titleEl) titleEl.textContent = hasFilters ? '検索結果' : '記事一覧';
-    if (descEl) descEl.textContent = buildArchiveSearchSummary(filters, total);
+    const selectedArticleType = String(filters && filters.article_type || '').trim();
+    const pageHeaderContent = document.querySelector('.page-header .page-header-content');
+    let termDescEl = pageHeaderContent ? pageHeaderContent.querySelector('.page-term-description') : null;
+
+    if (pageHeaderContent && !termDescEl && titleEl) {
+      termDescEl = document.createElement('p');
+      termDescEl.className = 'page-term-description';
+      titleEl.insertAdjacentElement('afterend', termDescEl);
+    }
+
+    if (titleEl) {
+      titleEl.textContent = selectedArticleType ? selectedArticleType : (hasFilters ? '検索結果' : '記事一覧');
+    }
+
+    if (termDescEl) {
+      const detail = master && master.article_type_details && master.article_type_details[selectedArticleType]
+        ? master.article_type_details[selectedArticleType]
+        : null;
+      const description = String(detail && detail.description || '').trim();
+      if (selectedArticleType && description) {
+        termDescEl.textContent = description;
+        termDescEl.style.display = '';
+      } else {
+        termDescEl.textContent = '';
+        termDescEl.style.display = 'none';
+      }
+    }
+
+    if (descEl) {
+      if (hasFilters) {
+        descEl.textContent = buildArchiveSearchSummary(filters, total);
+      } else {
+        descEl.textContent = 'トマト新聞の最新記事をカテゴリー別にご覧いただけます。';
+      }
+    }
   }
 
   function toggleArchiveEmptyState(total) {
@@ -2202,8 +2235,21 @@ function shouldSkipHref(href) {
       ? src.variety_categories
       : fallback.variety_categories;
 
+    const articleTypeDetails = {};
+    const rawDetails = Array.isArray(src.article_type_details) ? src.article_type_details : [];
+    rawDetails.forEach(function (item) {
+      const name = String(item && item.name || '').trim();
+      if (!name) return;
+      articleTypeDetails[name] = {
+        name: name,
+        slug: String(item && item.slug || '').trim(),
+        description: String(item && item.description || '').trim()
+      };
+    });
+
     return {
       article_types: Array.from(new Set(articleTypes.concat(fallback.article_types))),
+      article_type_details: articleTypeDetails,
       regions: Array.from(new Set(ARCHIVE_REGION_ORDER.concat(regions))),
       variety_categories: Array.from(new Set(varietyCategories.concat(fallback.variety_categories)))
     };
@@ -5187,12 +5233,13 @@ async function loadAndRenderPlacementsJson(paper) {
       // Update active state of category filter tabs based on current URL
       updateListFilterTabsActive(filters.article_type);
       const all = Array.isArray(posts) ? posts : [];
+      const master = await loadArchiveFilterMaster(paper, all);
       const filtered = filterArchivePosts(all, filters);
 
       __listAllPosts = filtered;
       __listPerPage = perPage;
 
-      updateListSearchHeader(filters, filtered.length);
+      updateListSearchHeader(filters, filtered.length, master);
 
       const sortSelect = document.querySelector('.sort-select');
       if (sortSelect && !sortSelect.dataset.archiveSortBound) {
