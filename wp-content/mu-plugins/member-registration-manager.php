@@ -21,16 +21,22 @@ if (!class_exists('Member_Registration_Manager')) {
         const AUTH_TOKEN_HASH_META_KEY = 'tomato_member_auth_token_hash';
         const AUTH_TOKEN_EXPIRES_META_KEY = 'tomato_member_auth_token_expires';
         const AUTH_TOKEN_TTL = 2592000;
+        const MEMBERS_TABLE = 'members';
+        const MIGRATION_OPTION_KEY = 'member_registration_members_migrated';
+        const RESET_TOKEN_HASH_COLUMN = 'reset_token_hash';
+        const RESET_TOKEN_EXPIRES_COLUMN = 'reset_token_expires';
 
         private $mail_diagnostics = array();
-
         public function __construct() {
             add_action('rest_api_init', array($this, 'register_rest_routes'));
             add_action('admin_menu', array($this, 'register_admin_menu'));
             add_action('admin_init', array($this, 'handle_admin_actions'));
+            add_action('admin_init', array($this, 'maybe_setup_members_storage'));
+            add_action('rest_api_init', array($this, 'maybe_setup_members_storage'));
             add_action('wp_mail_failed', array($this, 'capture_wp_mail_failed'), 10, 1);
             add_action('phpmailer_init', array($this, 'capture_phpmailer_diagnostics'));
         }
+
 
         public function register_rest_routes() {
             register_rest_route('tomato-members/v1', '/register', array(
@@ -392,6 +398,335 @@ if (!class_exists('Member_Registration_Manager')) {
         }
 
 
+
+        public function maybe_setup_members_storage() {
+            $this->ensure_members_table();
+            $this->maybe_migrate_legacy_members();
+        }
+
+        private function get_members_table_name() {
+            global $wpdb;
+            return $wpdb->prefix . self::MEMBERS_TABLE;
+        }
+
+        private function ensure_members_table() {
+            global $wpdb;
+
+            $table = $this->get_members_table_name();
+            $charset_collate = $wpdb->get_charset_collate();
+
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+            $sql = "CREATE TABLE {$table} (
+                id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+                email VARCHAR(190) NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                nickname VARCHAR(191) NOT NULL DEFAULT '',
+                gender VARCHAR(50) NOT NULL DEFAULT '',
+                prefecture VARCHAR(100) NOT NULL DEFAULT '',
+                city VARCHAR(100) NOT NULL DEFAULT '',
+                occupation VARCHAR(100) NOT NULL DEFAULT '',
+                farm_scale VARCHAR(100) NOT NULL DEFAULT '',
+                crop_1 VARCHAR(191) NOT NULL DEFAULT '',
+                crop_2 VARCHAR(191) NOT NULL DEFAULT '',
+                future_crop VARCHAR(191) NOT NULL DEFAULT '',
+                interests LONGTEXT NULL,
+                newsletter_preference VARCHAR(100) NOT NULL DEFAULT '',
+                paper VARCHAR(100) NOT NULL DEFAULT '',
+                auth_token_hash VARCHAR(255) NOT NULL DEFAULT '',
+                auth_token_expires BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+                reset_token_hash VARCHAR(255) NOT NULL DEFAULT '',
+                reset_token_expires BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+                legacy_wp_user_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                PRIMARY KEY  (id),
+                UNIQUE KEY email (email),
+                KEY paper (paper),
+                KEY auth_token_expires (auth_token_expires),
+                KEY reset_token_expires (reset_token_expires),
+                KEY legacy_wp_user_id (legacy_wp_user_id)
+            ) {$charset_collate};";
+
+            dbDelta($sql);
+        }
+
+        private function maybe_migrate_legacy_members() {
+            if (get_option(self::MIGRATION_OPTION_KEY)) {
+                return;
+            }
+
+            $this->migrate_legacy_members();
+            update_option(self::MIGRATION_OPTION_KEY, current_time('mysql'), false);
+        }
+
+        private function migrate_legacy_members() {
+            if (!function_exists('wp_delete_user')) {
+                require_once ABSPATH . 'wp-admin/includes/user.php';
+            }
+
+            $users = get_users(array(
+                'number'  => -1,
+                'orderby' => 'ID',
+                'order'   => 'ASC',
+                'fields'  => 'all',
+            ));
+
+            foreach ($users as $user) {
+                if (!$this->is_registered_member_user($user)) {
+                    continue;
+                }
+
+                $row = $this->build_member_row_from_wp_user($user);
+                if (empty($row['email'])) {
+                    continue;
+                }
+
+                $existing = $this->get_member_by_email($row['email']);
+                if (!$existing) {
+                    $inserted = $this->insert_member(array(
+                        'email'                 => $row['email'],
+                        'password_hash'         => (string) $user->user_pass,
+                        'nickname'              => $row['nickname'],
+                        'gender'                => $row['gender'],
+                        'prefecture'            => $row['prefecture'],
+                        'city'                  => $row['city'],
+                        'occupation'            => $row['occupation'],
+                        'farm_scale'            => $row['farm_scale'],
+                        'crop_1'                => $row['crop_1'],
+                        'crop_2'                => $row['crop_2'],
+                        'future_crop'           => $row['future_crop'],
+                        'interests'             => $this->normalize_interests_for_storage($row['interests_array']),
+                        'newsletter_preference' => $row['newsletter_preference'],
+                        'paper'                 => $row['paper'],
+                        'created_at'            => !empty($row['registered_at_mysql']) ? $row['registered_at_mysql'] : current_time('mysql'),
+                        'updated_at'            => current_time('mysql'),
+                        'legacy_wp_user_id'     => (int) $user->ID,
+                    ));
+
+                    if (!$inserted) {
+                        continue;
+                    }
+                }
+
+                wp_delete_user((int) $user->ID);
+            }
+        }
+
+        private function get_member_db_columns() {
+            return array(
+                'email',
+                'password_hash',
+                'nickname',
+                'gender',
+                'prefecture',
+                'city',
+                'occupation',
+                'farm_scale',
+                'crop_1',
+                'crop_2',
+                'future_crop',
+                'interests',
+                'newsletter_preference',
+                'paper',
+                'auth_token_hash',
+                'auth_token_expires',
+                'reset_token_hash',
+                'reset_token_expires',
+                'legacy_wp_user_id',
+                'created_at',
+                'updated_at',
+            );
+        }
+
+        private function sanitize_member_record(array $data) {
+            $sanitized = array();
+            $sanitized['email'] = sanitize_email(isset($data['email']) ? $data['email'] : '');
+            $sanitized['password_hash'] = isset($data['password_hash']) ? (string) $data['password_hash'] : '';
+            $sanitized['nickname'] = sanitize_text_field(isset($data['nickname']) ? $data['nickname'] : '');
+            $sanitized['gender'] = sanitize_text_field(isset($data['gender']) ? $data['gender'] : '');
+            $sanitized['prefecture'] = sanitize_text_field(isset($data['prefecture']) ? $data['prefecture'] : '');
+            $sanitized['city'] = sanitize_text_field(isset($data['city']) ? $data['city'] : '');
+            $sanitized['occupation'] = sanitize_text_field(isset($data['occupation']) ? $data['occupation'] : '');
+            $sanitized['farm_scale'] = sanitize_text_field(isset($data['farm_scale']) ? $data['farm_scale'] : '');
+            $sanitized['crop_1'] = sanitize_text_field(isset($data['crop_1']) ? $data['crop_1'] : '');
+            $sanitized['crop_2'] = sanitize_text_field(isset($data['crop_2']) ? $data['crop_2'] : '');
+            $sanitized['future_crop'] = sanitize_text_field(isset($data['future_crop']) ? $data['future_crop'] : '');
+            $sanitized['interests'] = $this->normalize_interests_for_storage(isset($data['interests']) ? $data['interests'] : array());
+            $sanitized['newsletter_preference'] = sanitize_text_field(isset($data['newsletter_preference']) ? $data['newsletter_preference'] : '');
+            $sanitized['paper'] = $this->sanitize_paper_slug(isset($data['paper']) ? $data['paper'] : '');
+            $sanitized['auth_token_hash'] = isset($data['auth_token_hash']) ? (string) $data['auth_token_hash'] : '';
+            $sanitized['auth_token_expires'] = isset($data['auth_token_expires']) ? (int) $data['auth_token_expires'] : 0;
+            $sanitized['reset_token_hash'] = isset($data['reset_token_hash']) ? (string) $data['reset_token_hash'] : '';
+            $sanitized['reset_token_expires'] = isset($data['reset_token_expires']) ? (int) $data['reset_token_expires'] : 0;
+            $sanitized['legacy_wp_user_id'] = isset($data['legacy_wp_user_id']) ? (int) $data['legacy_wp_user_id'] : 0;
+            $sanitized['created_at'] = isset($data['created_at']) && $data['created_at'] ? (string) $data['created_at'] : current_time('mysql');
+            $sanitized['updated_at'] = isset($data['updated_at']) && $data['updated_at'] ? (string) $data['updated_at'] : current_time('mysql');
+            return $sanitized;
+        }
+
+        private function get_member_db_formats(array $data) {
+            $formats = array();
+            foreach ($data as $key => $value) {
+                if (in_array($key, array('auth_token_expires', 'reset_token_expires', 'legacy_wp_user_id'), true)) {
+                    $formats[] = '%d';
+                } else {
+                    $formats[] = '%s';
+                }
+            }
+            return $formats;
+        }
+
+        private function insert_member(array $data) {
+            global $wpdb;
+            $this->ensure_members_table();
+            $table = $this->get_members_table_name();
+            $sanitized = $this->sanitize_member_record($data);
+            $result = $wpdb->insert($table, $sanitized, $this->get_member_db_formats($sanitized));
+            if ($result === false) {
+                return false;
+            }
+            return (int) $wpdb->insert_id;
+        }
+
+        private function update_member($member_id, array $data) {
+            global $wpdb;
+            $this->ensure_members_table();
+            $table = $this->get_members_table_name();
+            $allowed = array_flip($this->get_member_db_columns());
+            $filtered = array();
+            foreach ($data as $key => $value) {
+                if (isset($allowed[$key])) {
+                    $filtered[$key] = $value;
+                }
+            }
+            if (empty($filtered)) {
+                return true;
+            }
+            $sanitized = $this->sanitize_member_record($filtered + array('updated_at' => current_time('mysql')));
+            $to_update = array();
+            foreach ($filtered as $key => $_) {
+                $to_update[$key] = $sanitized[$key];
+            }
+            if (!isset($to_update['updated_at'])) {
+                $to_update['updated_at'] = current_time('mysql');
+            }
+            return false !== $wpdb->update($table, $to_update, array('id' => (int) $member_id), $this->get_member_db_formats($to_update), array('%d'));
+        }
+
+        private function get_member_by_email($email) {
+            global $wpdb;
+            $this->ensure_members_table();
+            $email = sanitize_email($email);
+            if ($email === '') {
+                return null;
+            }
+            $table = $this->get_members_table_name();
+            return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE email = %s LIMIT 1", $email), ARRAY_A);
+        }
+
+        private function get_member_by_id($member_id) {
+            global $wpdb;
+            $this->ensure_members_table();
+            $table = $this->get_members_table_name();
+            $member_id = (int) $member_id;
+            if ($member_id <= 0) {
+                return null;
+            }
+            return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d LIMIT 1", $member_id), ARRAY_A);
+        }
+
+        private function get_member_by_login_identifier($login) {
+            $login = sanitize_email($login);
+            if ($login === '') {
+                return null;
+            }
+            return $this->get_member_by_email($login);
+        }
+
+        private function find_member_by_auth_token($token) {
+            global $wpdb;
+            $this->ensure_members_table();
+            $table = $this->get_members_table_name();
+            $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE auth_token_expires > %d", time()), ARRAY_A);
+            foreach ((array) $rows as $row) {
+                if (!empty($row['auth_token_hash']) && wp_check_password($token, $row['auth_token_hash'])) {
+                    return $row;
+                }
+            }
+            return null;
+        }
+
+        private function normalize_interests_for_storage($value) {
+            if (is_string($value)) {
+                $decoded = json_decode($value, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $value = $decoded;
+                } else {
+                    $value = array_filter(array_map('trim', explode(',', $value)));
+                }
+            }
+            if (!is_array($value)) {
+                $value = array();
+            }
+            $value = array_values(array_filter(array_map('sanitize_text_field', $value), 'strlen'));
+            return wp_json_encode($value, JSON_UNESCAPED_UNICODE);
+        }
+
+        private function parse_member_interests($value) {
+            if (is_array($value)) {
+                return array_values(array_filter(array_map('strval', $value), 'strlen'));
+            }
+            $decoded = json_decode((string) $value, true);
+            if (is_array($decoded)) {
+                return array_values(array_filter(array_map('strval', $decoded), 'strlen'));
+            }
+            return array_values(array_filter(array_map('trim', explode(',', (string) $value)), 'strlen'));
+        }
+
+        private function build_member_row_from_member(array $member) {
+            $paper = $this->sanitize_paper_slug(isset($member['paper']) ? $member['paper'] : '');
+            if ($paper === '') {
+                $paper = 'tomato';
+            }
+            $interests = $this->parse_member_interests(isset($member['interests']) ? $member['interests'] : '');
+            return array(
+                'id'                    => (int) $member['id'],
+                'registered_at'         => mysql2date('Y-m-d H:i:s', isset($member['created_at']) ? $member['created_at'] : current_time('mysql'), false),
+                'registered_at_mysql'   => isset($member['created_at']) ? $member['created_at'] : current_time('mysql'),
+                'paper'                 => $paper,
+                'paper_label'           => $this->get_paper_label($paper),
+                'email'                 => isset($member['email']) ? (string) $member['email'] : '',
+                'nickname'              => isset($member['nickname']) ? (string) $member['nickname'] : '',
+                'gender'                => isset($member['gender']) ? (string) $member['gender'] : '',
+                'prefecture'            => isset($member['prefecture']) ? (string) $member['prefecture'] : '',
+                'city'                  => isset($member['city']) ? (string) $member['city'] : '',
+                'occupation'            => isset($member['occupation']) ? (string) $member['occupation'] : '',
+                'farm_scale'            => isset($member['farm_scale']) ? (string) $member['farm_scale'] : '',
+                'crop_1'                => isset($member['crop_1']) ? (string) $member['crop_1'] : '',
+                'crop_2'                => isset($member['crop_2']) ? (string) $member['crop_2'] : '',
+                'future_crop'           => isset($member['future_crop']) ? (string) $member['future_crop'] : '',
+                'interests'             => implode('、', $interests),
+                'interests_array'       => $interests,
+                'newsletter_preference' => isset($member['newsletter_preference']) ? (string) $member['newsletter_preference'] : '',
+                'updated_at'            => isset($member['updated_at']) ? (string) $member['updated_at'] : current_time('mysql'),
+            );
+        }
+
+        private function build_member_row_from_wp_user(WP_User $user) {
+            $row = $this->build_member_row($user);
+            $row['registered_at_mysql'] = $user->user_registered;
+            return $row;
+        }
+
+        private function member_email_exists($email, $exclude_member_id = 0) {
+            $member = $this->get_member_by_email($email);
+            if (!$member) {
+                return false;
+            }
+            return (int) $member['id'] !== (int) $exclude_member_id;
+        }
+
         public function render_members_page() {
             if (!$this->current_user_can_manage_members()) {
                 return;
@@ -530,37 +865,28 @@ if (!class_exists('Member_Registration_Manager')) {
             $papers = $this->get_papers();
             return in_array($paper, $papers, true) ? $paper : '';
         }
-
         private function get_registered_members(array $args = array()) {
+            global $wpdb;
+            $this->ensure_members_table();
+
             $paper = isset($args['paper']) ? $this->sanitize_member_filter_paper($args['paper']) : '';
             $search = isset($args['search']) ? sanitize_text_field($args['search']) : '';
             $paged = isset($args['paged']) ? max(1, (int) $args['paged']) : 1;
             $per_page = isset($args['per_page']) ? max(1, (int) $args['per_page']) : 50;
 
-            $users = get_users(array(
-                'number'  => -1,
-                'orderby' => 'registered',
-                'order'   => 'DESC',
-                'fields'  => 'all',
-            ));
+            $table = $this->get_members_table_name();
+            $rows = $wpdb->get_results("SELECT * FROM {$table} ORDER BY created_at DESC, id DESC", ARRAY_A);
 
             $items = array();
-            foreach ($users as $user) {
-                if (!$this->is_registered_member_user($user)) {
+            foreach ((array) $rows as $row) {
+                $item = $this->build_member_row_from_member($row);
+                if ($paper !== '' && $item['paper'] !== $paper) {
                     continue;
                 }
-
-                $row = $this->build_member_row($user);
-
-                if ($paper !== '' && $row['paper'] !== $paper) {
+                if ($search !== '' && !$this->member_row_matches_search($item, $search)) {
                     continue;
                 }
-
-                if ($search !== '' && !$this->member_row_matches_search($row, $search)) {
-                    continue;
-                }
-
-                $items[] = $row;
+                $items[] = $item;
             }
 
             $total = count($items);
@@ -572,6 +898,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 'total' => $total,
             );
         }
+
 
         private function is_registered_member_user($user) {
             if (!($user instanceof WP_User)) {
@@ -712,8 +1039,9 @@ if (!class_exists('Member_Registration_Manager')) {
                 'newsletter_preference' => '情報配信の希望',
             );
         }
-
         public function handle_register(WP_REST_Request $request) {
+            $this->maybe_setup_members_storage();
+
             $params = $request->get_json_params();
             if (!is_array($params)) {
                 $params = $request->get_params();
@@ -741,40 +1069,44 @@ if (!class_exists('Member_Registration_Manager')) {
                 return new WP_REST_Response(array('success' => false, 'message' => 'パスワードはアルファベット大文字・小文字、数字を含む8文字以上20字以内で入力してください。'), 400);
             }
 
-            if (email_exists($email)) {
+            if ($this->member_email_exists($email) || email_exists($email)) {
                 return new WP_REST_Response(array('success' => false, 'message' => 'このメールアドレスは既に登録されています。'), 409);
             }
 
-            $username = $this->build_unique_username($email, $nickname);
-            $user_id = wp_insert_user(array(
-                'user_login'   => $username,
-                'user_pass'    => $password,
-                'user_email'   => $email,
-                'display_name' => $nickname ? $nickname : $email,
-                'nickname'     => $nickname,
-                'role'         => 'subscriber',
+            $profile = $this->extract_profile_fields($params);
+            $member_id = $this->insert_member(array(
+                'email'                 => $email,
+                'password_hash'         => wp_hash_password($password),
+                'nickname'              => $nickname ? $nickname : $email,
+                'gender'                => isset($profile[self::META_PREFIX . 'gender']) ? $profile[self::META_PREFIX . 'gender'] : '',
+                'prefecture'            => isset($profile[self::META_PREFIX . 'prefecture']) ? $profile[self::META_PREFIX . 'prefecture'] : '',
+                'city'                  => isset($profile[self::META_PREFIX . 'city']) ? $profile[self::META_PREFIX . 'city'] : '',
+                'occupation'            => isset($profile[self::META_PREFIX . 'occupation']) ? $profile[self::META_PREFIX . 'occupation'] : '',
+                'farm_scale'            => isset($profile[self::META_PREFIX . 'farm_scale']) ? $profile[self::META_PREFIX . 'farm_scale'] : '',
+                'crop_1'                => isset($profile[self::META_PREFIX . 'crop_1']) ? $profile[self::META_PREFIX . 'crop_1'] : '',
+                'crop_2'                => isset($profile[self::META_PREFIX . 'crop_2']) ? $profile[self::META_PREFIX . 'crop_2'] : '',
+                'future_crop'           => isset($profile[self::META_PREFIX . 'future_crop']) ? $profile[self::META_PREFIX . 'future_crop'] : '',
+                'interests'             => isset($profile[self::META_PREFIX . 'interests']) ? $profile[self::META_PREFIX . 'interests'] : array(),
+                'newsletter_preference' => isset($profile[self::META_PREFIX . 'newsletter_preference']) ? $profile[self::META_PREFIX . 'newsletter_preference'] : '',
+                'paper'                 => $paper,
             ));
 
-            if (is_wp_error($user_id)) {
+            if (!$member_id) {
+                $message = '会員情報の保存に失敗しました。';
                 $this->add_log(array(
                     'type'    => 'register',
                     'paper'   => $paper,
                     'to'      => $email,
                     'success' => false,
-                    'message' => $user_id->get_error_message(),
+                    'message' => $message,
                 ));
-                return new WP_REST_Response(array('success' => false, 'message' => $user_id->get_error_message()), 500);
+                return new WP_REST_Response(array('success' => false, 'message' => $message), 500);
             }
 
-            $profile = $this->extract_profile_fields($params);
-            foreach ($profile as $meta_key => $value) {
-                update_user_meta($user_id, $meta_key, $value);
-            }
-            update_user_meta($user_id, self::META_PREFIX . 'paper', $paper);
-
-            $email_result = $this->send_registration_email($user_id, $paper, 'register');
-            $token_bundle = $this->issue_auth_token($user_id);
-            $user_payload = $this->build_member_user_payload(get_userdata($user_id), $paper);
+            $member = $this->get_member_by_id($member_id);
+            $email_result = $this->send_registration_email($member, $paper, 'register');
+            $token_bundle = $this->issue_auth_token($member_id);
+            $user_payload = $this->build_member_user_payload($this->get_member_by_id($member_id), $paper);
 
             return new WP_REST_Response(array(
                 'success'       => true,
@@ -786,9 +1118,9 @@ if (!class_exists('Member_Registration_Manager')) {
                 'user'          => $user_payload,
             ), 200);
         }
-
-
         public function handle_password_reset_request(WP_REST_Request $request) {
+            $this->maybe_setup_members_storage();
+
             $params = $request->get_json_params();
             if (!is_array($params)) {
                 $params = $request->get_params();
@@ -802,8 +1134,8 @@ if (!class_exists('Member_Registration_Manager')) {
                 return new WP_REST_Response(array('success' => false, 'message' => 'メールアドレスを入力してください。'), 400);
             }
 
-            $user = get_user_by('email', $email);
-            if (!$user) {
+            $member = $this->get_member_by_email($email);
+            if (!$member) {
                 $this->add_log(array(
                     'type'    => 'password_reset_request',
                     'paper'   => $paper,
@@ -819,7 +1151,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 ), 200);
             }
 
-            $result = $this->send_password_reset_email($user, $paper);
+            $result = $this->send_password_reset_email($member, $paper);
 
             return new WP_REST_Response(array(
                 'success'    => true,
@@ -828,8 +1160,9 @@ if (!class_exists('Member_Registration_Manager')) {
                 'email_sent' => !empty($result['success']),
             ), 200);
         }
-
         public function handle_password_reset_confirm(WP_REST_Request $request) {
+            $this->maybe_setup_members_storage();
+
             $params = $request->get_json_params();
             if (!is_array($params)) {
                 $params = $request->get_params();
@@ -857,44 +1190,47 @@ if (!class_exists('Member_Registration_Manager')) {
                 return new WP_REST_Response(array('success' => false, 'message' => 'パスワードはアルファベット大文字・小文字、数字を含む8文字以上20字以内で入力してください。'), 400);
             }
 
-            $user = check_password_reset_key($key, $login);
-            if (is_wp_error($user) || !$user instanceof WP_User) {
-                $message = is_wp_error($user) ? $user->get_error_message() : 'パスワード再設定URLが無効です。';
-                return new WP_REST_Response(array('success' => false, 'message' => $message), 400);
+            $member = $this->get_member_by_login_identifier($login);
+            if (!$member || empty($member['reset_token_hash']) || !wp_check_password($key, $member['reset_token_hash'])) {
+                return new WP_REST_Response(array('success' => false, 'message' => 'パスワード再設定URLが無効です。'), 400);
             }
 
-            reset_password($user, $password);
-
-            $user_id = (int) $user->ID;
-            $nickname = get_user_meta($user_id, self::META_PREFIX . 'nickname', true);
-            if (!$nickname) {
-                $nickname = $user->display_name ? $user->display_name : $user->user_email;
+            if ((int) $member['reset_token_expires'] <= 0 || (int) $member['reset_token_expires'] < time()) {
+                return new WP_REST_Response(array('success' => false, 'message' => 'パスワード再設定URLの有効期限が切れています。'), 400);
             }
-            $stored_paper = get_user_meta($user_id, self::META_PREFIX . 'paper', true);
-            if ($stored_paper) {
-                $paper = $this->sanitize_paper_slug($stored_paper);
+
+            $paper = !empty($member['paper']) ? $this->sanitize_paper_slug($member['paper']) : $paper;
+
+            $updated = $this->update_member((int) $member['id'], array(
+                'password_hash'       => wp_hash_password($password),
+                'reset_token_hash'    => '',
+                'reset_token_expires' => 0,
+            ));
+            if (!$updated) {
+                return new WP_REST_Response(array('success' => false, 'message' => 'パスワード再設定に失敗しました。'), 500);
             }
 
             $this->add_log(array(
                 'type'    => 'password_reset_confirm',
                 'paper'   => $paper,
-                'to'      => $user->user_email,
+                'to'      => $member['email'],
                 'success' => true,
                 'message' => 'パスワード再設定に成功しました。',
             ));
 
-            $token_bundle = $this->issue_auth_token($user_id);
+            $token_bundle = $this->issue_auth_token((int) $member['id']);
 
             return new WP_REST_Response(array(
                 'success'       => true,
                 'message'       => 'パスワードを再設定しました。',
                 'token'         => $token_bundle['token'],
                 'token_expires' => $token_bundle['expires'],
-                'user'          => $this->build_member_user_payload($user, $paper),
+                'user'          => $this->build_member_user_payload($this->get_member_by_id((int) $member['id']), $paper),
             ), 200);
         }
-
         public function handle_login(WP_REST_Request $request) {
+            $this->maybe_setup_members_storage();
+
             $params = $request->get_json_params();
             if (!is_array($params)) {
                 $params = $request->get_params();
@@ -908,52 +1244,42 @@ if (!class_exists('Member_Registration_Manager')) {
                 return new WP_REST_Response(array('success' => false, 'message' => 'メールアドレスとパスワードを入力してください。'), 400);
             }
 
-            $user = get_user_by('email', $email);
-            if (!$user || !$user instanceof WP_User || !wp_check_password($password, $user->user_pass, $user->ID)) {
+            $member = $this->get_member_by_email($email);
+            if (!$member || !wp_check_password($password, (string) $member['password_hash'])) {
                 return new WP_REST_Response(array('success' => false, 'message' => 'メールアドレスまたはパスワードが違います。'), 401);
             }
 
-            if (!$this->is_member_user($user)) {
-                return new WP_REST_Response(array('success' => false, 'message' => '会員ログイン対象外のアカウントです。'), 403);
+            if (!empty($member['paper'])) {
+                $paper = $this->sanitize_paper_slug($member['paper']);
             }
 
-            $stored_paper = get_user_meta((int) $user->ID, self::META_PREFIX . 'paper', true);
-            if ($stored_paper) {
-                $paper = $this->sanitize_paper_slug($stored_paper);
-            }
-
-            $token_bundle = $this->issue_auth_token((int) $user->ID);
+            $token_bundle = $this->issue_auth_token((int) $member['id']);
 
             return new WP_REST_Response(array(
                 'success'       => true,
                 'message'       => 'ログインしました。',
                 'token'         => $token_bundle['token'],
                 'token_expires' => $token_bundle['expires'],
-                'user'          => $this->build_member_user_payload($user, $paper),
+                'user'          => $this->build_member_user_payload($this->get_member_by_id((int) $member['id']), $paper),
             ), 200);
         }
-
         public function handle_me(WP_REST_Request $request) {
-            $user = $this->authenticate_member_from_request($request);
-            if (is_wp_error($user)) {
-                return new WP_REST_Response(array('success' => false, 'message' => $user->get_error_message()), 401);
+            $member = $this->authenticate_member_from_request($request);
+            if (is_wp_error($member)) {
+                return new WP_REST_Response(array('success' => false, 'message' => $member->get_error_message()), 401);
             }
 
-            $paper = get_user_meta((int) $user->ID, self::META_PREFIX . 'paper', true);
-            if (!$paper) {
-                $paper = $this->resolve_paper($request->get_params(), $request);
-            }
+            $paper = !empty($member['paper']) ? $member['paper'] : $this->resolve_paper($request->get_params(), $request);
 
             return new WP_REST_Response(array(
                 'success' => true,
-                'user'    => $this->build_member_user_payload($user, $paper),
+                'user'    => $this->build_member_user_payload($member, $paper),
             ), 200);
         }
-
         public function handle_profile(WP_REST_Request $request) {
-            $user = $this->authenticate_member_from_request($request);
-            if (is_wp_error($user)) {
-                return new WP_REST_Response(array('success' => false, 'message' => $user->get_error_message()), 401);
+            $member = $this->authenticate_member_from_request($request);
+            if (is_wp_error($member)) {
+                return new WP_REST_Response(array('success' => false, 'message' => $member->get_error_message()), 401);
             }
 
             $params = $request->get_json_params();
@@ -961,18 +1287,17 @@ if (!class_exists('Member_Registration_Manager')) {
                 $params = $request->get_params();
             }
 
-            $user_id = (int) $user->ID;
-            $email = sanitize_email(isset($params['email']) ? $params['email'] : $user->user_email);
+            $member_id = (int) $member['id'];
+            $email = sanitize_email(isset($params['email']) ? $params['email'] : $member['email']);
             if (!$email) {
                 return new WP_REST_Response(array('success' => false, 'message' => 'メールアドレスを入力してください。'), 400);
             }
 
-            $existing = get_user_by('email', $email);
-            if ($existing instanceof WP_User && (int) $existing->ID !== $user_id) {
+            if ($this->member_email_exists($email, $member_id) || (email_exists($email) && $email !== $member['email'])) {
                 return new WP_REST_Response(array('success' => false, 'message' => 'このメールアドレスは既に使用されています。'), 409);
             }
 
-            $nickname = sanitize_text_field(isset($params['nickname']) ? $params['nickname'] : get_user_meta($user_id, self::META_PREFIX . 'nickname', true));
+            $nickname = sanitize_text_field(isset($params['nickname']) ? $params['nickname'] : $member['nickname']);
             $password = isset($params['password']) ? (string) $params['password'] : '';
             $password_confirm = isset($params['password_confirm']) ? (string) $params['password_confirm'] : '';
 
@@ -985,35 +1310,39 @@ if (!class_exists('Member_Registration_Manager')) {
                 }
             }
 
-            $userdata = array(
-                'ID'           => $user_id,
-                'user_email'   => $email,
-                'display_name' => $nickname ? $nickname : $email,
-                'nickname'     => $nickname,
+            $profile = $this->extract_profile_fields($params);
+            $paper = $this->resolve_paper($params, $request);
+
+            $update_data = array(
+                'email'                 => $email,
+                'nickname'              => $nickname ? $nickname : $email,
+                'gender'                => isset($profile[self::META_PREFIX . 'gender']) ? $profile[self::META_PREFIX . 'gender'] : '',
+                'prefecture'            => isset($profile[self::META_PREFIX . 'prefecture']) ? $profile[self::META_PREFIX . 'prefecture'] : '',
+                'city'                  => isset($profile[self::META_PREFIX . 'city']) ? $profile[self::META_PREFIX . 'city'] : '',
+                'occupation'            => isset($profile[self::META_PREFIX . 'occupation']) ? $profile[self::META_PREFIX . 'occupation'] : '',
+                'farm_scale'            => isset($profile[self::META_PREFIX . 'farm_scale']) ? $profile[self::META_PREFIX . 'farm_scale'] : '',
+                'crop_1'                => isset($profile[self::META_PREFIX . 'crop_1']) ? $profile[self::META_PREFIX . 'crop_1'] : '',
+                'crop_2'                => isset($profile[self::META_PREFIX . 'crop_2']) ? $profile[self::META_PREFIX . 'crop_2'] : '',
+                'future_crop'           => isset($profile[self::META_PREFIX . 'future_crop']) ? $profile[self::META_PREFIX . 'future_crop'] : '',
+                'interests'             => isset($profile[self::META_PREFIX . 'interests']) ? $profile[self::META_PREFIX . 'interests'] : array(),
+                'newsletter_preference' => isset($profile[self::META_PREFIX . 'newsletter_preference']) ? $profile[self::META_PREFIX . 'newsletter_preference'] : '',
+                'paper'                 => $paper,
             );
             if ($password !== '') {
-                $userdata['user_pass'] = $password;
+                $update_data['password_hash'] = wp_hash_password($password);
             }
 
-            $updated_user_id = wp_update_user($userdata);
-            if (is_wp_error($updated_user_id)) {
-                return new WP_REST_Response(array('success' => false, 'message' => $updated_user_id->get_error_message()), 500);
+            if (!$this->update_member($member_id, $update_data)) {
+                return new WP_REST_Response(array('success' => false, 'message' => '会員情報の更新に失敗しました。'), 500);
             }
-
-            $profile = $this->extract_profile_fields($params);
-            foreach ($profile as $meta_key => $value) {
-                update_user_meta($user_id, $meta_key, $value);
-            }
-
-            $paper = $this->resolve_paper($params, $request);
-            update_user_meta($user_id, self::META_PREFIX . 'paper', $paper);
 
             return new WP_REST_Response(array(
                 'success' => true,
                 'message' => '会員情報を更新しました。',
-                'user'    => $this->build_member_user_payload(get_userdata($user_id), $paper),
+                'user'    => $this->build_member_user_payload($this->get_member_by_id($member_id), $paper),
             ), 200);
         }
+
 
         private function extract_bearer_token(WP_REST_Request $request) {
             $header = '';
@@ -1036,101 +1365,70 @@ if (!class_exists('Member_Registration_Manager')) {
 
             return '';
         }
-
         private function authenticate_member_from_request(WP_REST_Request $request) {
             $token = $this->extract_bearer_token($request);
             if ($token === '') {
                 return new WP_Error('member_auth_required', 'ログインが必要です。');
             }
 
-            $user = null;
-            $found = get_users(array(
-                'meta_key'    => self::AUTH_TOKEN_HASH_META_KEY,
-                'number'      => -1,
-                'count_total' => false,
-                'fields'      => 'all',
-            ));
-            foreach ($found as $candidate) {
-                $hash = (string) get_user_meta((int) $candidate->ID, self::AUTH_TOKEN_HASH_META_KEY, true);
-                if ($hash && wp_check_password($token, $hash, (int) $candidate->ID)) {
-                    $user = $candidate;
-                    break;
-                }
-            }
-
-            if (!$user instanceof WP_User || !$this->is_member_user($user)) {
+            $member = $this->find_member_by_auth_token($token);
+            if (!$member) {
                 return new WP_Error('member_auth_invalid', 'ログイン状態を確認できませんでした。');
             }
 
-            $expires = (int) get_user_meta((int) $user->ID, self::AUTH_TOKEN_EXPIRES_META_KEY, true);
-            if ($expires <= 0 || $expires < time()) {
+            if ((int) $member['auth_token_expires'] <= 0 || (int) $member['auth_token_expires'] < time()) {
                 return new WP_Error('member_auth_expired', 'ログインの有効期限が切れています。もう一度ログインしてください。');
             }
 
-            return $user;
+            return $member;
         }
-
-        private function issue_auth_token($user_id) {
+        private function issue_auth_token($member_id) {
             $token = wp_generate_password(48, false, false);
             $expires = time() + self::AUTH_TOKEN_TTL;
-            update_user_meta($user_id, self::AUTH_TOKEN_HASH_META_KEY, wp_hash_password($token));
-            update_user_meta($user_id, self::AUTH_TOKEN_EXPIRES_META_KEY, $expires);
+            $this->update_member((int) $member_id, array(
+                'auth_token_hash'    => wp_hash_password($token),
+                'auth_token_expires' => $expires,
+            ));
 
             return array(
                 'token'   => $token,
                 'expires' => gmdate('c', $expires),
             );
         }
-
         private function is_member_user($user) {
-            if (!$user instanceof WP_User) {
-                return false;
-            }
-
-            $paper = get_user_meta((int) $user->ID, self::META_PREFIX . 'paper', true);
-            if ($paper !== '') {
-                return true;
-            }
-
-            $roles = is_array($user->roles) ? $user->roles : array();
-            return in_array('subscriber', $roles, true);
+            return false;
         }
-
         private function build_member_user_payload($user, $paper = '') {
-            if (!$user instanceof WP_User) {
+            if (!is_array($user) || empty($user['id'])) {
                 return array();
             }
 
-            $user_id = (int) $user->ID;
-            $resolved_paper = $paper ? $this->sanitize_paper_slug($paper) : $this->sanitize_paper_slug(get_user_meta($user_id, self::META_PREFIX . 'paper', true));
+            $row = $this->build_member_row_from_member($user);
+            $resolved_paper = $paper ? $this->sanitize_paper_slug($paper) : $row['paper'];
             if ($resolved_paper === '') {
                 $resolved_paper = 'tomato';
             }
 
-            $nickname = get_user_meta($user_id, self::META_PREFIX . 'nickname', true);
-            if ($nickname === '') {
-                $nickname = $user->display_name ? $user->display_name : $user->user_email;
-            }
-
             return array(
-                'id'                    => $user_id,
-                'email'                 => $user->user_email,
-                'nickname'              => (string) $nickname,
-                'gender'                => (string) get_user_meta($user_id, self::META_PREFIX . 'gender', true),
-                'prefecture'            => (string) get_user_meta($user_id, self::META_PREFIX . 'prefecture', true),
-                'city'                  => (string) get_user_meta($user_id, self::META_PREFIX . 'city', true),
-                'occupation'            => (string) get_user_meta($user_id, self::META_PREFIX . 'occupation', true),
-                'farm_scale'            => (string) get_user_meta($user_id, self::META_PREFIX . 'farm_scale', true),
-                'crop_1'                => (string) get_user_meta($user_id, self::META_PREFIX . 'crop_1', true),
-                'crop_2'                => (string) get_user_meta($user_id, self::META_PREFIX . 'crop_2', true),
-                'future_crop'           => (string) get_user_meta($user_id, self::META_PREFIX . 'future_crop', true),
-                'interests'             => array_values(array_filter((array) get_user_meta($user_id, self::META_PREFIX . 'interests', true), 'strlen')),
-                'newsletter_preference' => (string) get_user_meta($user_id, self::META_PREFIX . 'newsletter_preference', true),
+                'id'                    => (int) $user['id'],
+                'email'                 => (string) $user['email'],
+                'nickname'              => (string) $row['nickname'],
+                'gender'                => (string) $row['gender'],
+                'prefecture'            => (string) $row['prefecture'],
+                'city'                  => (string) $row['city'],
+                'occupation'            => (string) $row['occupation'],
+                'farm_scale'            => (string) $row['farm_scale'],
+                'crop_1'                => (string) $row['crop_1'],
+                'crop_2'                => (string) $row['crop_2'],
+                'future_crop'           => (string) $row['future_crop'],
+                'interests'             => $row['interests_array'],
+                'newsletter_preference' => (string) $row['newsletter_preference'],
                 'paper'                 => $resolved_paper,
-                'created_at'            => get_date_from_gmt($user->user_registered, 'c'),
-                'updated_at'            => current_time('c'),
+                'created_at'            => get_date_from_gmt(isset($user['created_at']) ? $user['created_at'] : current_time('mysql'), 'c'),
+                'updated_at'            => get_date_from_gmt(isset($user['updated_at']) ? $user['updated_at'] : current_time('mysql'), 'c'),
             );
         }
+
 
         private function send_test_email($paper, $to) {
             $paper = $this->sanitize_paper_slug($paper);
@@ -1149,27 +1447,23 @@ if (!class_exists('Member_Registration_Manager')) {
                 '{{site_name}}'         => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
             ), 'test');
         }
-
-        private function send_registration_email($user_id, $paper, $type) {
-            $user = get_userdata($user_id);
-            if (!$user) {
-                return array('success' => false, 'message' => 'ユーザー情報の取得に失敗しました。');
+        private function send_registration_email($member, $paper, $type) {
+            if (!is_array($member) || empty($member['email'])) {
+                return array('success' => false, 'message' => '会員情報の取得に失敗しました。');
             }
 
-            $nickname = get_user_meta($user_id, self::META_PREFIX . 'nickname', true);
-            if (!$nickname) {
-                $nickname = $user->display_name ? $user->display_name : $user->user_email;
-            }
+            $nickname = !empty($member['nickname']) ? $member['nickname'] : $member['email'];
 
-            return $this->deliver_email($paper, $user->user_email, $user, array(
+            return $this->deliver_email($paper, $member['email'], (object) $member, array(
                 '{{nickname}}'          => $nickname,
-                '{{email}}'             => $user->user_email,
+                '{{email}}'             => $member['email'],
                 '{{paper}}'             => $paper,
                 '{{member_page_url}}'   => $this->build_member_page_url($paper),
-                '{{registration_info}}' => $this->build_registration_info($user_id, $user),
+                '{{registration_info}}' => $this->build_registration_info($member),
                 '{{site_name}}'         => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
             ), $type);
         }
+
 
         private function deliver_email($paper, $to, $user, array $replacements, $type) {
             $settings = $this->get_settings();
@@ -1213,35 +1507,33 @@ if (!class_exists('Member_Registration_Manager')) {
 
             return array('success' => (bool) $sent, 'message' => $message);
         }
-
-
-        private function send_password_reset_email(WP_User $user, $paper) {
-            $paper = $this->sanitize_paper_slug($paper);
-            $user_id = (int) $user->ID;
-            $nickname = get_user_meta($user_id, self::META_PREFIX . 'nickname', true);
-            if (!$nickname) {
-                $nickname = $user->display_name ? $user->display_name : $user->user_email;
+        private function send_password_reset_email($member, $paper) {
+            if (!is_array($member) || empty($member['email'])) {
+                return array('success' => false, 'message' => '会員情報の取得に失敗しました。');
             }
 
-            $stored_paper = get_user_meta($user_id, self::META_PREFIX . 'paper', true);
-            if ($stored_paper) {
-                $paper = $this->sanitize_paper_slug($stored_paper);
-            }
+            $paper = !empty($member['paper']) ? $this->sanitize_paper_slug($member['paper']) : $this->sanitize_paper_slug($paper);
+            $nickname = !empty($member['nickname']) ? $member['nickname'] : $member['email'];
 
-            $reset_key = get_password_reset_key($user);
-            if (is_wp_error($reset_key)) {
-                $message = $reset_key->get_error_message();
+            $reset_key = wp_generate_password(48, false, false);
+            $reset_expires = time() + HOUR_IN_SECONDS * 24;
+            $updated = $this->update_member((int) $member['id'], array(
+                'reset_token_hash'    => wp_hash_password($reset_key),
+                'reset_token_expires' => $reset_expires,
+            ));
+            if (!$updated) {
+                $message = 'パスワード再設定情報の保存に失敗しました。';
                 $this->add_log(array(
                     'type'    => 'password_reset_request',
                     'paper'   => $paper,
-                    'to'      => $user->user_email,
+                    'to'      => $member['email'],
                     'success' => false,
                     'message' => $message,
                 ));
                 return array('success' => false, 'message' => $message);
             }
 
-            $reset_url = $this->build_password_reset_url($paper, $user, $reset_key);
+            $reset_url = $this->build_password_reset_url($paper, $member, $reset_key);
             $paper_label = $this->get_paper_label($paper);
             $subject = $paper_label . ': パスワード再設定';
             $body = $this->build_password_reset_email_html($paper_label, $nickname, $reset_url);
@@ -1250,19 +1542,20 @@ if (!class_exists('Member_Registration_Manager')) {
             $headers[] = 'From: ' . sprintf('%s <%s>', $paper_label, 'noreply@agrinews.jp');
 
             $this->reset_mail_diagnostics();
-            $sent = wp_mail($user->user_email, $subject, $body, $headers);
+            $sent = wp_mail($member['email'], $subject, $body, $headers);
             $message = $sent ? 'パスワード再設定メール送信に成功しました。' : $this->build_mail_failure_message('wp_mail() が false を返しました。');
 
             $this->add_log(array(
                 'type'    => 'password_reset_request',
                 'paper'   => $paper,
-                'to'      => $user->user_email,
+                'to'      => $member['email'],
                 'success' => (bool) $sent,
                 'message' => $message,
             ));
 
             return array('success' => (bool) $sent, 'message' => $message, 'reset_url' => $reset_url);
         }
+
 
         private function build_password_reset_email_html($paper_label, $nickname, $reset_url) {
             $safe_paper_label = esc_html($paper_label);
@@ -1293,19 +1586,19 @@ if (!class_exists('Member_Registration_Manager')) {
 </html>
 HTML;
         }
-
-        private function build_password_reset_url($paper, WP_User $user, $reset_key) {
+        private function build_password_reset_url($paper, $member, $reset_key) {
             $paper = $this->sanitize_paper_slug($paper);
             $base_url = $this->build_account_login_url($paper);
             $query = array(
                 'paper'     => $paper,
                 'mode'      => 'reset',
-                'login'     => $user->user_login,
+                'login'     => is_array($member) ? $member['email'] : '',
                 'key'       => $reset_key,
                 'cms_hint'  => $this->encode_frontend_cms_hint(home_url()),
             );
             return add_query_arg($query, $base_url);
         }
+
 
         private function encode_frontend_cms_hint($url) {
             $normalized = untrailingslashit((string) $url);
@@ -1440,29 +1733,31 @@ HTML;
             }
             return $candidate;
         }
-
-        private function build_registration_info($user_id, WP_User $user) {
-            $pairs = array(
-                'ニックネーム'        => get_user_meta($user_id, self::META_PREFIX . 'nickname', true),
-                'メールアドレス'      => $user->user_email,
-                '性別'                => get_user_meta($user_id, self::META_PREFIX . 'gender', true),
-                '都道府県'            => get_user_meta($user_id, self::META_PREFIX . 'prefecture', true),
-                '市町村'              => get_user_meta($user_id, self::META_PREFIX . 'city', true),
-                '職業'                => get_user_meta($user_id, self::META_PREFIX . 'occupation', true),
-                '営農規模'            => get_user_meta($user_id, self::META_PREFIX . 'farm_scale', true),
-                '栽培品目（1品目目）' => get_user_meta($user_id, self::META_PREFIX . 'crop_1', true),
-                '栽培品目（2品目目）' => get_user_meta($user_id, self::META_PREFIX . 'crop_2', true),
-                '今後栽培したい品目'  => get_user_meta($user_id, self::META_PREFIX . 'future_crop', true),
-            );
-
-            $interests = get_user_meta($user_id, self::META_PREFIX . 'interests', true);
-            if (is_array($interests) && !empty($interests)) {
-                $pairs['興味・関心'] = implode('、', array_map('strval', $interests));
+        private function build_registration_info($member) {
+            if (!is_array($member)) {
+                return '';
             }
 
-            $newsletter = get_user_meta($user_id, self::META_PREFIX . 'newsletter_preference', true);
-            if ($newsletter !== '') {
-                $pairs['情報配信の希望'] = $newsletter;
+            $interests = $this->parse_member_interests(isset($member['interests']) ? $member['interests'] : array());
+            $pairs = array(
+                'ニックネーム'        => isset($member['nickname']) ? $member['nickname'] : '',
+                'メールアドレス'      => isset($member['email']) ? $member['email'] : '',
+                '性別'                => isset($member['gender']) ? $member['gender'] : '',
+                '都道府県'            => isset($member['prefecture']) ? $member['prefecture'] : '',
+                '市町村'              => isset($member['city']) ? $member['city'] : '',
+                '職業'                => isset($member['occupation']) ? $member['occupation'] : '',
+                '営農規模'            => isset($member['farm_scale']) ? $member['farm_scale'] : '',
+                '栽培品目（1品目目）' => isset($member['crop_1']) ? $member['crop_1'] : '',
+                '栽培品目（2品目目）' => isset($member['crop_2']) ? $member['crop_2'] : '',
+                '今後栽培したい品目'  => isset($member['future_crop']) ? $member['future_crop'] : '',
+            );
+
+            if (!empty($interests)) {
+                $pairs['興味・関心'] = implode('、', $interests);
+            }
+
+            if (!empty($member['newsletter_preference'])) {
+                $pairs['情報配信の希望'] = $member['newsletter_preference'];
             }
 
             $lines = array();
@@ -1474,8 +1769,10 @@ HTML;
                 $lines[] = sprintf('%s：%s', $label, $value);
             }
 
-            return implode("\n", $lines);
+            return implode("
+", $lines);
         }
+
 
         private function build_member_page_url($paper) {
             $paper = $this->sanitize_paper_slug($paper);
