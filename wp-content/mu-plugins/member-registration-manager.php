@@ -22,7 +22,6 @@ if (!class_exists('Member_Registration_Manager')) {
         const AUTH_TOKEN_EXPIRES_META_KEY = 'tomato_member_auth_token_expires';
         const AUTH_TOKEN_TTL = 2592000;
         const MEMBERS_TABLE = 'members';
-        const MIGRATION_OPTION_KEY = 'member_registration_members_migrated';
         const RESET_TOKEN_HASH_COLUMN = 'reset_token_hash';
         const RESET_TOKEN_EXPIRES_COLUMN = 'reset_token_expires';
 
@@ -401,7 +400,6 @@ if (!class_exists('Member_Registration_Manager')) {
 
         public function maybe_setup_members_storage() {
             $this->ensure_members_table();
-            $this->maybe_migrate_legacy_members();
         }
 
         private function get_members_table_name() {
@@ -450,69 +448,6 @@ if (!class_exists('Member_Registration_Manager')) {
 
             dbDelta($sql);
         }
-
-        private function maybe_migrate_legacy_members() {
-            if (get_option(self::MIGRATION_OPTION_KEY)) {
-                return;
-            }
-
-            $this->migrate_legacy_members();
-            update_option(self::MIGRATION_OPTION_KEY, current_time('mysql'), false);
-        }
-
-        private function migrate_legacy_members() {
-            if (!function_exists('wp_delete_user')) {
-                require_once ABSPATH . 'wp-admin/includes/user.php';
-            }
-
-            $users = get_users(array(
-                'number'  => -1,
-                'orderby' => 'ID',
-                'order'   => 'ASC',
-                'fields'  => 'all',
-            ));
-
-            foreach ($users as $user) {
-                if (!$this->is_registered_member_user($user)) {
-                    continue;
-                }
-
-                $row = $this->build_member_row_from_wp_user($user);
-                if (empty($row['email'])) {
-                    continue;
-                }
-
-                $existing = $this->get_member_by_email($row['email']);
-                if (!$existing) {
-                    $inserted = $this->insert_member(array(
-                        'email'                 => $row['email'],
-                        'password_hash'         => (string) $user->user_pass,
-                        'nickname'              => $row['nickname'],
-                        'gender'                => $row['gender'],
-                        'prefecture'            => $row['prefecture'],
-                        'city'                  => $row['city'],
-                        'occupation'            => $row['occupation'],
-                        'farm_scale'            => $row['farm_scale'],
-                        'crop_1'                => $row['crop_1'],
-                        'crop_2'                => $row['crop_2'],
-                        'future_crop'           => $row['future_crop'],
-                        'interests'             => $this->normalize_interests_for_storage($row['interests_array']),
-                        'newsletter_preference' => $row['newsletter_preference'],
-                        'paper'                 => $row['paper'],
-                        'created_at'            => !empty($row['registered_at_mysql']) ? $row['registered_at_mysql'] : current_time('mysql'),
-                        'updated_at'            => current_time('mysql'),
-                        'legacy_wp_user_id'     => (int) $user->ID,
-                    ));
-
-                    if (!$inserted) {
-                        continue;
-                    }
-                }
-
-                wp_delete_user((int) $user->ID);
-            }
-        }
-
         private function get_member_db_columns() {
             return array(
                 'email',
