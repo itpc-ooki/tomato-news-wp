@@ -1300,8 +1300,29 @@
 
   function searchParam(name){
     try{
-      const sp = new URLSearchParams(location.search || '');
-      return String(sp.get(name) || '');
+      const rawSearch = String(location.search || '').replace(/^\?/, '');
+      if (!rawSearch) return '';
+      const pairs = rawSearch.split('&');
+      const target = String(name || '');
+      for (let i = 0; i < pairs.length; i++) {
+        const part = String(pairs[i] || '');
+        if (!part) continue;
+        const eqIndex = part.indexOf('=');
+        const rawKey = eqIndex >= 0 ? part.slice(0, eqIndex) : part;
+        const rawValue = eqIndex >= 0 ? part.slice(eqIndex + 1) : '';
+        let decodedKey = '';
+        try {
+          decodedKey = decodeURIComponent(rawKey);
+        } catch (_err) {
+          decodedKey = rawKey;
+        }
+        if (decodedKey !== target) continue;
+        try {
+          return decodeURIComponent(rawValue);
+        } catch (_err) {
+          return rawValue;
+        }
+      }
     }catch(_e){}
     return '';
   }

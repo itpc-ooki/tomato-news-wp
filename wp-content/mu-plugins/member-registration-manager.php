@@ -572,11 +572,30 @@ if (!class_exists('Member_Registration_Manager')) {
         }
 
         private function get_member_by_login_identifier($login) {
-            $login = sanitize_email($login);
-            if ($login === '') {
-                return null;
+            $raw_login = is_string($login) ? wp_unslash($login) : '';
+            $candidates = array();
+
+            $primary = sanitize_email($raw_login);
+            if ($primary !== '') {
+                $candidates[] = $primary;
             }
-            return $this->get_member_by_email($login);
+
+            if (strpos($raw_login, ' ') !== false) {
+                $plus_restored = sanitize_email(str_replace(' ', '+', $raw_login));
+                if ($plus_restored !== '') {
+                    $candidates[] = $plus_restored;
+                }
+            }
+
+            $candidates = array_values(array_unique(array_filter($candidates, 'strlen')));
+            foreach ($candidates as $candidate) {
+                $member = $this->get_member_by_email($candidate);
+                if ($member) {
+                    return $member;
+                }
+            }
+
+            return null;
         }
 
         private function find_member_by_auth_token($token) {
@@ -1531,7 +1550,9 @@ HTML;
                 'key'       => $reset_key,
                 'cms_hint'  => $this->encode_frontend_cms_hint(home_url()),
             );
-            return add_query_arg($query, $base_url);
+
+            $separator = strpos($base_url, '?') === false ? '?' : '&';
+            return $base_url . $separator . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
         }
 
 
