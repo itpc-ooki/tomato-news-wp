@@ -1155,6 +1155,15 @@ $list = [];
           $free_viewable = ($mv === '1' || $mv === 1 || $mv === true);
         }
 
+        $featured_image_display_mode = self::get_acf_field_value('featured_image_display_mode', $post_id);
+        if (!is_string($featured_image_display_mode) || trim($featured_image_display_mode) === '') {
+          $featured_image_display_mode = get_post_meta($post_id, 'featured_image_display_mode', true);
+        }
+        $featured_image_display_mode = trim((string) $featured_image_display_mode);
+        if ($featured_image_display_mode !== 'third') {
+          $featured_image_display_mode = 'full';
+        }
+
 $list[] = [
           'id'       => $post_id,
           'title'    => $title,
@@ -1168,6 +1177,7 @@ $list[] = [
           // Use query param id for simplicity (detail.html?id=XX)
           'url'      => 'detail.html?id=' . $post_id,
           'featured_image' => $featured_image,
+          'featured_image_display_mode' => $featured_image_display_mode,
           'article_type' => $article_type,
           'article_types' => $article_types,
           'article_type_slugs' => $article_type_slugs,
@@ -1303,6 +1313,7 @@ $list[] = [
           'slug'       => $slug,
           'categories' => [$paper],
           'featured_image' => $featured_image,
+          'featured_image_display_mode' => $featured_image_display_mode,
           'article_type' => $article_type,
           'article_types' => $article_types,
           'article_type_slugs' => $article_type_slugs,

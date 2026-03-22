@@ -831,6 +831,21 @@ add_action('save_post_newspaper', function ($post_id, $post, $update) {
         'ui' => 1,
         'default_value' => 0,
       ],
+      [
+        'key' => 'field_post_featured_image_display_mode',
+        'label' => 'アイキャッチ画像の表示方法',
+        'name' => 'featured_image_display_mode',
+        'type' => 'radio',
+        'instructions' => '記事詳細ページでのアイキャッチ画像の見せ方を選択してください。',
+        'required' => 0,
+        'choices' => [
+          'full' => '全体表示',
+          'third' => '上1/3のみ表示',
+        ],
+        'default_value' => 'full',
+        'layout' => 'vertical',
+        'return_format' => 'value',
+      ],
 
       // 記事ごとのコラムニスト（最大4名）
       [

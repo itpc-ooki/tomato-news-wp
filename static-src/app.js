@@ -781,7 +781,85 @@ function renderGraphItems(items) {
       return {
         modal: document.getElementById("videoModal"),
         player: document.getElementById("videoPlayer"),
+        gate: document.getElementById("paywall-gate"),
+        wrapper: document.querySelector(".video-player-wrapper"),
+        footer: document.querySelector("#videoModal .modal-footer"),
       };
+    }
+
+    function isWebSeminarUserLoggedIn(){
+      try {
+        if (window.TomatoAuth) {
+          if (typeof window.TomatoAuth.currentUser === "function") {
+            const u = window.TomatoAuth.currentUser();
+            if (u && (u.email || u.id || u.name)) return true;
+          }
+          if (typeof window.TomatoAuth.isLoggedIn === "function") {
+            return !!window.TomatoAuth.isLoggedIn();
+          }
+        }
+
+        if (window.TOMATO_AUTH && typeof window.TOMATO_AUTH.isLoggedIn === "function") {
+          return !!window.TOMATO_AUTH.isLoggedIn();
+        }
+
+        try {
+          const ls = window.localStorage;
+          const ss = window.sessionStorage;
+          const currentUserRaw = ls ? ls.getItem("tomato_member_current_user_v1") : "";
+          const authToken = ls ? ls.getItem("tomato_member_auth_token_v1") : "";
+          if ((authToken && String(authToken).trim()) || (currentUserRaw && String(currentUserRaw).trim())) {
+            return true;
+          }
+          const email1 = ls ? ls.getItem("tomato_session_email_v1") : "";
+          const email2 = ss ? ss.getItem("tomato_session_email_session_v1") : "";
+          if ((email1 && email1.trim()) || (email2 && email2.trim())) return true;
+        } catch (_storageError) {}
+
+        return false;
+      } catch (_e) {
+        return false;
+      }
+    }
+
+    function renderWebSeminarPaywallGate(){
+      const els = getEls();
+      const gate = els.gate;
+      if (!gate) return;
+
+      const paper = (typeof getCurrentPaper === "function" && getCurrentPaper()) || "tomato";
+      const loginHref = `/static/account/login.html?paper=${encodeURIComponent(paper)}`;
+      const registerHref = `/static/account/register.html?paper=${encodeURIComponent(paper)}`;
+
+      gate.innerHTML = `
+        <div class="paywall-inner">
+          <div class="paywall-lock" aria-hidden="true">🔒</div>
+          <div class="paywall-text">
+            <div class="paywall-title">この記事は会員限定記事です</div>
+            <div class="paywall-subtitle">登録すると続き（全文）をお読みいただけます。</div>
+          </div>
+          <div class="paywall-actions">
+            <a class="paywall-btn paywall-btn-register" href="${registerHref}">★ 新規会員登録（無料）</a>
+            <a class="paywall-btn paywall-btn-login" href="${loginHref}">→ ログイン</a>
+          </div>
+        </div>
+      `;
+    }
+
+    function showWebSeminarPaywallGate(){
+      const els = getEls();
+      if (!els.gate) return;
+      renderWebSeminarPaywallGate();
+      els.gate.style.display = "flex";
+      if (els.wrapper) els.wrapper.classList.add("is-paywalled");
+      if (els.footer) els.footer.classList.add("is-paywalled");
+    }
+
+    function hideWebSeminarPaywallGate(){
+      const els = getEls();
+      if (els.gate) els.gate.style.display = "none";
+      if (els.wrapper) els.wrapper.classList.remove("is-paywalled");
+      if (els.footer) els.footer.classList.remove("is-paywalled");
     }
 
     if (typeof window.openVideoModal !== "function") {
@@ -795,9 +873,16 @@ function renderGraphItems(items) {
           encodeURIComponent(__currentVideoId) +
           "?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1";
 
-        els.player.src = embedUrl;
         els.modal.classList.add("active");
         document.body.style.overflow = "hidden";
+
+        if (isWebSeminarUserLoggedIn()) {
+          hideWebSeminarPaywallGate();
+          els.player.src = embedUrl;
+        } else {
+          els.player.src = "";
+          showWebSeminarPaywallGate();
+        }
       };
     }
 
@@ -807,6 +892,7 @@ function renderGraphItems(items) {
         if (!els.modal || !els.player) return;
         els.modal.classList.remove("active");
         els.player.src = "";
+        hideWebSeminarPaywallGate();
         document.body.style.overflow = "";
       };
     }
@@ -3595,12 +3681,15 @@ function renderSidebarAd(post) {
   // =========================================================
   function isUserLoggedIn() {
     try {
-      // If some page exposes a global helper, prefer it
-      if (typeof window.isUserLoggedIn === "function") {
+      // If some page exposes a dedicated helper, prefer it.
+      // Guard against accidental self-recursion when this function is also assigned globally.
+      if (typeof window.isUserLoggedIn === "function" && window.isUserLoggedIn !== isUserLoggedIn) {
         return !!window.isUserLoggedIn();
       }
 
-      // Our account system (auth.js) exposes TomatoAuth and stores session in web storage
+      // Member login is handled by the frontend member auth system (auth.js),
+      // not by the WordPress admin login cookie.
+      // Therefore, DO NOT treat wordpress_logged_in_* as a valid member session here.
       if (window.TomatoAuth) {
         if (typeof window.TomatoAuth.currentUser === "function") {
           const u = window.TomatoAuth.currentUser();
@@ -3616,10 +3705,18 @@ function renderSidebarAd(post) {
         return !!window.TOMATO_AUTH.isLoggedIn();
       }
 
-      // Directly check the session keys used by auth.js (works even if auth.js loads later)
+      // Direct storage fallback so paywall still works even if auth.js loads slightly later.
       try {
         const ls = window.localStorage;
         const ss = window.sessionStorage;
+
+        const currentUserRaw = ls ? ls.getItem("tomato_member_current_user_v1") : "";
+        const authToken = ls ? ls.getItem("tomato_member_auth_token_v1") : "";
+        if ((authToken && String(authToken).trim()) || (currentUserRaw && String(currentUserRaw).trim())) {
+          return true;
+        }
+
+        // Backward compatibility with older local/session storage keys, if any remain.
         const email1 = ls ? ls.getItem("tomato_session_email_v1") : "";
         const email2 = ss ? ss.getItem("tomato_session_email_session_v1") : "";
         if ((email1 && email1.trim()) || (email2 && email2.trim())) return true;
@@ -3627,9 +3724,7 @@ function renderSidebarAd(post) {
         // ignore storage access errors
       }
 
-      // WordPress sets "wordpress_logged_in_*" cookie after WP login (fallback)
-      const c = String(document.cookie || "");
-      return /wordpress_logged_in_/i.test(c);
+      return false;
     } catch (e) {
       return false;
     }
@@ -3919,6 +4014,82 @@ function updateDetailBreadcrumb(post) {
   }
 }
 
+function getFeaturedImageDisplayMode(post) {
+  const mode = String(post && post.featured_image_display_mode ? post.featured_image_display_mode : '').trim().toLowerCase();
+  return mode === 'third' ? 'third' : 'full';
+}
+
+function applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, mode) {
+  if (!mainImageWrap || !mainImageBox) return;
+
+  const normalizedMode = mode === 'third' ? 'third' : 'full';
+
+  mainImageWrap.classList.remove('is-full-image', 'is-third-image');
+  mainImageWrap.classList.add(normalizedMode === 'third' ? 'is-third-image' : 'is-full-image');
+
+  const clearInlineCrop = () => {
+    mainImageWrap.style.height = '';
+    mainImageWrap.style.maxHeight = '';
+    mainImageBox.style.height = '';
+    mainImageBox.style.maxHeight = '';
+  };
+
+  const updateThirdCrop = () => {
+    if (normalizedMode !== 'third') {
+      clearInlineCrop();
+      return;
+    }
+
+    const naturalWidth = Number(mainImageBox.naturalWidth || 0);
+    const naturalHeight = Number(mainImageBox.naturalHeight || 0);
+    const renderedWidth = Number(mainImageWrap.clientWidth || mainImageBox.clientWidth || 0);
+
+    if (!naturalWidth || !naturalHeight || !renderedWidth) {
+      clearInlineCrop();
+      return;
+    }
+
+    const fullRenderedHeight = renderedWidth * (naturalHeight / naturalWidth);
+    const croppedHeight = Math.max(1, Math.round(fullRenderedHeight / 3));
+
+    mainImageWrap.style.height = `${croppedHeight}px`;
+    mainImageWrap.style.maxHeight = `${croppedHeight}px`;
+    mainImageBox.style.height = 'auto';
+    mainImageBox.style.maxHeight = 'none';
+  };
+
+  if (normalizedMode !== 'third') {
+    clearInlineCrop();
+    return;
+  }
+
+  if (mainImageBox.complete && Number(mainImageBox.naturalWidth || 0) > 0) {
+    updateThirdCrop();
+  } else {
+    mainImageBox.addEventListener('load', updateThirdCrop, { once: true });
+  }
+
+  try {
+    if (!window.__featuredImageThirdCropResizeBound) {
+      window.addEventListener('resize', function () {
+        document.querySelectorAll('.main-image-full.is-third-image img').forEach(function (imgEl) {
+          const wrapEl = imgEl.closest('.main-image-full');
+          if (!wrapEl) return;
+          const naturalWidth = Number(imgEl.naturalWidth || 0);
+          const naturalHeight = Number(imgEl.naturalHeight || 0);
+          const renderedWidth = Number(wrapEl.clientWidth || imgEl.clientWidth || 0);
+          if (!naturalWidth || !naturalHeight || !renderedWidth) return;
+          const fullRenderedHeight = renderedWidth * (naturalHeight / naturalWidth);
+          const croppedHeight = Math.max(1, Math.round(fullRenderedHeight / 3));
+          wrapEl.style.height = `${croppedHeight}px`;
+          wrapEl.style.maxHeight = `${croppedHeight}px`;
+        });
+      });
+      window.__featuredImageThirdCropResizeBound = true;
+    }
+  } catch (_e) {}
+}
+
 function renderDetail(post) {
     const target = getDetailContentTarget();
     if (!target) return;
@@ -3964,11 +4135,13 @@ function renderDetail(post) {
       updateDetailBreadcrumb(post);
 
       // Main Image
-      const mainImageBox = document.querySelector(".main-image-full img");
+      const mainImageWrap = document.querySelector(".main-image-full");
+      const mainImageBox = mainImageWrap ? mainImageWrap.querySelector("img") : null;
       if (mainImageBox && post.featured_image) {
         mainImageBox.src = post.featured_image;
         mainImageBox.alt = post.title || "";
       }
+      applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, getFeaturedImageDisplayMode(post));
 
       // Article body (member gating if needed)
       const fullHtml = content;
@@ -6201,7 +6374,84 @@ function resetAutoSlide() {
       return {
         modal: document.getElementById("videoModal"),
         player: document.getElementById("videoPlayer"),
+        gate: document.getElementById("paywall-gate"),
+        wrapper: document.querySelector(".video-player-wrapper"),
+        footer: document.querySelector("#videoModal .modal-footer"),
       };
+    }
+
+    function isWebSeminarUserLoggedIn() {
+      try {
+        if (window.TomatoAuth) {
+          if (typeof window.TomatoAuth.currentUser === "function") {
+            const u = window.TomatoAuth.currentUser();
+            if (u && (u.email || u.id || u.name)) return true;
+          }
+          if (typeof window.TomatoAuth.isLoggedIn === "function") {
+            return !!window.TomatoAuth.isLoggedIn();
+          }
+        }
+
+        if (window.TOMATO_AUTH && typeof window.TOMATO_AUTH.isLoggedIn === "function") {
+          return !!window.TOMATO_AUTH.isLoggedIn();
+        }
+
+        try {
+          const ls = window.localStorage;
+          const ss = window.sessionStorage;
+          const currentUserRaw = ls ? ls.getItem("tomato_member_current_user_v1") : "";
+          const authToken = ls ? ls.getItem("tomato_member_auth_token_v1") : "";
+          if ((authToken && String(authToken).trim()) || (currentUserRaw && String(currentUserRaw).trim())) {
+            return true;
+          }
+          const email1 = ls ? ls.getItem("tomato_session_email_v1") : "";
+          const email2 = ss ? ss.getItem("tomato_session_email_session_v1") : "";
+          if ((email1 && email1.trim()) || (email2 && email2.trim())) return true;
+        } catch (_storageError) {}
+
+        return false;
+      } catch (_e) {
+        return false;
+      }
+    }
+
+    function renderWebSeminarPaywallGate() {
+      const { gate } = getModalEls();
+      if (!gate) return;
+
+      const paper = (typeof getCurrentPaper === "function" && getCurrentPaper()) || "tomato";
+      const loginHref = `/static/account/login.html?paper=${encodeURIComponent(paper)}`;
+      const registerHref = `/static/account/register.html?paper=${encodeURIComponent(paper)}`;
+
+      gate.innerHTML = `
+        <div class="paywall-inner">
+          <div class="paywall-lock" aria-hidden="true">🔒</div>
+          <div class="paywall-text">
+            <div class="paywall-title">この記事は会員限定記事です</div>
+            <div class="paywall-subtitle">登録すると続き（全文）をお読みいただけます。</div>
+          </div>
+          <div class="paywall-actions">
+            <a class="paywall-btn paywall-btn-register" href="${registerHref}">★ 新規会員登録（無料）</a>
+            <a class="paywall-btn paywall-btn-login" href="${loginHref}">→ ログイン</a>
+          </div>
+        </div>
+      `;
+    }
+
+    function showWebSeminarPaywallGate() {
+      const { gate, wrapper, footer } = getModalEls();
+      if (!gate) return;
+      renderWebSeminarPaywallGate();
+      gate.style.display = "flex";
+      if (wrapper) wrapper.classList.add("is-paywalled");
+      if (footer) footer.classList.add("is-paywalled");
+    }
+
+    function hideWebSeminarPaywallGate() {
+      const { gate, wrapper, footer } = getModalEls();
+      if (gate) gate.style.display = "none";
+      if (wrapper) wrapper.classList.remove("is-paywalled");
+      if (footer) footer.classList.remove("is-paywalled");
     }
 
     if (typeof window.openVideoModal !== "function") {
@@ -6215,9 +6465,16 @@ function resetAutoSlide() {
           encodeURIComponent(currentVideoId) +
           "?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1";
 
-        player.src = embedUrl;
         modal.classList.add("active");
         document.body.style.overflow = "hidden";
+
+        if (isWebSeminarUserLoggedIn()) {
+          hideWebSeminarPaywallGate();
+          player.src = embedUrl;
+        } else {
+          player.src = "";
+          showWebSeminarPaywallGate();
+        }
       };
     }
 
@@ -6245,6 +6502,7 @@ function resetAutoSlide() {
         if (!evt || isOverlayClick || isCloseBtnClick) {
           player.src = "";
           modal.classList.remove("active");
+          hideWebSeminarPaywallGate();
           document.body.style.overflow = "";
           currentVideoId = "";
           if (evt && typeof evt.stopPropagation === "function") evt.stopPropagation();
