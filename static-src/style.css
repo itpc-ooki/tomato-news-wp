@@ -6580,7 +6580,7 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
 /* YouTube コンテンツ */
 
   .live-section{
-    max-width:1400px; margin:0 auto 40px; padding:0 20px;
+    max-width:1400px; margin:0 auto 40px; padding:0 20px; display: none;
   }
 
 
