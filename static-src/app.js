@@ -3809,6 +3809,11 @@ function renderSidebarAd(post) {
 
       const wantGate = shouldGatePost(st.post);
       const isPaywalled = st.target.classList.contains("is-paywalled");
+      const desiredImageMode = wantGate ? getEffectiveFeaturedImageDisplayMode(st.post) : 'full';
+
+      // Always re-sync the featured image mode as auth state can become available
+      // after the initial render without necessarily changing the article HTML state.
+      applyFeaturedImageDisplayMode(st.mainImageWrap, st.mainImageBox, desiredImageMode);
 
       if (!wantGate && isPaywalled) {
         // Logged in (or free viewable) -> show full and hide gate
@@ -3832,7 +3837,7 @@ function renderSidebarAd(post) {
         renderPaywallGate(st.post);
         showPaywallGate();
         setAncillaryDetailVisibility(false);
-        applyFeaturedImageDisplayMode(st.mainImageWrap, st.mainImageBox, getEffectiveFeaturedImageDisplayMode(st.post));
+        applyFeaturedImageDisplayMode(st.mainImageWrap, st.mainImageBox, desiredImageMode);
 
         // keep trying to ungate if auth becomes available
         maybeUngateDetailAfterLogin(st.post, st.fullHtml, st.target);
