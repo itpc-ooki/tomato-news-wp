@@ -5750,6 +5750,7 @@ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState=
     var imgs = scope.querySelectorAll('img');
     imgs.forEach(function(img){
       if (img.closest('header, nav, footer')) return;
+      if (img.closest('.seminar-video-wrapper')) return;
       var p = img.parentElement;
       if(!p) return;
       var cs = getComputedStyle(p);

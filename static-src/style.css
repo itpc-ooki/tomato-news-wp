@@ -6952,6 +6952,7 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
     padding-bottom:56.25%;
     overflow:hidden;
     border-radius:0;
+    text-align: center;
   }
 
 
@@ -6961,8 +6962,7 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
     left:0;
     width:100%;
     height:100%;
-    object-fit:contain;
-    object-position:center;
+    object-fit:cover;
     border-radius:0;
   }
 
