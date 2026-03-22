@@ -3755,7 +3755,6 @@ function renderSidebarAd(post) {
 
       hidePaywallGate();
       setAncillaryDetailVisibility(true);
-      refreshDetailFeaturedImageDisplay(post);
 
       // Keep ancillary blocks consistent with the full view
       renderReferenceAndWriter(post);
@@ -3808,7 +3807,6 @@ function renderSidebarAd(post) {
 
         hidePaywallGate();
         setAncillaryDetailVisibility(true);
-        refreshDetailFeaturedImageDisplay(st.post);
 
         renderReferenceAndWriter(st.post);
         renderArticleTags(st.post);
@@ -3823,7 +3821,6 @@ function renderSidebarAd(post) {
         renderPaywallGate(st.post);
         showPaywallGate();
         setAncillaryDetailVisibility(false);
-        refreshDetailFeaturedImageDisplay(st.post);
 
         // keep trying to ungate if auth becomes available
         maybeUngateDetailAfterLogin(st.post, st.fullHtml, st.target);
@@ -4022,17 +4019,6 @@ function getFeaturedImageDisplayMode(post) {
   return mode === 'third' ? 'third' : 'full';
 }
 
-function getFeaturedImageDisplayModeForViewer(post) {
-  return shouldGatePost(post) ? getFeaturedImageDisplayMode(post) : 'full';
-}
-
-function refreshDetailFeaturedImageDisplay(post) {
-  const mainImageWrap = document.querySelector('.main-image-full');
-  const mainImageBox = mainImageWrap ? mainImageWrap.querySelector('img') : null;
-  if (!mainImageWrap || !mainImageBox) return;
-  applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, getFeaturedImageDisplayModeForViewer(post));
-}
-
 function applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, mode) {
   if (!mainImageWrap || !mainImageBox) return;
 
@@ -4155,7 +4141,7 @@ function renderDetail(post) {
         mainImageBox.src = post.featured_image;
         mainImageBox.alt = post.title || "";
       }
-      applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, getFeaturedImageDisplayModeForViewer(post));
+      applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, getFeaturedImageDisplayMode(post));
 
       // Article body (member gating if needed)
       const fullHtml = content;
