@@ -387,6 +387,48 @@ add_action('init', function () {
 });
 
 /**
+ * 1b-1) Admin list columns: add SEASON before カテゴリー on 品種マスタ list
+ */
+add_filter('manage_edit-variety_columns', function ($columns) {
+  $new_columns = [];
+
+  foreach ($columns as $key => $label) {
+    if ($key === 'categories') {
+      $new_columns['tn_variety_season'] = 'SEASON';
+    }
+    $new_columns[$key] = $label;
+  }
+
+  if (!isset($new_columns['tn_variety_season'])) {
+    $new_columns['tn_variety_season'] = 'SEASON';
+  }
+
+  return $new_columns;
+});
+
+add_action('manage_variety_posts_custom_column', function ($column, $post_id) {
+  if ($column !== 'tn_variety_season') {
+    return;
+  }
+
+  $season = function_exists('get_field') ? get_field('season', $post_id) : get_post_meta($post_id, 'season', true);
+
+  if (is_array($season)) {
+    $season = reset($season);
+  }
+
+  $season = is_string($season) ? trim($season) : '';
+
+  $labels = [
+    'winter-spring' => '冬春',
+    'summer-autumn' => '夏秋',
+  ];
+
+  echo esc_html($labels[$season] ?? '—');
+}, 10, 2);
+
+
+/**
  * 1c) Taxonomy: variety_category（品種カテゴリ）
  * - ACF「カテゴリ（variety_category）」のプルダウンを、管理画面で編集可能にするための分類
  * - term slug を varieties.json の category 値として利用（例: large / midi / mini / rootstock）
