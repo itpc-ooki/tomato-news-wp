@@ -3756,6 +3756,14 @@ function renderSidebarAd(post) {
       hidePaywallGate();
       setAncillaryDetailVisibility(true);
 
+      try {
+        applyFeaturedImageDisplayMode(
+          __PAYWALL_STATE.mainImageWrap,
+          __PAYWALL_STATE.mainImageBox,
+          'full'
+        );
+      } catch (_e) {}
+
       // Keep ancillary blocks consistent with the full view
       renderReferenceAndWriter(post);
       renderArticleTags(post);
@@ -3787,6 +3795,8 @@ function renderSidebarAd(post) {
     fullHtml: "",
     target: null,
     isMock: false,
+    mainImageWrap: null,
+    mainImageBox: null,
   };
 
   function syncPaywallState() {
@@ -3807,6 +3817,7 @@ function renderSidebarAd(post) {
 
         hidePaywallGate();
         setAncillaryDetailVisibility(true);
+        applyFeaturedImageDisplayMode(st.mainImageWrap, st.mainImageBox, 'full');
 
         renderReferenceAndWriter(st.post);
         renderArticleTags(st.post);
@@ -3821,6 +3832,7 @@ function renderSidebarAd(post) {
         renderPaywallGate(st.post);
         showPaywallGate();
         setAncillaryDetailVisibility(false);
+        applyFeaturedImageDisplayMode(st.mainImageWrap, st.mainImageBox, getEffectiveFeaturedImageDisplayMode(st.post));
 
         // keep trying to ungate if auth becomes available
         maybeUngateDetailAfterLogin(st.post, st.fullHtml, st.target);
@@ -4019,6 +4031,13 @@ function getFeaturedImageDisplayMode(post) {
   return mode === 'third' ? 'third' : 'full';
 }
 
+function getEffectiveFeaturedImageDisplayMode(post) {
+  if (shouldGatePost(post)) {
+    return getFeaturedImageDisplayMode(post);
+  }
+  return 'full';
+}
+
 function applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, mode) {
   if (!mainImageWrap || !mainImageBox) return;
 
@@ -4141,7 +4160,7 @@ function renderDetail(post) {
         mainImageBox.src = post.featured_image;
         mainImageBox.alt = post.title || "";
       }
-      applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, getFeaturedImageDisplayMode(post));
+      applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, getEffectiveFeaturedImageDisplayMode(post));
 
       // Article body (member gating if needed)
       const fullHtml = content;
@@ -4152,6 +4171,8 @@ function renderDetail(post) {
         __PAYWALL_STATE.fullHtml = fullHtml;
         __PAYWALL_STATE.target = target;
         __PAYWALL_STATE.isMock = true;
+        __PAYWALL_STATE.mainImageWrap = mainImageWrap;
+        __PAYWALL_STATE.mainImageBox = mainImageBox;
         // next tick sync (covers cases where auth is already ready)
         setTimeout(syncPaywallState, 0);
       } catch (_e) {}
