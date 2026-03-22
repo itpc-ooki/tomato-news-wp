@@ -698,15 +698,27 @@ private static function sync_uploads_assets(): void {
 
         $category = function_exists('get_field') ? (string) get_field('variety_category', $id) : '';
         $company  = function_exists('get_field') ? (string) get_field('company', $id) : '';
+        $season_value = function_exists('get_field') ? (string) get_field('season', $id) : '';
         $image    = function_exists('get_field') ? get_field('image', $id) : '';
         $link     = function_exists('get_field') ? (string) get_field('link', $id) : '';
-$desc     = function_exists('get_field') ? (string) get_field('description', $id) : '';
+        $desc     = function_exists('get_field') ? (string) get_field('description', $id) : '';
         $res      = function_exists('get_field') ? get_field('res', $id) : null;
         $sort     = function_exists('get_field') ? (int) get_field('sort_order', $id) : 0;
 
         // Fallbacks
         if ($category === '') $category = 'large';
         if (!is_array($res)) $res = [];
+
+        $season_slug = sanitize_title($season_value);
+        if ($season_slug === 'winter' || $season_slug === 'winterspring') $season_slug = 'winter-spring';
+        if ($season_slug === 'summer' || $season_slug === 'summerautumn') $season_slug = 'summer-autumn';
+        if ($season_value === '冬春') $season_slug = 'winter-spring';
+        if ($season_value === '夏秋') $season_slug = 'summer-autumn';
+        if ($season_slug !== 'winter-spring' && $season_slug !== 'summer-autumn') {
+          $season_slug = 'summer-autumn';
+        }
+
+        $season = $season_slug === 'winter-spring' ? '冬春' : '夏秋';
 
         // Normalize image path (so it works in /static/{paper}/ pages)
         $image_rel = null;
@@ -724,9 +736,11 @@ $desc     = function_exists('get_field') ? (string) get_field('description', $id
           'name' => get_the_title(),
           'category' => $category,
           'company' => $company,
+          'season' => $season,
+          'season_slug' => $season_slug,
           'image' => $image_rel ?: '',
           'link' => $link_norm,
-'description' => $desc,
+          'description' => $desc,
           'res' => $res,
           // internal sort key (removed later)
           '__sort' => $sort,
@@ -761,10 +775,37 @@ $desc     = function_exists('get_field') ? (string) get_field('description', $id
     $static_out = $static_paper_root . '/varieties.json';
 
     if (count($items) === 0 && is_file($static_out)) {
-      return;
+      $existing_payload = json_decode((string) file_get_contents($static_out), true);
+      $existing_items = [];
+
+      if (is_array($existing_payload)) {
+        if (isset($existing_payload['items']) && is_array($existing_payload['items'])) {
+          $existing_items = $existing_payload['items'];
+        } elseif (array_values($existing_payload) === $existing_payload) {
+          $existing_items = $existing_payload;
+        }
+      }
+
+      if (!empty($existing_items)) {
+        $items = $existing_items;
+      } else {
+        return;
+      }
     }
 
-    $payload = [ 'items' => $items ];
+    $point_cards = function_exists('tomato_get_variety_points_for_paper')
+      ? tomato_get_variety_points_for_paper($paper)
+      : [
+          'winter-spring' => [],
+          'summer-autumn' => [],
+        ];
+
+    $payload = [
+      'paper' => $paper,
+      'updated_at' => current_time('mysql'),
+      'point_cards' => $point_cards,
+      'items' => $items,
+    ];
     $json = wp_json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 
     // 1) Always write the public build output

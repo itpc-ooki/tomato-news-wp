@@ -1065,6 +1065,23 @@ add_action('save_post_newspaper', function ($post_id, $post, $update) {
         ],
       ],
       [
+        'key' => 'field_variety_season',
+        'label' => 'SEASON',
+        'name' => 'season',
+        'type' => 'select',
+        'choices' => [
+          'winter-spring' => '冬春',
+          'summer-autumn' => '夏秋',
+        ],
+        'default_value' => 'summer-autumn',
+        'return_format' => 'value',
+        'ui' => 1,
+        'required' => 1,
+        'wrapper' => [
+          'class' => 'acf-required-label',
+        ],
+      ],
+      [
         'key' => 'field_variety_image',
         'label' => '画像',
         'name' => 'image',
@@ -1325,7 +1342,7 @@ add_filter('acf/load_field/name=variety_category', function ($field) {
 
 
 /**
- * Admin UI: show red asterisk for required fields (品種マスタ: カテゴリ / 種苗会社)
+ * Admin UI: show red asterisk for required fields (品種マスタ: カテゴリ / 種苗会社 / SEASON)
  */
 add_action('admin_head', function () {
   if (!function_exists('get_current_screen')) return;
@@ -1653,3 +1670,373 @@ add_action('acf/init', function () {
     'active' => true,
   ]);
 });
+
+
+/**
+ * 品種選びのポイント設定（variety.html / points-grid）
+ * - Menu: 品種マスタ > 品種選びのポイント
+ * - Per paper + per season (冬春 / 夏秋)
+ */
+function tomato_get_variety_points_option_name(): string {
+  return 'tomato_variety_points_settings';
+}
+
+function tomato_get_available_papers_for_variety_points(): array {
+  $papers = [];
+
+  $static_src_root = rtrim(ABSPATH, '/\\') . '/static-src';
+  if (is_dir($static_src_root)) {
+    $dirs = glob($static_src_root . '/*', GLOB_ONLYDIR);
+    if (is_array($dirs)) {
+      foreach ($dirs as $dir) {
+        $slug = basename((string) $dir);
+        if ($slug === '' || $slug === 'common' || str_starts_with($slug, '.')) continue;
+        if (is_file($dir . '/list.html') && is_file($dir . '/detail.html')) {
+          $papers[$slug] = $slug;
+        }
+      }
+    }
+  }
+
+  if (empty($papers) && taxonomy_exists('category')) {
+    $terms = get_terms([
+      'taxonomy'   => 'category',
+      'hide_empty' => false,
+      'orderby'    => 'name',
+      'order'      => 'ASC',
+    ]);
+    if (!is_wp_error($terms) && is_array($terms)) {
+      foreach ($terms as $term) {
+        if (!empty($term->slug)) {
+          $papers[(string) $term->slug] = (string) $term->name;
+        }
+      }
+    }
+  }
+
+  if (empty($papers)) {
+    $papers['tomato'] = 'tomato';
+  }
+
+  return $papers;
+}
+
+function tomato_get_default_variety_points_cards(): array {
+  return [
+    1 => [
+      'title' => '着果不良',
+      'text'  => "着果不良が生じる主な原因として、高温による花粉稔性（ねんせい）の低下が挙げられる。トマトの花粉は25度を超えると稔性が低くなり、30度以上になると極端に低下し、着果不良が多発する。\n\nこの着果性を改善するために、細霧冷房、遮光カーテン、遮光塗料などの活用が効果的であるが、高温期の着果性に優れた品種の選択も重要である。近年、高温期の着果性が優れた品種も開発されており、各種苗会社のコメントを参考にして、栽培する品種を選択したい。",
+    ],
+    2 => [
+      'title' => '障害果の発生',
+      'text'  => "高温時に発生が懸念される障害果として、日焼け果、裂果、尻腐れ果などが挙げられる。\n\n日焼け果は果実が葉に隠れるように整理する、裂果は給水量の急激な変化を避ける、尻腐れ果はカルシウムを多施用し十分な水分を供給するなどの対策があるが、裂果と尻腐れ果は相反する対応が求められるため、日々の適切な栽培管理が重要になる。\n\n近年は、これら障害に対して強い耐性を持つ品種が開発されており、本紙に掲載されている情報を有効に活用したい。また、以前は問題が大きかったミニトマトの裂果についても、耐裂果性を持つ品種が多く開発されているので、こちらも各社のコメントを参考にしたい。",
+    ],
+    3 => [
+      'title' => '果実の肥大不足',
+      'text'  => "高温期には葉からの蒸散が活発になるため、茎葉に流れる水分は多くなるが、果実に供給される水分が少なくなり、小果が増加する。\n\nそのため、果実肥大性の優れた品種を選択したいが、その場合、既述のように裂果の発生が懸念される。最近ではこの両形質とも優れた品種も開発されつつあるので注目したい。",
+    ],
+    4 => [
+      'title' => '青枯病対策',
+      'text'  => "青枯病は、高温時に発生しやすい土壌病害で、夏秋期のトマト栽培では被害が最も大きな病害の一つである。\n\n青枯病対策として、還元消毒や太陽熱消毒などの土壌消毒は一定の効果が認められるが、抵抗性台木用品種への接ぎ木が有効な手段とされている。近年開発されたトマト台木用品種の中には、青枯病抵抗性がかなり強い品種もあるため、青枯病の被害に悩んでいる栽培地では、適切な土壌消毒を施した上、強い青枯病抵抗性を示す台木用品種を選びたい。\n\nなお、種苗メーカー各社は、台木用品種の青枯病抵抗性強度をランク付けしていることが多いので、その情報も参考にしたい。",
+    ],
+  ];
+}
+
+function tomato_get_default_variety_points_payload(): array {
+  $cards = tomato_get_default_variety_points_cards();
+  return [
+    'winter-spring' => $cards,
+    'summer-autumn' => $cards,
+  ];
+}
+
+function tomato_get_raw_variety_points_settings(): array {
+  $raw = get_option(tomato_get_variety_points_option_name(), []);
+  return is_array($raw) ? $raw : [];
+}
+
+function tomato_variety_points_paper_has_registered_content($paper_data): bool {
+  if (!is_array($paper_data)) {
+    return false;
+  }
+
+  foreach (['winter-spring', 'summer-autumn'] as $season_slug) {
+    $season_data = isset($paper_data[$season_slug]) && is_array($paper_data[$season_slug]) ? $paper_data[$season_slug] : [];
+    foreach ([1, 2, 3, 4] as $index) {
+      $card = isset($season_data[$index]) && is_array($season_data[$index]) ? $season_data[$index] : [];
+      $title = isset($card['title']) ? trim((string) $card['title']) : '';
+      $text = isset($card['text']) ? trim((string) $card['text']) : '';
+      if ($title !== '' || $text !== '') {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function tomato_get_registered_variety_points_papers(): array {
+  $papers = tomato_get_available_papers_for_variety_points();
+  $raw = tomato_get_raw_variety_points_settings();
+  $registered = [];
+
+  if (!is_array($raw)) {
+    return $registered;
+  }
+
+  foreach ($raw as $paper_slug => $paper_data) {
+    $paper_slug = sanitize_title((string) $paper_slug);
+    if ($paper_slug === '') {
+      continue;
+    }
+
+    if (!tomato_variety_points_paper_has_registered_content($paper_data)) {
+      continue;
+    }
+
+    $normalized_paper = tomato_normalize_variety_points_settings([$paper_slug => $paper_data]);
+    $normalized_payload = $normalized_paper[$paper_slug] ?? [];
+    if ($normalized_payload === tomato_get_default_variety_points_payload()) {
+      continue;
+    }
+
+    $season_labels = [];
+    $default_payload = tomato_get_default_variety_points_payload();
+    foreach (['winter-spring' => '冬春', 'summer-autumn' => '夏秋'] as $season_slug => $season_label) {
+      $normalized_season = isset($normalized_payload[$season_slug]) && is_array($normalized_payload[$season_slug]) ? $normalized_payload[$season_slug] : [];
+      $default_season = isset($default_payload[$season_slug]) && is_array($default_payload[$season_slug]) ? $default_payload[$season_slug] : [];
+
+      if ($normalized_season !== $default_season) {
+        $season_labels[] = $season_label;
+      }
+    }
+
+    $registered[$paper_slug] = [
+      'label' => (string) ($papers[$paper_slug] ?? $paper_slug),
+      'seasons' => $season_labels,
+    ];
+  }
+
+  return $registered;
+}
+
+function tomato_get_variety_points_papers_list_rows(): array {
+  $papers = tomato_get_available_papers_for_variety_points();
+  $registered_papers = tomato_get_registered_variety_points_papers();
+  $rows = [];
+
+  foreach ($papers as $paper_slug => $paper_label) {
+    $registered_info = isset($registered_papers[$paper_slug]) && is_array($registered_papers[$paper_slug]) ? $registered_papers[$paper_slug] : [];
+    $season_labels = isset($registered_info['seasons']) && is_array($registered_info['seasons']) ? $registered_info['seasons'] : [];
+
+    $rows[$paper_slug] = [
+      'slug' => (string) $paper_slug,
+      'label' => (string) $paper_label,
+      'is_registered' => !empty($registered_info),
+      'seasons' => $season_labels,
+    ];
+  }
+
+  return $rows;
+}
+
+function tomato_normalize_variety_points_settings($settings): array {
+  $papers = tomato_get_available_papers_for_variety_points();
+  $defaults = tomato_get_default_variety_points_payload();
+  $normalized = [];
+
+  if (!is_array($settings)) {
+    $settings = [];
+  }
+
+  foreach ($papers as $paper_slug => $paper_label) {
+    $paper_data = isset($settings[$paper_slug]) && is_array($settings[$paper_slug]) ? $settings[$paper_slug] : [];
+    $normalized[$paper_slug] = [];
+
+    foreach (['winter-spring', 'summer-autumn'] as $season_slug) {
+      $season_data = isset($paper_data[$season_slug]) && is_array($paper_data[$season_slug]) ? $paper_data[$season_slug] : [];
+      $normalized[$paper_slug][$season_slug] = [];
+
+      foreach ([1, 2, 3, 4] as $index) {
+        $card = isset($season_data[$index]) && is_array($season_data[$index]) ? $season_data[$index] : [];
+        $default_card = $defaults[$season_slug][$index] ?? ['title' => '', 'text' => ''];
+
+        $title = isset($card['title']) ? sanitize_text_field((string) $card['title']) : (string) $default_card['title'];
+        $text  = isset($card['text']) ? sanitize_textarea_field((string) $card['text']) : (string) $default_card['text'];
+
+        if ($title === '' && $text === '') {
+          $title = (string) $default_card['title'];
+          $text  = (string) $default_card['text'];
+        }
+
+        $normalized[$paper_slug][$season_slug][$index] = [
+          'title' => $title,
+          'text'  => $text,
+        ];
+      }
+    }
+  }
+
+  return $normalized;
+}
+
+function tomato_get_variety_points_settings(): array {
+  $raw = tomato_get_raw_variety_points_settings();
+  return tomato_normalize_variety_points_settings($raw);
+}
+
+function tomato_get_variety_points_for_paper(string $paper): array {
+  $paper = sanitize_title($paper);
+  $all = tomato_get_variety_points_settings();
+  if (isset($all[$paper]) && is_array($all[$paper])) {
+    return $all[$paper];
+  }
+
+  if (isset($all['tomato']) && is_array($all['tomato'])) {
+    return $all['tomato'];
+  }
+
+  return tomato_get_default_variety_points_payload();
+}
+
+add_action('admin_menu', function () {
+  add_submenu_page(
+    'edit.php?post_type=variety',
+    '品種選びのポイント',
+    '品種選びのポイント',
+    'manage_options',
+    'variety-points-settings',
+    'tomato_render_variety_points_settings_page'
+  );
+}, 30);
+
+function tomato_render_variety_points_settings_page(): void {
+  if (!current_user_can('manage_options')) {
+    wp_die('このページにアクセスする権限がありません。');
+  }
+
+  $papers = tomato_get_available_papers_for_variety_points();
+  $selected_paper = '';
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['selected_paper'])) {
+    $selected_paper = sanitize_title((string) $_POST['selected_paper']);
+  }
+  if ($selected_paper === '' && isset($_GET['paper'])) {
+    $selected_paper = sanitize_title((string) $_GET['paper']);
+  }
+  if ($selected_paper !== '' && !isset($papers[$selected_paper])) {
+    $selected_paper = '';
+  }
+
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tomato_variety_points_nonce'])) {
+    check_admin_referer('tomato_save_variety_points', 'tomato_variety_points_nonce');
+
+    if ($selected_paper === '') {
+      $selected_paper = array_key_first($papers);
+    }
+
+    $existing = tomato_get_raw_variety_points_settings();
+    $posted = isset($_POST['variety_points']) && is_array($_POST['variety_points']) ? $_POST['variety_points'] : [];
+    $paper_payload = [$selected_paper => $posted];
+    $normalized_paper_payload = tomato_normalize_variety_points_settings($paper_payload);
+
+    $existing[$selected_paper] = $normalized_paper_payload[$selected_paper] ?? tomato_get_default_variety_points_payload();
+    update_option(tomato_get_variety_points_option_name(), $existing, false);
+
+    if (class_exists('Tomato_Auto_Static_Build_Queue')) {
+      Tomato_Auto_Static_Build_Queue::request_build([$selected_paper], 'variety_points_settings_saved');
+    }
+
+    echo '<div class="notice notice-success is-dismissible"><p>品種選びのポイントを保存しました。静的ビルドキューにも追加しました。</p></div>';
+  }
+
+  $is_edit_mode = ($selected_paper !== '');
+  $base_url = admin_url('edit.php?post_type=variety&page=variety-points-settings');
+
+  echo '<div class="wrap">';
+  echo '<h1 class="wp-heading-inline">品種選びのポイント</h1>';
+
+  if (!$is_edit_mode) {
+    echo ' <a href="' . esc_url($base_url . '&paper=' . rawurlencode((string) array_key_first($papers))) . '" class="page-title-action">品種選びのポイントを追加</a>';
+  }
+
+  echo '<p>variety.html の「品種選びのポイント」4件を、紙面ごと・SEASONごとに設定できます。</p>';
+
+  if (!$is_edit_mode) {
+    $rows = tomato_get_variety_points_papers_list_rows();
+
+    echo '<table class="wp-list-table widefat fixed striped table-view-list" style="margin-top:16px;">';
+    echo '<thead><tr>';
+    echo '<th scope="col" style="width:30%;">紙面</th>';
+    echo '<th scope="col" style="width:20%;">登録状況</th>';
+    echo '<th scope="col" style="width:30%;">登録済みSEASON</th>';
+    echo '<th scope="col" style="width:20%;">操作</th>';
+    echo '</tr></thead>';
+    echo '<tbody>';
+
+    foreach ($rows as $row) {
+      $paper_slug = (string) ($row['slug'] ?? '');
+      $paper_label = (string) ($row['label'] ?? $paper_slug);
+      $is_registered = !empty($row['is_registered']);
+      $seasons = isset($row['seasons']) && is_array($row['seasons']) ? $row['seasons'] : [];
+      $edit_url = $base_url . '&paper=' . rawurlencode($paper_slug);
+
+      echo '<tr>';
+      echo '<td><strong><a href="' . esc_url($edit_url) . '">' . esc_html($paper_label) . '</a></strong>';
+      echo '<div class="row-actions"><span class="edit"><a href="' . esc_url($edit_url) . '">編集</a></span></div>';
+      echo '</td>';
+      echo '<td>' . ($is_registered ? '登録済み' : '未登録') . '</td>';
+      echo '<td>' . (!empty($seasons) ? esc_html(implode(' / ', $seasons)) : '—') . '</td>';
+      echo '<td><a class="button button-secondary" href="' . esc_url($edit_url) . '">' . ($is_registered ? '編集' : '新規登録') . '</a></td>';
+      echo '</tr>';
+    }
+
+    echo '</tbody>';
+    echo '</table>';
+    echo '</div>';
+    return;
+  }
+
+  $paper_settings = tomato_get_variety_points_for_paper($selected_paper);
+  $season_labels = [
+    'winter-spring' => '冬春',
+    'summer-autumn' => '夏秋',
+  ];
+
+  echo '<hr class="wp-header-end">';
+  echo '<p><a href="' . esc_url($base_url) . '">&larr; 一覧へ戻る</a></p>';
+  echo '<h2 style="margin-top:16px;">紙面: ' . esc_html((string) ($papers[$selected_paper] ?? $selected_paper)) . '</h2>';
+
+  echo '<form method="post">';
+  wp_nonce_field('tomato_save_variety_points', 'tomato_variety_points_nonce');
+  echo '<input type="hidden" name="selected_paper" value="' . esc_attr((string) $selected_paper) . '">';
+
+  foreach ($season_labels as $season_slug => $season_label) {
+    echo '<div style="background:#fff; border:1px solid #dcdcde; padding:20px; margin-bottom:24px;">';
+    echo '<h2 style="margin-top:0;">SEASON: ' . esc_html($season_label) . '</h2>';
+    echo '<p style="margin-top:0; color:#50575e;">4つのポイントカードのタイトルと本文を入力してください。</p>';
+
+    for ($i = 1; $i <= 4; $i++) {
+      $card = $paper_settings[$season_slug][$i] ?? ['title' => '', 'text' => ''];
+      echo '<div style="border:1px solid #e2e4e7; padding:16px; margin-bottom:16px; border-radius:6px;">';
+      echo '<h3 style="margin-top:0;">ポイント' . intval($i) . '</h3>';
+      echo '<table class="form-table" role="presentation"><tbody>';
+      echo '<tr>';
+      echo '<th scope="row"><label for="vp_' . esc_attr($season_slug . '_' . $i . '_title') . '">タイトル</label></th>';
+      echo '<td><input type="text" class="regular-text" id="vp_' . esc_attr($season_slug . '_' . $i . '_title') . '" name="variety_points[' . esc_attr($season_slug) . '][' . intval($i) . '][title]" value="' . esc_attr((string) ($card['title'] ?? '')) . '"></td>';
+      echo '</tr>';
+      echo '<tr>';
+      echo '<th scope="row"><label for="vp_' . esc_attr($season_slug . '_' . $i . '_text') . '">本文</label></th>';
+      echo '<td><textarea class="large-text" rows="8" id="vp_' . esc_attr($season_slug . '_' . $i . '_text') . '" name="variety_points[' . esc_attr($season_slug) . '][' . intval($i) . '][text]">' . esc_textarea((string) ($card['text'] ?? '')) . '</textarea><p class="description">改行すると、フロント側では段落ごとに表示されます。</p></td>';
+      echo '</tr>';
+      echo '</tbody></table>';
+      echo '</div>';
+    }
+
+    echo '</div>';
+  }
+
+  submit_button('保存する');
+  echo '</form>';
+  echo '</div>';
+}
+

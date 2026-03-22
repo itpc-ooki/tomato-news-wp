@@ -9,21 +9,8 @@
  * Supported fallback:
  *   - query param ?paper=tomato
  *   - default paper = "tomato"
- *
- * Expected JSON schema (either [] or { items: [] }):
- * {
- *   "id": 1,
- *   "name": "品種名",
- *   "category": "large" | "midi" | "mini" | "rootstock",
- *   "company": "種苗会社",
- *   "description": "品種の特徴",
- *   "image": "/static/<paper>/assets/varieties/xxx.jpg",
- *   "tomvType": "Tm-2a",
- *   "res": { "黄化葉巻病": "○", "青枯病": "◎", ... }
- * }
  */
 (function () {
-  /** Detect paper from URL: /static/<paper>/... */
   function detectPaper() {
     const path = (window.location && window.location.pathname) ? window.location.pathname : "";
     const m = path.match(/\/static\/([^\/]+)\//);
@@ -38,6 +25,11 @@
 
   const paper = detectPaper();
   const DATA_URL = `/static/${paper}/varieties.json`;
+  const DEFAULT_SEASON = "summer-autumn";
+  const SEASON_LABELS = {
+    "winter-spring": "冬春",
+    "summer-autumn": "夏秋",
+  };
 
   const TAB_KEYS = ["all", "large", "midi", "mini", "rootstock"];
   const CATEGORY_LABELS = {
@@ -48,7 +40,6 @@
     rootstock: "台木用トマト",
   };
 
-  // Order & labels for disease filter (pulldown)
   const DISEASE_FILTER_OPTIONS = [
     { key: "", label: "指定なし" },
     { key: "青枯病", label: "青枯病" },
@@ -61,52 +52,32 @@
     { key: "ネコブセンチュウ", label: "ネコブセンチュウ" },
   ];
 
-  const TABLE_COLUMNS = [
-    // Header row 1 & 2 is fixed (matches mock)
-    { key: "果実肥大性", label: "果実肥大性", kind: "trait", defaultSymbol: "○" },
-    { key: "着果性", label: "着果性", kind: "trait", defaultSymbol: "○" },
-    { key: "耐裂果性", label: "耐裂果性", kind: "trait", defaultSymbol: "○" },
-    { key: "耐尻腐れ", label: "耐尻腐れ", kind: "trait", defaultSymbol: "○" },
-
-    { key: "黄化葉巻病", label: "黄化葉巻病", kind: "disease" },
-    { key: "葉かび病", label: "葉かび病", kind: "disease" },
-    { key: "根腐萎凋病", label: "根腐萎凋病", kind: "disease" },
-    { key: "萎凋病R1", label: "萎凋病R1", kind: "disease", defaultSymbol: "○" },
-    { key: "萎凋病R2", label: "萎凋病R2", kind: "disease", defaultSymbol: "○" },
-    { key: "斑点病", label: "斑点病", kind: "disease" },
-    { key: "半身萎凋病", label: "半身萎凋病", kind: "disease" },
-    { key: "ネコブセンチュウ", label: "ネコブセンチュウ", kind: "disease" },
-    { key: "ToMV", label: "ToMV", kind: "tomv" },
-  ];
-
-  /** @type {Array<any>} */
   let allVarieties = [];
+  let pointCardsBySeason = {};
   let currentTab = "all";
-  let currentView = "list"; // 'grid' | 'list'
+  let currentView = "list";
+  let currentSeason = getInitialSeason();
 
   const el = {
     tabButtons: Array.from(document.querySelectorAll(".tab-button")),
-    // filters
+    seasonButtons: Array.from(document.querySelectorAll("#seasonSelector .selector-btn")),
+    seasonPanels: Array.from(document.querySelectorAll("[data-season-panel]")),
     searchInput: document.getElementById("searchInput"),
     categoryFilter: document.getElementById("categoryFilter"),
     companyFilter: document.getElementById("companyFilter"),
     diseaseFilter: document.getElementById("diseaseFilter"),
     clearBtn: document.getElementById("clearFilters"),
     pills: document.getElementById("activePills"),
-
     filterToggle: document.getElementById("filterToggle"),
     filterRow: document.getElementById("filterRow"),
-
-    // view
     gridBtn: document.getElementById("gridViewBtn"),
     listBtn: document.getElementById("listViewBtn"),
-
-    // results
     resultsCount: document.getElementById("resultsCount"),
     grid: document.getElementById("varietyGrid"),
     gridInner: document.getElementById("varietyGridInner"),
     emptyState: document.getElementById("emptyState"),
     tableLegend: document.getElementById("tableLegend"),
+    pointCards: Array.from(document.querySelectorAll(".points-grid .point-card")),
   };
 
   function normalize(s) {
@@ -127,7 +98,109 @@
     return Array.from(new Set(arr.filter(Boolean))).sort((a, b) => a.localeCompare(b, "ja"));
   }
 
-  function setActiveTab(tabKey, { syncCategorySelect = true } = {}) {
+  function normalizeSeasonValue(value) {
+    const raw = (value ?? "").toString().trim();
+    if (!raw) return DEFAULT_SEASON;
+
+    if (raw === "冬春") return "winter-spring";
+    if (raw === "夏秋") return "summer-autumn";
+
+    const s = normalize(raw).replace(/[_\s]+/g, "-");
+    if (s === "winter" || s === "winterspring") return "winter-spring";
+    if (s === "summer" || s === "summerautumn") return "summer-autumn";
+    if (s === "winter-spring") return "winter-spring";
+    if (s === "summer-autumn") return "summer-autumn";
+
+    return DEFAULT_SEASON;
+  }
+
+  function getSeasonLabel(value) {
+    const key = normalizeSeasonValue(value);
+    return SEASON_LABELS[key] || SEASON_LABELS[DEFAULT_SEASON];
+  }
+
+  function getInitialSeason() {
+    const active = document.querySelector("#seasonSelector .selector-btn.active");
+    if (active && active.dataset && active.dataset.season) {
+      return normalizeSeasonValue(active.dataset.season);
+    }
+
+    const first = document.querySelector("#seasonSelector .selector-btn");
+    if (first && first.dataset && first.dataset.season) {
+      return normalizeSeasonValue(first.dataset.season);
+    }
+
+    return DEFAULT_SEASON;
+  }
+
+  function syncSeasonButtons() {
+    el.seasonButtons.forEach((btn) => {
+      const btnSeason = normalizeSeasonValue(btn.dataset.season || "");
+      const active = btnSeason === currentSeason;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function syncSeasonPanels() {
+    if (document.body) {
+      document.body.setAttribute("data-variety-season", currentSeason);
+    }
+
+    el.seasonPanels.forEach((panel) => {
+      const panelSeason = normalizeSeasonValue(panel.getAttribute("data-season-panel") || "");
+      const active = panelSeason === currentSeason;
+      panel.hidden = !active;
+    });
+  }
+
+
+
+  function textToParagraphsHtml(text) {
+    const normalized = (text ?? "").toString().replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    const parts = normalized.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+    if (!parts.length) {
+      const single = normalized.trim();
+      return single ? `<p>${escapeHtml(single).replace(/\n/g, "<br>")}</p>` : "";
+    }
+    return parts.map((part) => `<p>${escapeHtml(part).replace(/\n/g, "<br>")}</p>`).join("");
+  }
+
+  function getPointCardsForSeason(seasonValue) {
+    const seasonKey = normalizeSeasonValue(seasonValue);
+    const map = (pointCardsBySeason && typeof pointCardsBySeason === "object") ? pointCardsBySeason : {};
+    return map[seasonKey] || map[DEFAULT_SEASON] || {};
+  }
+
+  function renderPointCards() {
+    if (!el.pointCards || !el.pointCards.length) return;
+    const cards = getPointCardsForSeason(currentSeason);
+
+    el.pointCards.forEach((card, idx) => {
+      const data = cards[String(idx + 1)] || cards[idx + 1] || {};
+      const titleEl = card.querySelector('.point-title');
+      const textEl = card.querySelector('.point-text');
+
+      if (titleEl && typeof data.title === 'string' && data.title.trim() !== '') {
+        titleEl.textContent = data.title;
+      }
+      if (textEl && typeof data.text === 'string' && data.text.trim() !== '') {
+        textEl.innerHTML = textToParagraphsHtml(data.text);
+      }
+    });
+  }
+
+  function applySeason(seasonValue) {
+    currentSeason = normalizeSeasonValue(seasonValue);
+    syncSeasonButtons();
+    syncSeasonPanels();
+    renderPointCards();
+    refreshCompanyOptions();
+    render();
+  }
+
+  function setActiveTab(tabKey, options = {}) {
+    const syncCategorySelect = options.syncCategorySelect !== false;
     currentTab = TAB_KEYS.includes(tabKey) ? tabKey : "all";
 
     el.tabButtons.forEach((btn) => {
@@ -137,7 +210,6 @@
     });
 
     if (syncCategorySelect && el.categoryFilter) {
-      // keep dropdown in sync with tabs
       el.categoryFilter.value = currentTab === "all" ? "" : currentTab;
     }
 
@@ -150,47 +222,33 @@
     if (el.gridBtn) el.gridBtn.classList.toggle("active", currentView === "grid");
     if (el.listBtn) el.listBtn.classList.toggle("active", currentView === "list");
 
-    // We render both views inside #varietyGrid (to match latest mock).
-    // Toggle parent class to switch layout.
     if (el.grid) {
       el.grid.classList.toggle("list-view", currentView === "list");
       el.grid.classList.toggle("grid-view", currentView === "grid");
       el.grid.style.display = "";
     }
 
-    if (el.tableLegend) el.tableLegend.style.display = (currentView === "list") ? "" : "none";
+    if (el.tableLegend) el.tableLegend.style.display = currentView === "list" ? "" : "none";
 
     render();
   }
-
 
   function getRes(v, keys) {
     const res = (v && typeof v.res === "object" && v.res) ? v.res : {};
     for (const k of keys) {
       if (res[k] != null && res[k] !== "") return res[k];
     }
-
-
-  // Use ToMV value under `res` as the source of truth (ignore root-level `tomvType`)
-  function getTomvType(v) {
-    const val = getRes(v, ["tomvType", "ToMV"]);
-    return (val ?? "").toString().trim();
-  }
     return "";
   }
 
   function isResPresent(symbol) {
-    // treat '-' or empty as not present
     const s = (symbol ?? "").toString().trim();
-    if (!s || s === "-" || s === "—") return false;
-    return true;
+    return !!(s && s !== "-" && s !== "—");
   }
 
   function cellSymbol(symbol) {
     const s = (symbol ?? "").toString().trim();
     if (!s || s === "-" || s === "—") return `<span class="cell-empty">-</span>`;
-
-    // Class names are defined in style.css (table view)
     if (s === "◎" || s === "○") return `<span class="cell-high">${escapeHtml(s)}</span>`;
     if (s === "△") return `<span class="cell-medium">${escapeHtml(s)}</span>`;
     if (s === "●") return `<span class="cell-filled">${escapeHtml(s)}</span>`;
@@ -201,8 +259,6 @@
     const hasImg = !!(v && v.image);
     const url = (v && v.link) ? String(v.link).trim() : "";
 
-    // Make at least the image clickable (fallback if row click doesn't work).
-    // The anchor fills the cell, while keeping the existing overlay text intact.
     const bg = hasImg
       ? (url
           ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" aria-label="${escapeHtml((v.name || "") + " の詳細へ")}" style="position:absolute; inset:0; z-index:1; display:block;">
@@ -222,7 +278,6 @@
     `;
   }
 
-
   function buildTableForCategory(categoryKey, varieties) {
     const headerClass =
       categoryKey === "midi" ? "midi" :
@@ -231,7 +286,6 @@
 
     const label = CATEGORY_LABELS[categoryKey] || categoryKey;
     const count = varieties.length;
-    // Table header (matches TOMATO_VARIETY_20260123_modified.html)
 
     const thead = `
       <thead>
@@ -258,8 +312,6 @@
       </thead>
     `;
 
-
-    
     const rows = varieties.map((v) => {
       const r = (k, fallback) => {
         const val = getRes(v, [k]);
@@ -267,7 +319,7 @@
         return fallback || "";
       };
 
-      const tomv = (v.tomvType || getRes(v, ["ToMV"])).toString().trim();
+      const tomv = (getRes(v, ["tomvType", "ToMV"]) || "").toString().trim();
       const url = (v && v.link) ? String(v.link).trim() : "";
       const rowClass = url ? "clickable-row" : "";
       const rowAttrs = url
@@ -298,7 +350,6 @@
       `;
     }).join("");
 
-
     return `
       <section class="category-section">
         <div class="category-header ${headerClass}">
@@ -316,15 +367,11 @@
   }
 
   function renderGridCard(v) {
-    const img = v.image
-      ? `<img src="${escapeHtml(v.image)}" alt="${escapeHtml(v.name)}">`
-      : "";
-
+    const img = v.image ? `<img src="${escapeHtml(v.image)}" alt="${escapeHtml(v.name)}">` : "";
     const categoryKey = (v.category || "").toString().trim();
     const categoryLabel = CATEGORY_LABELS[categoryKey] || categoryKey || "";
     const categoryClass = categoryKey ? ` ${escapeHtml(categoryKey)}` : "";
 
-    // Traits (match mock chips)
     const traits = [
       { key: "果実肥大性", label: "果実肥大性" },
       { key: "着果性", label: "着果性" },
@@ -352,9 +399,10 @@
       `.trim();
     }).join("");
 
-    // small badge (ToMV)
-    const tomv = (v.tomvType || getRes(v, ["ToMV"])).toString().trim();
+    const tomv = (getRes(v, ["tomvType", "ToMV"]) || "").toString().trim();
     const tomvBadge = tomv ? `<span class="resistance-badge">ToMV ${escapeHtml(tomv)}</span>` : "";
+    const seasonLabel = getSeasonLabel(v.season_slug || v.season || currentSeason);
+    const seasonBadge = seasonLabel ? `<span class="resistance-badge">${escapeHtml(seasonLabel)}</span>` : "";
 
     return `
       <div class="variety-card ${v.image ? "" : "no-image"}" tabindex="0">
@@ -370,7 +418,7 @@
 
         <div class="card-summary">
           <div class="trait-pills">${traitPills}</div>
-          ${tomvBadge ? `<div class="resistance-row">${tomvBadge}</div>` : ""}
+          ${(tomvBadge || seasonBadge) ? `<div class="resistance-row">${seasonBadge}${tomvBadge}</div>` : ""}
           <p class="card-description">${escapeHtml(v.description || "")}</p>
         </div>
       </div>
@@ -379,13 +427,10 @@
 
   function getFilters() {
     const keyword = normalize(el.searchInput?.value);
-    const category = el.categoryFilter?.value || ""; // '' means all
+    const category = el.categoryFilter?.value || "";
     const company = el.companyFilter?.value || "";
     const disease = el.diseaseFilter?.value || "";
-
-    // currentTab acts as an additional constraint, but we keep it synced with category select
-    const tabConstraint = (currentTab !== "all") ? currentTab : "";
-
+    const tabConstraint = currentTab !== "all" ? currentTab : "";
     return { keyword, category, company, disease, tabConstraint };
   }
 
@@ -398,11 +443,11 @@
       v.description,
       v.category,
       CATEGORY_LABELS[v.category] || "",
+      getSeasonLabel(v.season_slug || v.season || ""),
     ].join(" ").toLowerCase();
 
     if (base.includes(keyword)) return true;
 
-    // also search resistance keys
     const res = (v && typeof v.res === "object" && v.res) ? v.res : {};
     for (const [k, val] of Object.entries(res)) {
       const s = `${k} ${val}`.toLowerCase();
@@ -411,23 +456,22 @@
     return false;
   }
 
+  function getVarietiesForCurrentSeason() {
+    return allVarieties.filter((v) => normalizeSeasonValue(v.season_slug || v.season || "") === currentSeason);
+  }
+
   function getFilteredList() {
     const { keyword, category, company, disease, tabConstraint } = getFilters();
 
-    return allVarieties.filter((v) => {
+    return getVarietiesForCurrentSeason().filter((v) => {
       const cat = v.category || "";
-
-      // tab / category constraint
       if (tabConstraint && cat !== tabConstraint) return false;
       if (category && cat !== category) return false;
-
-      // company
       if (company && (v.company || "") !== company) return false;
 
-      // disease resistance filter (requires value present and not "-")
       if (disease) {
         if (disease === "ToMV") {
-          const tomv = (v.tomvType || getRes(v, ["ToMV"])).toString().trim();
+          const tomv = (getRes(v, ["tomvType", "ToMV"]) || "").toString().trim();
           if (!tomv || tomv === "-" || tomv === "—") return false;
         } else if (disease === "萎凋病") {
           const r1 = getRes(v, ["萎凋病R1"]);
@@ -439,7 +483,6 @@
         }
       }
 
-      // keyword
       return matchKeyword(v, keyword);
     });
   }
@@ -447,8 +490,6 @@
   function renderPills() {
     if (!el.pills) return;
     const { keyword, category, company, disease } = getFilters();
-
-    /** @type {{key:string,label:string,onRemove:()=>void}[]} */
     const pills = [];
 
     if (category) {
@@ -505,7 +546,6 @@
       </span>
     `).join("");
 
-    // bind remove
     Array.from(el.pills.querySelectorAll(".pill")).forEach((pillEl, idx) => {
       const btn = pillEl.querySelector(".pill-remove");
       const pill = pills[idx];
@@ -522,8 +562,6 @@
     });
   }
 
-  
-
   function bindClickableVarietyRows(root) {
     if (!root) return;
 
@@ -536,7 +574,6 @@
         const target = e.target;
         if (!target || !target.closest) return;
 
-        // If the user clicked an actual link, let it behave normally.
         const a = target.closest("a");
         if (a) return;
 
@@ -545,7 +582,6 @@
 
         const link = tr.getAttribute("data-link");
         if (!link) return;
-
         window.open(link, "_blank", "noopener");
       });
 
@@ -567,7 +603,8 @@
       });
     });
   }
-function render() {
+
+  function render() {
     const list = getFilteredList();
     renderPills();
 
@@ -575,9 +612,8 @@ function render() {
       el.resultsCount.innerHTML = `検索結果: <strong>${escapeHtml(String(list.length))}</strong> 品種`;
     }
 
-    const isEmpty = (list.length === 0);
+    const isEmpty = list.length === 0;
     if (el.emptyState) el.emptyState.style.display = isEmpty ? "" : "none";
-
     if (!el.gridInner) return;
 
     if (isEmpty) {
@@ -590,7 +626,6 @@ function render() {
       return;
     }
 
-    // list view (table): group by category
     const grouped = {
       large: [],
       midi: [],
@@ -603,7 +638,6 @@ function render() {
       grouped[c].push(v);
     });
 
-    // render in the standard order
     const sections = ["large", "midi", "mini", "rootstock"]
       .filter((k) => grouped[k] && grouped[k].length > 0)
       .map((k) => buildTableForCategory(k, grouped[k]))
@@ -614,7 +648,6 @@ function render() {
   }
 
   function populateSelectOptions() {
-    // category dropdown (keys match tabs)
     if (el.categoryFilter) {
       el.categoryFilter.innerHTML =
         `<option value="">すべて</option>` +
@@ -623,19 +656,28 @@ function render() {
           .join("");
     }
 
-    // company dropdown
-    if (el.companyFilter) {
-      const companies = uniqueSorted(allVarieties.map((v) => v.company));
-      el.companyFilter.innerHTML =
-        `<option value="">すべて</option>` +
-        companies.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
-    }
-
-    // disease dropdown (fixed order)
     if (el.diseaseFilter) {
       el.diseaseFilter.innerHTML = DISEASE_FILTER_OPTIONS
         .map((o) => `<option value="${escapeHtml(o.key)}">${escapeHtml(o.label)}</option>`)
         .join("");
+    }
+
+    refreshCompanyOptions();
+  }
+
+  function refreshCompanyOptions() {
+    if (!el.companyFilter) return;
+
+    const currentValue = el.companyFilter.value || "";
+    const companies = uniqueSorted(getVarietiesForCurrentSeason().map((v) => v.company));
+    el.companyFilter.innerHTML =
+      `<option value="">すべて</option>` +
+      companies.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+
+    if (currentValue && companies.includes(currentValue)) {
+      el.companyFilter.value = currentValue;
+    } else {
+      el.companyFilter.value = "";
     }
   }
 
@@ -645,30 +687,35 @@ function render() {
     const json = await res.json();
 
     const items = Array.isArray(json) ? json : (json?.items ?? []);
+    pointCardsBySeason = (!Array.isArray(json) && json && typeof json.point_cards === 'object' && json.point_cards) ? json.point_cards : {};
     allVarieties = (items || []).map((v) => ({
       id: v.id,
       link: v.link ?? "",
       name: v.name ?? "",
       category: v.category ?? "large",
       company: v.company ?? "",
+      season: v.season ?? "",
+      season_slug: normalizeSeasonValue(v.season_slug || v.season || ""),
       description: v.description ?? v.features ?? "",
       image: v.image ?? "",
       res: (v && typeof v.res === "object" && v.res) ? v.res : {},
     }));
 
     populateSelectOptions();
-    render();
+    renderPointCards();
+    applySeason(currentSeason);
   }
 
   function bindEvents() {
-    // tabs
     el.tabButtons.forEach((btn) => {
       btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
     });
 
-    // filters
+    el.seasonButtons.forEach((btn) => {
+      btn.addEventListener("click", () => applySeason(btn.dataset.season || DEFAULT_SEASON));
+    });
+
     const onChange = () => {
-      // keep tabs synced with category dropdown
       const selectedCategory = el.categoryFilter?.value || "";
       if (selectedCategory) {
         setActiveTab(selectedCategory, { syncCategorySelect: false });
@@ -692,11 +739,9 @@ function render() {
       render();
     });
 
-    // view
     el.gridBtn?.addEventListener("click", () => setView("grid"));
     el.listBtn?.addEventListener("click", () => setView("list"));
 
-    // mobile filter toggle (if present in CSS)
     el.filterToggle?.addEventListener("click", () => {
       if (!el.filterRow) return;
       const isOpen = el.filterRow.classList.toggle("active");
@@ -705,12 +750,6 @@ function render() {
     });
   }
 
-
-  /* =====================================================================
-   * SP: 「品種選びのポイント」アコーディオン
-   * - Mockup (TOMATO_VARIETY_20260123_modified.html) と同じ挙動に合わせる
-   * - 画面幅 < 768px のときだけ .point-card に open をトグル
-   * ===================================================================== */
   function bindPointCardAccordion() {
     const cards = Array.from(document.querySelectorAll('.point-card'));
     if (!cards.length) return;
@@ -718,8 +757,6 @@ function render() {
     cards.forEach((card) => {
       const title = card.querySelector('.point-title');
       if (!title) return;
-
-      // avoid duplicate binding
       if (title.dataset && title.dataset.accBound === '1') return;
       if (title.dataset) title.dataset.accBound = '1';
 
@@ -732,10 +769,10 @@ function render() {
     });
   }
 
-
-  // init
   bindEvents();
   bindPointCardAccordion();
+  syncSeasonButtons();
+  syncSeasonPanels();
   setView("list");
   loadData().catch((err) => {
     console.error(err);
