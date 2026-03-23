@@ -4047,6 +4047,7 @@ function applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, mode) {
   if (!mainImageWrap || !mainImageBox) return;
 
   const normalizedMode = mode === 'third' ? 'third' : 'full';
+  const THIRD_IMAGE_VISIBLE_HEIGHT = 80;
 
   mainImageWrap.classList.remove('is-full-image', 'is-third-image');
   mainImageWrap.classList.add(normalizedMode === 'third' ? 'is-third-image' : 'is-full-image');
@@ -4064,20 +4065,8 @@ function applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, mode) {
       return;
     }
 
-    const naturalWidth = Number(mainImageBox.naturalWidth || 0);
-    const naturalHeight = Number(mainImageBox.naturalHeight || 0);
-    const renderedWidth = Number(mainImageWrap.clientWidth || mainImageBox.clientWidth || 0);
-
-    if (!naturalWidth || !naturalHeight || !renderedWidth) {
-      clearInlineCrop();
-      return;
-    }
-
-    const fullRenderedHeight = renderedWidth * (naturalHeight / naturalWidth);
-    const croppedHeight = Math.max(1, Math.round(fullRenderedHeight / 3));
-
-    mainImageWrap.style.height = `${croppedHeight}px`;
-    mainImageWrap.style.maxHeight = `${croppedHeight}px`;
+    mainImageWrap.style.height = `${THIRD_IMAGE_VISIBLE_HEIGHT}px`;
+    mainImageWrap.style.maxHeight = `${THIRD_IMAGE_VISIBLE_HEIGHT}px`;
     mainImageBox.style.height = 'auto';
     mainImageBox.style.maxHeight = 'none';
   };
@@ -4087,7 +4076,7 @@ function applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, mode) {
     return;
   }
 
-  if (mainImageBox.complete && Number(mainImageBox.naturalWidth || 0) > 0) {
+  if (mainImageBox.complete) {
     updateThirdCrop();
   } else {
     mainImageBox.addEventListener('load', updateThirdCrop, { once: true });
@@ -4096,17 +4085,9 @@ function applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, mode) {
   try {
     if (!window.__featuredImageThirdCropResizeBound) {
       window.addEventListener('resize', function () {
-        document.querySelectorAll('.main-image-full.is-third-image img').forEach(function (imgEl) {
-          const wrapEl = imgEl.closest('.main-image-full');
-          if (!wrapEl) return;
-          const naturalWidth = Number(imgEl.naturalWidth || 0);
-          const naturalHeight = Number(imgEl.naturalHeight || 0);
-          const renderedWidth = Number(wrapEl.clientWidth || imgEl.clientWidth || 0);
-          if (!naturalWidth || !naturalHeight || !renderedWidth) return;
-          const fullRenderedHeight = renderedWidth * (naturalHeight / naturalWidth);
-          const croppedHeight = Math.max(1, Math.round(fullRenderedHeight / 3));
-          wrapEl.style.height = `${croppedHeight}px`;
-          wrapEl.style.maxHeight = `${croppedHeight}px`;
+        document.querySelectorAll('.main-image-full.is-third-image').forEach(function (wrapEl) {
+          wrapEl.style.height = `${THIRD_IMAGE_VISIBLE_HEIGHT}px`;
+          wrapEl.style.maxHeight = `${THIRD_IMAGE_VISIBLE_HEIGHT}px`;
         });
       });
       window.__featuredImageThirdCropResizeBound = true;

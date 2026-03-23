@@ -54,6 +54,7 @@
 
   let allVarieties = [];
   let pointCardsBySeason = {};
+  let varietyHeadingsBySeason = {};
   let currentTab = "all";
   let currentView = "list";
   let currentSeason = getInitialSeason();
@@ -78,6 +79,8 @@
     emptyState: document.getElementById("emptyState"),
     tableLegend: document.getElementById("tableLegend"),
     pointCards: Array.from(document.querySelectorAll(".points-grid .point-card")),
+    articleTitle: document.querySelector(".article-title"),
+    articleSubtitle: document.querySelector(".article-subtitle"),
   };
 
   function normalize(s) {
@@ -166,6 +169,27 @@
     return parts.map((part) => `<p>${escapeHtml(part).replace(/\n/g, "<br>")}</p>`).join("");
   }
 
+
+  function getVarietyHeadingForSeason(seasonValue) {
+    const seasonKey = normalizeSeasonValue(seasonValue);
+    const map = (varietyHeadingsBySeason && typeof varietyHeadingsBySeason === "object") ? varietyHeadingsBySeason : {};
+    return map[seasonKey] || map[DEFAULT_SEASON] || {};
+  }
+
+  function renderVarietyHeading() {
+    const heading = getVarietyHeadingForSeason(currentSeason);
+    const title = typeof heading.title === "string" ? heading.title.trim() : "";
+    const subtitle = typeof heading.subtitle === "string" ? heading.subtitle.trim() : "";
+
+    if (el.articleTitle && title !== "") {
+      el.articleTitle.innerHTML = title;
+    }
+
+    if (el.articleSubtitle && subtitle !== "") {
+      el.articleSubtitle.textContent = subtitle;
+    }
+  }
+
   function getPointCardsForSeason(seasonValue) {
     const seasonKey = normalizeSeasonValue(seasonValue);
     const map = (pointCardsBySeason && typeof pointCardsBySeason === "object") ? pointCardsBySeason : {};
@@ -175,25 +199,51 @@
   function renderPointCards() {
     if (!el.pointCards || !el.pointCards.length) return;
     const cards = getPointCardsForSeason(currentSeason);
+    const grid = document.querySelector('.points-grid');
+    let visibleCount = 0;
 
     el.pointCards.forEach((card, idx) => {
       const data = cards[String(idx + 1)] || cards[idx + 1] || {};
       const titleEl = card.querySelector('.point-title');
       const textEl = card.querySelector('.point-text');
+      const title = typeof data.title === 'string' ? data.title.trim() : '';
+      const body = typeof data.text === 'string' ? data.text.trim() : '';
+      const hasContent = title !== '' || body !== '';
 
-      if (titleEl && typeof data.title === 'string' && data.title.trim() !== '') {
-        titleEl.textContent = data.title;
+      if (titleEl) {
+        if (title !== '') {
+          titleEl.textContent = title;
+        }
       }
-      if (textEl && typeof data.text === 'string' && data.text.trim() !== '') {
-        textEl.innerHTML = textToParagraphsHtml(data.text);
+
+      if (textEl) {
+        if (body !== '') {
+          textEl.innerHTML = textToParagraphsHtml(body);
+        } else {
+          textEl.innerHTML = '';
+        }
+      }
+
+      card.hidden = !hasContent;
+      card.style.display = hasContent ? '' : 'none';
+
+      if (hasContent) {
+        visibleCount += 1;
       }
     });
+
+    if (grid) {
+      grid.dataset.visibleCards = String(visibleCount);
+      grid.classList.toggle('points-grid-two-columns', visibleCount === 2);
+      grid.classList.toggle('points-grid-one-column', visibleCount === 1);
+    }
   }
 
   function applySeason(seasonValue) {
     currentSeason = normalizeSeasonValue(seasonValue);
     syncSeasonButtons();
     syncSeasonPanels();
+    renderVarietyHeading();
     renderPointCards();
     refreshCompanyOptions();
     render();
@@ -688,6 +738,9 @@
 
     const items = Array.isArray(json) ? json : (json?.items ?? []);
     pointCardsBySeason = (!Array.isArray(json) && json && typeof json.point_cards === 'object' && json.point_cards) ? json.point_cards : {};
+    varietyHeadingsBySeason = (!Array.isArray(json) && json && typeof json.variety_headings === 'object' && json.variety_headings)
+      ? json.variety_headings
+      : Object.fromEntries(Object.entries(pointCardsBySeason).map(([seasonKey, seasonData]) => [seasonKey, (seasonData && typeof seasonData === 'object' && seasonData._heading && typeof seasonData._heading === 'object') ? seasonData._heading : {}]));
     allVarieties = (items || []).map((v) => ({
       id: v.id,
       link: v.link ?? "",

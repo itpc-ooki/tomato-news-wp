@@ -1784,10 +1784,33 @@ function tomato_get_default_variety_points_cards(): array {
   ];
 }
 
+function tomato_get_default_variety_heading_settings(): array {
+  return [
+    'winter-spring' => [
+      'title' => '主な冬春作型向け<br>トマト品種の特性',
+      'subtitle' => '冬春取りトマトの品種選びと最新動向',
+    ],
+    'summer-autumn' => [
+      'title' => '主な夏秋作型向け<br>トマト品種の特性',
+      'subtitle' => '夏秋取りトマトの品種選びと最新動向',
+    ],
+  ];
+}
+
 function tomato_get_default_variety_points_payload(): array {
   $cards = tomato_get_default_variety_points_cards();
+  $winter_cards = $cards;
+  $winter_cards[3] = [
+    'title' => '',
+    'text'  => '',
+  ];
+  $winter_cards[4] = [
+    'title' => '',
+    'text'  => '',
+  ];
+
   return [
-    'winter-spring' => $cards,
+    'winter-spring' => $winter_cards,
     'summer-autumn' => $cards,
   ];
 }
@@ -1804,6 +1827,13 @@ function tomato_variety_points_paper_has_registered_content($paper_data): bool {
 
   foreach (['winter-spring', 'summer-autumn'] as $season_slug) {
     $season_data = isset($paper_data[$season_slug]) && is_array($paper_data[$season_slug]) ? $paper_data[$season_slug] : [];
+    $heading = isset($season_data['_heading']) && is_array($season_data['_heading']) ? $season_data['_heading'] : [];
+    $heading_title = isset($heading['title']) ? trim((string) $heading['title']) : '';
+    $heading_subtitle = isset($heading['subtitle']) ? trim((string) $heading['subtitle']) : '';
+    if ($heading_title !== '' || $heading_subtitle !== '') {
+      return true;
+    }
+
     foreach ([1, 2, 3, 4] as $index) {
       $card = isset($season_data[$index]) && is_array($season_data[$index]) ? $season_data[$index] : [];
       $title = isset($card['title']) ? trim((string) $card['title']) : '';
@@ -1885,6 +1915,7 @@ function tomato_get_variety_points_papers_list_rows(): array {
 function tomato_normalize_variety_points_settings($settings): array {
   $papers = tomato_get_available_papers_for_variety_points();
   $defaults = tomato_get_default_variety_points_payload();
+  $heading_defaults = tomato_get_default_variety_heading_settings();
   $normalized = [];
 
   if (!is_array($settings)) {
@@ -1898,6 +1929,21 @@ function tomato_normalize_variety_points_settings($settings): array {
     foreach (['winter-spring', 'summer-autumn'] as $season_slug) {
       $season_data = isset($paper_data[$season_slug]) && is_array($paper_data[$season_slug]) ? $paper_data[$season_slug] : [];
       $normalized[$paper_slug][$season_slug] = [];
+
+      $default_heading = $heading_defaults[$season_slug] ?? ['title' => '', 'subtitle' => ''];
+      $heading = isset($season_data['_heading']) && is_array($season_data['_heading']) ? $season_data['_heading'] : [];
+      $heading_title = isset($heading['title']) ? (string) $heading['title'] : (string) ($default_heading['title'] ?? '');
+      $heading_subtitle = isset($heading['subtitle']) ? (string) $heading['subtitle'] : (string) ($default_heading['subtitle'] ?? '');
+      $heading_title = wp_kses_post($heading_title);
+      $heading_subtitle = sanitize_text_field($heading_subtitle);
+      if ($heading_title === '' && $heading_subtitle === '') {
+        $heading_title = (string) ($default_heading['title'] ?? '');
+        $heading_subtitle = (string) ($default_heading['subtitle'] ?? '');
+      }
+      $normalized[$paper_slug][$season_slug]['_heading'] = [
+        'title' => $heading_title,
+        'subtitle' => $heading_subtitle,
+      ];
 
       foreach ([1, 2, 3, 4] as $index) {
         $card = isset($season_data[$index]) && is_array($season_data[$index]) ? $season_data[$index] : [];
@@ -2001,7 +2047,7 @@ function tomato_render_variety_points_settings_page(): void {
     echo ' <a href="' . esc_url($base_url . '&paper=' . rawurlencode((string) array_key_first($papers))) . '" class="page-title-action">品種選びのポイントを追加</a>';
   }
 
-  echo '<p>variety.html の「品種選びのポイント」4件を、紙面ごと・SEASONごとに設定できます。</p>';
+  echo '<p>variety.html の「記事タイトル」「サブタイトル」「品種選びのポイント」を、紙面ごと・SEASONごとに設定できます。</p>';
 
   if (!$is_edit_mode) {
     $rows = tomato_get_variety_points_papers_list_rows();
@@ -2055,9 +2101,21 @@ function tomato_render_variety_points_settings_page(): void {
   foreach ($season_labels as $season_slug => $season_label) {
     echo '<div style="background:#fff; border:1px solid #dcdcde; padding:20px; margin-bottom:24px;">';
     echo '<h2 style="margin-top:0;">SEASON: ' . esc_html($season_label) . '</h2>';
-    echo '<p style="margin-top:0; color:#50575e;">4つのポイントカードのタイトルと本文を入力してください。</p>';
+    $max_cards = ($season_slug === 'winter-spring') ? 2 : 4;
+    $heading = $paper_settings[$season_slug]['_heading'] ?? ['title' => '', 'subtitle' => ''];
+    echo '<table class="form-table" role="presentation" style="margin-top:0;"><tbody>';
+    echo '<tr>';
+    echo '<th scope="row"><label for="vp_' . esc_attr($season_slug . '_heading_title') . '">記事タイトル（H1）</label></th>';
+    echo '<td><textarea class="large-text" rows="3" id="vp_' . esc_attr($season_slug . '_heading_title') . '" name="variety_points[' . esc_attr($season_slug) . '][_heading][title]">' . esc_textarea((string) ($heading['title'] ?? '')) . '</textarea><p class="description">&lt;br&gt; を入力すると、フロント側でも改行として表示されます。</p></td>';
+    echo '</tr>';
+    echo '<tr>';
+    echo '<th scope="row"><label for="vp_' . esc_attr($season_slug . '_heading_subtitle') . '">サブタイトル（P）</label></th>';
+    echo '<td><input type="text" class="regular-text" id="vp_' . esc_attr($season_slug . '_heading_subtitle') . '" name="variety_points[' . esc_attr($season_slug) . '][_heading][subtitle]" value="' . esc_attr((string) ($heading['subtitle'] ?? '')) . '"></td>';
+    echo '</tr>';
+    echo '</tbody></table>';
+    echo '<p style="margin-top:0; color:#50575e;">' . ($max_cards === 2 ? '2つのポイントカードのタイトルと本文を入力してください。' : '4つのポイントカードのタイトルと本文を入力してください。') . '</p>';
 
-    for ($i = 1; $i <= 4; $i++) {
+    for ($i = 1; $i <= $max_cards; $i++) {
       $card = $paper_settings[$season_slug][$i] ?? ['title' => '', 'text' => ''];
       echo '<div style="border:1px solid #e2e4e7; padding:16px; margin-bottom:16px; border-radius:6px;">';
       echo '<h3 style="margin-top:0;">ポイント' . intval($i) . '</h3>';

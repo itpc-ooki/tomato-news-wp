@@ -800,10 +800,20 @@ private static function sync_uploads_assets(): void {
           'summer-autumn' => [],
         ];
 
+    $variety_headings = [
+      'winter-spring' => isset($point_cards['winter-spring']['_heading']) && is_array($point_cards['winter-spring']['_heading'])
+        ? $point_cards['winter-spring']['_heading']
+        : [],
+      'summer-autumn' => isset($point_cards['summer-autumn']['_heading']) && is_array($point_cards['summer-autumn']['_heading'])
+        ? $point_cards['summer-autumn']['_heading']
+        : [],
+    ];
+
     $payload = [
       'paper' => $paper,
       'updated_at' => current_time('mysql'),
       'point_cards' => $point_cards,
+      'variety_headings' => $variety_headings,
       'items' => $items,
     ];
     $json = wp_json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);

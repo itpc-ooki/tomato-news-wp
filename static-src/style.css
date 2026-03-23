@@ -4746,6 +4746,16 @@ a{ color:inherit; text-decoration:none}
       grid-template-columns:repeat(4, 1fr);
       gap:20px;
     }
+
+    .points-grid.points-grid-two-columns,
+    .points-grid[data-visible-cards="2"]{
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+    }
+
+    .points-grid.points-grid-one-column,
+    .points-grid[data-visible-cards="1"]{
+      grid-template-columns:minmax(0, 1fr);
+    }
   }
 
   .point-card{
