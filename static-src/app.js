@@ -4504,88 +4504,15 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     );
   }
 
-  function ensureSponsorVideoPopup() {
-    let modal = document.getElementById("sponsorVideoPopup");
-    if (modal) return modal;
-
-    modal = document.createElement("div");
-    modal.id = "sponsorVideoPopup";
-    modal.className = "sponsor-video-popup";
-    modal.setAttribute("aria-hidden", "true");
-    modal.innerHTML = `
-      <div class="sponsor-video-popup__dialog" role="dialog" aria-modal="true" aria-label="スポンサー動画広告紹介">
-        <button type="button" class="sponsor-video-popup__close" aria-label="ポップアップを閉じる">×</button>
-        <div class="sponsor-video-popup__image-wrap">
-          <img id="sponsorVideoPopupImage" class="sponsor-video-popup__image" src="" alt="">
-        </div>
-        <div class="sponsor-video-popup__footer">
-          <a id="sponsorVideoPopupLink" class="btn accent sponsor-video-popup__btn" href="#" target="_blank" rel="noopener">
-            詳細はこちら
-          </a>
-        </div>
-      </div>
-    `.trim();
-
-    document.body.appendChild(modal);
-
-    const closeBtn = modal.querySelector(".sponsor-video-popup__close");
-    if (closeBtn) {
-      closeBtn.addEventListener("click", closeSponsorVideoPopup);
-    }
-
-    modal.addEventListener("click", function (e) {
-      if (e.target === modal) closeSponsorVideoPopup();
-    });
-
-    return modal;
-  }
-
-  function openSponsorVideoPopup(item) {
-    const modal = ensureSponsorVideoPopup();
-    if (!modal) return;
-
-    const img = modal.querySelector("#sponsorVideoPopupImage");
-    const link = modal.querySelector("#sponsorVideoPopupLink");
-    const title = stripHtml(item && item.title ? item.title : "スポンサー動画広告紹介");
-    const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
-    const href = item && item.url ? String(item.url) : "#";
-
-    if (img) {
-      img.src = imgUrl || "";
-      img.alt = title;
-    }
-
-    if (link) {
-      link.href = href || "#";
-      link.setAttribute("aria-label", `${title}の詳細を新しいタブで開く`);
-    }
-
-    modal.classList.add("active");
-    modal.setAttribute("aria-hidden", "false");
-    document.body.classList.add("sponsor-video-popup-open");
-  }
-
-  function closeSponsorVideoPopup() {
-    const modal = document.getElementById("sponsorVideoPopup");
-    if (!modal) return;
-    modal.classList.remove("active");
-    modal.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("sponsor-video-popup-open");
-  }
-
   function buildSponsorVideoTile(item) {
     const a = document.createElement("a");
     a.className = "tile";
-    a.href = "#";
-    a.setAttribute("role", "button");
+    a.href = item && item.url ? String(item.url) : "#";
+    a.target = "_blank";
+    a.rel = "noopener";
 
     const title = stripHtml(item && item.title ? item.title : "");
     const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
-
-    a.addEventListener("click", function (e) {
-      e.preventDefault();
-      openSponsorVideoPopup(item);
-    });
 
     const thumb = document.createElement("div");
     thumb.className = "thumb";
@@ -4655,11 +4582,87 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     );
   }
 
+  let sponsorAdPopupBound = false;
+
+  function ensureSponsorAdPopup() {
+    let overlay = document.getElementById("sponsorAdPopup");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "sponsorAdPopup";
+      overlay.className = "sponsor-ad-popup";
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.innerHTML = `
+        <div class="sponsor-ad-popup__dialog" role="dialog" aria-modal="true" aria-label="協賛社のご紹介 詳細">
+          <button type="button" class="sponsor-ad-popup__close" aria-label="閉じる">×</button>
+          <div class="sponsor-ad-popup__image-wrap">
+            <img class="sponsor-ad-popup__image" src="" alt="">
+          </div>
+          <div class="sponsor-ad-popup__actions">
+            <a class="btn accent sponsor-ad-popup__link" href="#" target="_blank" rel="noopener">詳細はこちら</a>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    if (!sponsorAdPopupBound) {
+      const closePopup = function () {
+        const currentOverlay = document.getElementById("sponsorAdPopup");
+        if (!currentOverlay) return;
+        currentOverlay.classList.remove("active");
+        currentOverlay.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("sponsor-ad-popup-open");
+      };
+
+      document.addEventListener("click", function (e) {
+        const currentOverlay = document.getElementById("sponsorAdPopup");
+        if (!currentOverlay || !currentOverlay.classList.contains("active")) return;
+        if (e.target === currentOverlay || (e.target && e.target.closest(".sponsor-ad-popup__close"))) {
+          closePopup();
+        }
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closePopup();
+      });
+
+      sponsorAdPopupBound = true;
+    }
+
+    return {
+      overlay,
+      image: overlay.querySelector(".sponsor-ad-popup__image"),
+      link: overlay.querySelector(".sponsor-ad-popup__link")
+    };
+  }
+
+  function openSponsorAdPopup(item) {
+    const els = ensureSponsorAdPopup();
+    if (!els || !els.overlay || !els.image || !els.link) return;
+
+    const title = stripHtml(item && item.title ? item.title : "");
+    const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+    const href = item && item.url ? String(item.url) : "#";
+
+    if (imgUrl) {
+      els.image.src = imgUrl;
+    } else {
+      els.image.removeAttribute("src");
+    }
+    els.image.alt = title || "協賛社のご紹介";
+
+    els.link.href = href;
+    els.link.style.display = href && href !== "#" ? "inline-flex" : "none";
+
+    els.overlay.classList.add("active");
+    els.overlay.setAttribute("aria-hidden", "false");
+    document.body.classList.add("sponsor-ad-popup-open");
+  }
+
   function buildSponsorAdCard(item) {
     const a = document.createElement("a");
     a.className = "card";
-    a.href = item && item.url ? String(item.url) : "#";
-    a.target = "_blank";
+    a.href = "#";
     a.rel = "noopener";
 
     const title = stripHtml(item && item.title ? item.title : "");
@@ -4689,6 +4692,11 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
 
     a.appendChild(imgWrap);
     a.appendChild(body);
+
+    a.addEventListener("click", function (e) {
+      e.preventDefault();
+      openSponsorAdPopup(item);
+    });
 
     return a;
   }
@@ -4737,8 +4745,8 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
       a.style.display = "";
 
       // Replace card content
-      a.href = item && item.url ? String(item.url) : "#";
-      a.target = "_blank";
+      a.href = "#";
+      a.removeAttribute("target");
       a.rel = "noopener";
 
       const title = stripHtml(item && item.title ? item.title : "");
@@ -4770,6 +4778,10 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
 
       a.appendChild(imgWrap);
       a.appendChild(body);
+      a.onclick = function (e) {
+        e.preventDefault();
+        openSponsorAdPopup(item);
+      };
     });
   }
   // =========================================================
@@ -5217,10 +5229,6 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
       });
     }
   }
-
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closeSponsorVideoPopup();
-  });
 
 async function loadAndRenderPlacementsJson(paper) {
     // Only for pages that actually have placements UI
