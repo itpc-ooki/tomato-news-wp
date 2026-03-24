@@ -2874,7 +2874,7 @@ async function renderNewsSection(posts, paper) {
     const typeList = Array.isArray(p && p.article_types)
       ? p.article_types.map((t) => String(t || "").trim()).filter(Boolean)
       : [];
-    return primaryType === "トマトNEWS" || typeList.includes("トマトNEWS");
+    return primaryType === "PickUp新聞記事" || typeList.includes("PickUp新聞記事");
   });
 
   // Load PR from placements.json (if available)
@@ -4504,15 +4504,88 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     );
   }
 
+  function ensureSponsorVideoPopup() {
+    let modal = document.getElementById("sponsorVideoPopup");
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.id = "sponsorVideoPopup";
+    modal.className = "sponsor-video-popup";
+    modal.setAttribute("aria-hidden", "true");
+    modal.innerHTML = `
+      <div class="sponsor-video-popup__dialog" role="dialog" aria-modal="true" aria-label="スポンサー動画広告紹介">
+        <button type="button" class="sponsor-video-popup__close" aria-label="ポップアップを閉じる">×</button>
+        <div class="sponsor-video-popup__image-wrap">
+          <img id="sponsorVideoPopupImage" class="sponsor-video-popup__image" src="" alt="">
+        </div>
+        <div class="sponsor-video-popup__footer">
+          <a id="sponsorVideoPopupLink" class="btn accent sponsor-video-popup__btn" href="#" target="_blank" rel="noopener">
+            詳細はこちら
+          </a>
+        </div>
+      </div>
+    `.trim();
+
+    document.body.appendChild(modal);
+
+    const closeBtn = modal.querySelector(".sponsor-video-popup__close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeSponsorVideoPopup);
+    }
+
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal) closeSponsorVideoPopup();
+    });
+
+    return modal;
+  }
+
+  function openSponsorVideoPopup(item) {
+    const modal = ensureSponsorVideoPopup();
+    if (!modal) return;
+
+    const img = modal.querySelector("#sponsorVideoPopupImage");
+    const link = modal.querySelector("#sponsorVideoPopupLink");
+    const title = stripHtml(item && item.title ? item.title : "スポンサー動画広告紹介");
+    const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+    const href = item && item.url ? String(item.url) : "#";
+
+    if (img) {
+      img.src = imgUrl || "";
+      img.alt = title;
+    }
+
+    if (link) {
+      link.href = href || "#";
+      link.setAttribute("aria-label", `${title}の詳細を新しいタブで開く`);
+    }
+
+    modal.classList.add("active");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("sponsor-video-popup-open");
+  }
+
+  function closeSponsorVideoPopup() {
+    const modal = document.getElementById("sponsorVideoPopup");
+    if (!modal) return;
+    modal.classList.remove("active");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("sponsor-video-popup-open");
+  }
+
   function buildSponsorVideoTile(item) {
     const a = document.createElement("a");
     a.className = "tile";
-    a.href = item && item.url ? String(item.url) : "#";
-    a.target = "_blank";
-    a.rel = "noopener";
+    a.href = "#";
+    a.setAttribute("role", "button");
 
     const title = stripHtml(item && item.title ? item.title : "");
     const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+
+    a.addEventListener("click", function (e) {
+      e.preventDefault();
+      openSponsorVideoPopup(item);
+    });
 
     const thumb = document.createElement("div");
     thumb.className = "thumb";
@@ -5144,6 +5217,10 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
       });
     }
   }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeSponsorVideoPopup();
+  });
 
 async function loadAndRenderPlacementsJson(paper) {
     // Only for pages that actually have placements UI

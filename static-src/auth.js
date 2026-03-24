@@ -1212,6 +1212,11 @@
     return 'tomato';
   }
 
+  function setVisible(el, visible){
+    if (!el) return;
+    el.style.display = visible ? '' : 'none';
+  }
+
   function applyHeaderAuth(){
     const btn = document.getElementById('loginLogoutBtn');
     if (!btn) return false;
@@ -1219,6 +1224,10 @@
     const user = (window.TomatoAuth && TomatoAuth.currentUser) ? TomatoAuth.currentUser() : null;
     const paper = detectPaper();
     const root = staticRoot();
+    const registerBtn = document.getElementById('registerBtn');
+    const mobileRegisterBtn = document.getElementById('mobileRegisterBtn');
+    const mypageBtn = document.getElementById('mypageBtn');
+    const mobileMypageBtn = document.getElementById('mobileMypageBtn');
 
     if (user){
       if (btn.textContent !== 'ログアウト') btn.textContent = 'ログアウト';
@@ -1228,10 +1237,18 @@
         location.href = `${root}${paper}/index.html`;
         return false;
       };
+      setVisible(registerBtn, false);
+      setVisible(mobileRegisterBtn, false);
+      setVisible(mypageBtn, true);
+      setVisible(mobileMypageBtn, true);
     } else {
       if (btn.textContent !== 'ログイン') btn.textContent = 'ログイン';
       btn.onclick = null;
       btn.href = `${root}account/login.html?paper=${encodeURIComponent(paper)}`;
+      setVisible(registerBtn, true);
+      setVisible(mobileRegisterBtn, true);
+      setVisible(mypageBtn, false);
+      setVisible(mobileMypageBtn, false);
     }
     return true;
   }
