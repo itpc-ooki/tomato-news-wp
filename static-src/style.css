@@ -3851,6 +3851,8 @@ a{ color:inherit; text-decoration:none}
       margin-top: 50px;
       padding-top: 40px;
       border-top: 1px solid var(--border);}
+  .sidebar.sidebar-two-columns{
+      grid-template-columns: repeat(2, 1fr);}
 }
 .sidebar-section{
     margin-bottom:32px;}
@@ -11530,11 +11532,23 @@ body.page-feature .pest-name{
     top: 0;
     left: 0;
     background: #eee;
+    overflow: hidden;
+  }
+.page-survey .association-tile-img::after{
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.45);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    pointer-events: none;
   }
 .page-survey .association-tile-img img{
     width: 100%;
     height: 100%;
     object-fit: cover;
+    filter: blur(6px) brightness(0.9);
+    transform: scale(1.06);
   }
 .page-survey .association-tile-overlay{
     position: absolute;

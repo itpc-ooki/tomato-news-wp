@@ -192,6 +192,113 @@ add_action('init', function () {
 }, 11);
 
 
+
+// --------------------------------------------------
+// Survey year term visibility for survey.html year tabs
+// - Admin can choose which 年度 are shown in the frontend selector.
+// - Backward-compatible fallback keeps 2025 / 2026 / 2027 visible until explicitly changed.
+// --------------------------------------------------
+function tn_survey_year_default_visible($term = null): bool {
+  $slug = '';
+  $name = '';
+
+  if ($term instanceof WP_Term) {
+    $slug = (string) $term->slug;
+    $name = (string) $term->name;
+  } elseif (is_numeric($term)) {
+    $maybe_term = get_term((int) $term, 'survey_year');
+    if ($maybe_term instanceof WP_Term) {
+      $slug = (string) $maybe_term->slug;
+      $name = (string) $maybe_term->name;
+    }
+  } elseif (is_string($term)) {
+    $slug = $term;
+    $name = $term;
+  }
+
+  $check = trim($slug !== '' ? $slug : $name);
+  return in_array($check, ['2025', '2026', '2027'], true);
+}
+
+function tn_get_survey_year_front_visible($term): bool {
+  $term_id = 0;
+  $term_obj = null;
+
+  if ($term instanceof WP_Term) {
+    $term_id = (int) $term->term_id;
+    $term_obj = $term;
+  } elseif (is_numeric($term)) {
+    $term_id = (int) $term;
+    $maybe_term = get_term($term_id, 'survey_year');
+    if ($maybe_term instanceof WP_Term) {
+      $term_obj = $maybe_term;
+    }
+  }
+
+  if ($term_id <= 0) {
+    return tn_survey_year_default_visible($term_obj ?: $term);
+  }
+
+  $raw = get_term_meta($term_id, 'show_in_survey_selector', true);
+  if ($raw === '' || $raw === null) {
+    return tn_survey_year_default_visible($term_obj ?: $term_id);
+  }
+
+  return $raw === '1';
+}
+
+function tn_render_survey_year_visibility_field($term = null): void {
+  $term_obj = $term instanceof WP_Term ? $term : null;
+  $checked = tn_get_survey_year_front_visible($term_obj ?: 0);
+  $field_name = 'show_in_survey_selector';
+
+  if ($term_obj instanceof WP_Term) {
+    wp_nonce_field('tn_save_survey_year_visibility', 'tn_survey_year_visibility_nonce');
+    ?>
+    <tr class="form-field term-show-in-survey-selector-wrap">
+      <th scope="row"><label for="<?php echo esc_attr($field_name); ?>">survey.html 表示</label></th>
+      <td>
+        <label>
+          <input type="checkbox" name="<?php echo esc_attr($field_name); ?>" id="<?php echo esc_attr($field_name); ?>" value="1" <?php checked($checked); ?>>
+          survey.html の「年度」タブに表示する
+        </label>
+        <p class="description">チェックした年度だけを survey.html の年度切替に表示します。</p>
+      </td>
+    </tr>
+    <?php
+    return;
+  }
+
+  wp_nonce_field('tn_save_survey_year_visibility', 'tn_survey_year_visibility_nonce');
+  ?>
+  <div class="form-field term-show-in-survey-selector-wrap">
+    <label for="<?php echo esc_attr($field_name); ?>">survey.html 表示</label>
+    <label>
+      <input type="checkbox" name="<?php echo esc_attr($field_name); ?>" id="<?php echo esc_attr($field_name); ?>" value="1">
+      survey.html の「年度」タブに表示する
+    </label>
+    <p>チェックした年度だけを survey.html の年度切替に表示します。</p>
+  </div>
+  <?php
+}
+add_action('survey_year_add_form_fields', 'tn_render_survey_year_visibility_field');
+add_action('survey_year_edit_form_fields', 'tn_render_survey_year_visibility_field');
+
+function tn_save_survey_year_visibility_meta(int $term_id): void {
+  if (!current_user_can('manage_categories')) {
+    return;
+  }
+
+  if (!isset($_POST['tn_survey_year_visibility_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['tn_survey_year_visibility_nonce'])), 'tn_save_survey_year_visibility')) {
+    return;
+  }
+
+  $visible = isset($_POST['show_in_survey_selector']) ? '1' : '0';
+  update_term_meta($term_id, 'show_in_survey_selector', $visible);
+}
+add_action('created_survey_year', 'tn_save_survey_year_visibility_meta');
+add_action('edited_survey_year', 'tn_save_survey_year_visibility_meta');
+
 // --------------------------------------------------
 // Ensure default Region / Prefecture terms exist
 // - Prefecture terms store their Region name in term meta: region_name
@@ -568,6 +675,102 @@ function tn_region_prefecture_admin_script() {
   <?php
 }
 
+
+
+
+// --------------------------------------------------
+// Custom meta box: アンケートサンプル (single post globally)
+// - Only one post can be assigned as the survey sample.
+// - Shown in post side menu above the prefecture panel.
+// --------------------------------------------------
+function tn_render_survey_sample_meta_box($post) {
+  wp_nonce_field('tn_survey_sample_metabox', 'tn_survey_sample_metabox_nonce');
+
+  $current_value = get_post_meta($post->ID, '_tn_is_survey_sample', true);
+  $is_checked = ($current_value === '1');
+
+  $current_sample_id = 0;
+  $sample_posts = get_posts([
+    'post_type'      => 'post',
+    'post_status'    => ['publish', 'future', 'draft', 'pending', 'private'],
+    'posts_per_page' => 1,
+    'post__not_in'   => [$post->ID],
+    'meta_key'       => '_tn_is_survey_sample',
+    'meta_value'     => '1',
+    'fields'         => 'ids',
+    'no_found_rows'  => true,
+  ]);
+  if (!empty($sample_posts)) {
+    $current_sample_id = (int) $sample_posts[0];
+  }
+
+  echo '<p style="margin:0 0 10px; font-size:12px; color:#50575e;">アンケートサンプルとして使用する投稿を 1 件だけ指定できます。</p>';
+  echo '<label style="display:block; margin-bottom:8px;">';
+  echo '<input type="checkbox" name="tn_is_survey_sample" value="1"' . checked($is_checked, true, false) . ' /> ';
+  echo 'この投稿をアンケートサンプルにする';
+  echo '</label>';
+
+  if ($current_sample_id > 0) {
+    $title = get_the_title($current_sample_id);
+    if (!is_string($title) || $title == '') {
+      $title = '(タイトルなし)';
+    }
+
+    echo '<p style="margin:8px 0 0; font-size:12px; color:#50575e;">';
+    echo '現在の設定投稿: ' . esc_html($title);
+    echo '（ID: ' . esc_html((string) $current_sample_id) . '）';
+    echo '</p>';
+    echo '<p style="margin:6px 0 0; font-size:12px; color:#50575e;">';
+    echo 'この投稿を保存してチェックを入れると、既存の設定は自動で解除されます。';
+    echo '</p>';
+  }
+}
+
+add_action('add_meta_boxes', function () {
+  add_meta_box(
+    'tn-survey-sample',
+    'アンケートサンプル',
+    'tn_render_survey_sample_meta_box',
+    'post',
+    'side',
+    'high'
+  );
+}, 20);
+
+add_action('save_post', function ($post_id, $post, $update) {
+  if (!is_object($post) || $post->post_type !== 'post') return;
+  if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+  if (wp_is_post_revision($post_id)) return;
+  if (!current_user_can('edit_post', $post_id)) return;
+
+  if (!isset($_POST['tn_survey_sample_metabox_nonce'])) return;
+  if (!wp_verify_nonce($_POST['tn_survey_sample_metabox_nonce'], 'tn_survey_sample_metabox')) return;
+
+  $is_sample = isset($_POST['tn_is_survey_sample']) && $_POST['tn_is_survey_sample'] === '1';
+
+  if ($is_sample) {
+    update_post_meta($post_id, '_tn_is_survey_sample', '1');
+
+    $other_posts = get_posts([
+      'post_type'      => 'post',
+      'post_status'    => ['publish', 'future', 'draft', 'pending', 'private'],
+      'posts_per_page' => -1,
+      'post__not_in'   => [$post_id],
+      'meta_key'       => '_tn_is_survey_sample',
+      'meta_value'     => '1',
+      'fields'         => 'ids',
+      'no_found_rows'  => true,
+    ]);
+
+    if (!empty($other_posts)) {
+      foreach ($other_posts as $other_post_id) {
+        delete_post_meta((int) $other_post_id, '_tn_is_survey_sample');
+      }
+    }
+  } else {
+    delete_post_meta($post_id, '_tn_is_survey_sample');
+  }
+}, 20, 3);
 
 // --------------------------------------------------
 // Hide default WordPress tags (post_tag)

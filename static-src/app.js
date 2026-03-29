@@ -155,6 +155,45 @@
       throw lastError || new Error("survey.json could not be loaded");
     }
 
+    async function loadPostsIndexLocal() {
+      const paper = getPaperLocal();
+      const candidates = [
+        `/static/${encodeURIComponent(paper)}/posts.json`,
+        `./posts.json`,
+        `posts.json`
+      ];
+
+      let data = null;
+      let lastError = null;
+      for (const url of candidates) {
+        try {
+          data = await fetchJsonLocal(url);
+          if (Array.isArray(data)) return data;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      throw lastError || new Error("posts.json could not be loaded");
+    }
+
+    function updateSurveySampleLink(posts) {
+      const link = document.getElementById("surveySampleLink");
+      if (!link) return;
+
+      const samplePost = (Array.isArray(posts) ? posts : []).find(function(post) {
+        return Number(post && post.is_survey_sample) === 1;
+      });
+
+      if (!samplePost) {
+        link.hidden = true;
+        link.removeAttribute("href");
+        return;
+      }
+
+      link.href = getDetailHref(samplePost);
+      link.hidden = false;
+    }
+
     function buildPrefectureIndex(posts) {
       const map = new Map();
       (Array.isArray(posts) ? posts : []).forEach(function(post) {
@@ -168,7 +207,7 @@
       return map;
     }
 
-    function renderPrefectureGroups(prefectureMap, onSelect, selectedPrefecture) {
+    function renderPrefectureGroups(prefectureMap, onSelect, selectedPrefecture, showAllPrefectures) {
       const root = document.getElementById("prefectureList");
       if (!root) return;
 
@@ -206,7 +245,8 @@
           const count = (prefectureMap.get(prefName) || []).length;
           const btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "prefecture-card" + (selectedPrefecture === prefName ? " selected is-active" : "");
+          const isActive = !!showAllPrefectures || selectedPrefecture === prefName;
+          btn.className = "prefecture-card" + (isActive ? " selected is-active" : "");
           btn.setAttribute("data-prefecture", prefName);
           btn.innerHTML =
             `<div class="prefecture-name">${escapeHtmlLocal(prefName)}</div>` +
@@ -240,14 +280,14 @@
       });
     }
 
-    function renderAssociationList(prefectureMap, selectedPrefecture) {
+    function renderAssociationList(prefectureMap, selectedPrefecture, showAllPrefectures) {
       const section = document.getElementById("associationSection");
       const title = document.getElementById("selectedPrefectureTitle");
       const list = document.getElementById("associationList");
       const empty = document.getElementById("associationEmptyMessage");
       if (!section || !title || !list || !empty) return;
 
-      if (!selectedPrefecture) {
+      if (!selectedPrefecture && !showAllPrefectures) {
         section.style.display = "none";
         list.innerHTML = "";
         empty.hidden = true;
@@ -255,8 +295,27 @@
         return;
       }
 
-      const posts = prefectureMap.get(selectedPrefecture) || [];
-      title.textContent = `${selectedPrefecture}の部会一覧`;
+      let posts = [];
+      if (showAllPrefectures) {
+        const seen = new Set();
+        Array.from(prefectureMap.entries()).forEach(function(entry) {
+          const prefName = entry[0];
+          const items = Array.isArray(entry[1]) ? entry[1] : [];
+          items.forEach(function(post) {
+            const key = String((post && (post.id || post.url || post.title)) || "").trim();
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            posts.push({ post: post, prefectureName: prefName });
+          });
+        });
+        title.textContent = "地域別部会一覧";
+      } else {
+        posts = (prefectureMap.get(selectedPrefecture) || []).map(function(post) {
+          return { post: post, prefectureName: selectedPrefecture };
+        });
+        title.textContent = `${selectedPrefecture}の部会一覧`;
+      }
+
       list.innerHTML = "";
 
       if (!posts.length) {
@@ -269,12 +328,16 @@
       posts
         .slice()
         .sort(function(a, b) {
-          const at = Date.parse(String((a && (a.date || a.date_ymd)) || "")) || 0;
-          const bt = Date.parse(String((b && (b.date || b.date_ymd)) || "")) || 0;
+          if (showAllPrefectures) {
+            const prefCompare = String(a.prefectureName || "").localeCompare(String(b.prefectureName || ""), "ja");
+            if (prefCompare !== 0) return prefCompare;
+          }
+          const at = Date.parse(String((a.post && (a.post.date || a.post.date_ymd)) || "")) || 0;
+          const bt = Date.parse(String((b.post && (b.post.date || b.post.date_ymd)) || "")) || 0;
           return bt - at;
         })
-        .forEach(function(post) {
-          list.appendChild(buildAssociationTile(post, selectedPrefecture));
+        .forEach(function(item) {
+          list.appendChild(buildAssociationTile(item.post, item.prefectureName));
         });
 
       section.style.display = "";
@@ -632,6 +695,13 @@ function renderGraphItems(items) {
         const searchBtn = document.getElementById("surveySearchButton");
 
         try {
+          const postsIndex = await loadPostsIndexLocal();
+          updateSurveySampleLink(postsIndex);
+        } catch (_e) {
+          updateSurveySampleLink([]);
+        }
+
+        try {
           const surveyTopData = await loadSurveyTopData();
           const entry = pickSurveyTopEntry(surveyTopData);
           if (entry) {
@@ -658,29 +728,34 @@ function renderGraphItems(items) {
 
         window.__JA_SURVEY_RENDERED__ = true;
         let selectedPrefecture = maybeSelectFromQuery(prefectureMap);
+        let showAllPrefectures = false;
+        if (selectedPrefecture) showAllPrefectures = false;
 
         function rerender() {
           updateStats(prefectureMap);
           renderSelectOptions(prefectureMap, selectedPrefecture);
           renderPrefectureGroups(prefectureMap, function(prefName) {
             selectedPrefecture = prefName;
+            showAllPrefectures = false;
             syncQuery(selectedPrefecture);
             rerender();
             scrollToAssociations();
-          }, selectedPrefecture);
-          renderAssociationList(prefectureMap, selectedPrefecture);
+          }, selectedPrefecture, showAllPrefectures);
+          renderAssociationList(prefectureMap, selectedPrefecture, showAllPrefectures);
         }
 
         if (select && !select.dataset.jaSurveyBound) {
           select.dataset.jaSurveyBound = "1";
           select.addEventListener("change", function() {
             selectedPrefecture = normalizePrefectureName(this.value);
+            showAllPrefectures = !selectedPrefecture && this.value === "" ? showAllPrefectures : false;
           });
         }
 
         if (searchBtn && !searchBtn.dataset.jaSurveyBound) {
           searchBtn.dataset.jaSurveyBound = "1";
           searchBtn.addEventListener("click", function() {
+            showAllPrefectures = !selectedPrefecture;
             syncQuery(selectedPrefecture);
             rerender();
             scrollToAssociations();
@@ -3618,14 +3693,29 @@ function renderSidebarAd(post) {
     const box = document.getElementById("sidebar-ads");
     if (!box) return;
 
-    // Ensure markup matches requested structure
-    box.classList.add("sidebar-section");
+    const sidebar = box.closest(".sidebar");
+    const parentSection = box.closest(".sidebar-section");
+
+    // Keep the existing markup/classes intact
     box.classList.add("sidebar-ad");
 
     const ad = normalizeSidebarAd(post);
 
     // Clear previous
     box.innerHTML = "";
+
+    // No placement selected -> hide the ad box and its parent section,
+    // then switch the sidebar to 2 columns.
+    if (!ad || !ad.image || !ad.url) {
+      box.style.display = "none";
+      if (parentSection) parentSection.style.display = "none";
+      if (sidebar) sidebar.classList.add("sidebar-two-columns");
+      return;
+    }
+
+    if (parentSection) parentSection.style.display = "";
+    box.style.display = "";
+    if (sidebar) sidebar.classList.remove("sidebar-two-columns");
 
     // Label
     const label = document.createElement("div");
@@ -3638,15 +3728,6 @@ function renderSidebarAd(post) {
       "style",
       "height:300px; display:flex; align-items:center; justify-content:center; margin:0 auto;"
     );
-
-    // No placement selected -> show placeholder text
-    if (!ad || !ad.image || !ad.url) {
-      slot.textContent = "広告スペース";
-      box.appendChild(label);
-      box.appendChild(slot);
-      box.style.display = "";
-      return;
-    }
 
     // 1 placement selected -> show linked image (no class on <a>)
     const a = document.createElement("a");
@@ -3669,7 +3750,6 @@ function renderSidebarAd(post) {
 
     box.appendChild(label);
     box.appendChild(slot);
-    box.style.display = "";
   }
 
 
@@ -4055,8 +4135,13 @@ function applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, mode) {
   const clearInlineCrop = () => {
     mainImageWrap.style.height = '';
     mainImageWrap.style.maxHeight = '';
+    mainImageWrap.style.aspectRatio = '';
+    mainImageWrap.style.overflow = '';
+    mainImageBox.style.width = '';
     mainImageBox.style.height = '';
     mainImageBox.style.maxHeight = '';
+    mainImageBox.style.objectFit = '';
+    mainImageBox.style.aspectRatio = '';
   };
 
   const updateThirdCrop = () => {
@@ -5817,6 +5902,7 @@ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState=
     imgs.forEach(function(img){
       if (img.closest('header, nav, footer')) return;
       if (img.closest('.seminar-video-wrapper')) return;
+      if (img.closest('.main-image-full, .main-image-container')) return;
       var p = img.parentElement;
       if(!p) return;
       var cs = getComputedStyle(p);
@@ -7385,7 +7471,7 @@ if (typeof window.switchPestTab !== "function") {
       return map;
     }
 
-    function renderPrefectureGroups(prefectureMap, onSelect, selectedPrefecture) {
+    function renderPrefectureGroups(prefectureMap, onSelect, selectedPrefecture, showAllPrefectures) {
       const root = document.getElementById("prefectureList");
       if (!root) return;
 
@@ -7423,7 +7509,8 @@ if (typeof window.switchPestTab !== "function") {
           const count = (prefectureMap.get(prefName) || []).length;
           const btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "prefecture-card" + (selectedPrefecture === prefName ? " selected is-active" : "");
+          const isActive = !!showAllPrefectures || selectedPrefecture === prefName;
+          btn.className = "prefecture-card" + (isActive ? " selected is-active" : "");
           btn.setAttribute("data-prefecture", prefName);
           btn.innerHTML =
             `<div class="prefecture-name">${escapeHtmlLocal(prefName)}</div>` +
@@ -7457,14 +7544,14 @@ if (typeof window.switchPestTab !== "function") {
       });
     }
 
-    function renderAssociationList(prefectureMap, selectedPrefecture) {
+    function renderAssociationList(prefectureMap, selectedPrefecture, showAllPrefectures) {
       const section = document.getElementById("associationSection");
       const title = document.getElementById("selectedPrefectureTitle");
       const list = document.getElementById("associationList");
       const empty = document.getElementById("associationEmptyMessage");
       if (!section || !title || !list || !empty) return;
 
-      if (!selectedPrefecture) {
+      if (!selectedPrefecture && !showAllPrefectures) {
         section.style.display = "none";
         list.innerHTML = "";
         empty.hidden = true;
@@ -7472,8 +7559,27 @@ if (typeof window.switchPestTab !== "function") {
         return;
       }
 
-      const posts = prefectureMap.get(selectedPrefecture) || [];
-      title.textContent = `${selectedPrefecture}の部会一覧`;
+      let posts = [];
+      if (showAllPrefectures) {
+        const seen = new Set();
+        Array.from(prefectureMap.entries()).forEach(function(entry) {
+          const prefName = entry[0];
+          const items = Array.isArray(entry[1]) ? entry[1] : [];
+          items.forEach(function(post) {
+            const key = String((post && (post.id || post.url || post.title)) || "").trim();
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            posts.push({ post: post, prefectureName: prefName });
+          });
+        });
+        title.textContent = "地域別部会一覧";
+      } else {
+        posts = (prefectureMap.get(selectedPrefecture) || []).map(function(post) {
+          return { post: post, prefectureName: selectedPrefecture };
+        });
+        title.textContent = `${selectedPrefecture}の部会一覧`;
+      }
+
       list.innerHTML = "";
 
       if (!posts.length) {
@@ -7486,12 +7592,16 @@ if (typeof window.switchPestTab !== "function") {
       posts
         .slice()
         .sort(function(a, b) {
-          const at = Date.parse(String((a && (a.date || a.date_ymd)) || "")) || 0;
-          const bt = Date.parse(String((b && (b.date || b.date_ymd)) || "")) || 0;
+          if (showAllPrefectures) {
+            const prefCompare = String(a.prefectureName || "").localeCompare(String(b.prefectureName || ""), "ja");
+            if (prefCompare !== 0) return prefCompare;
+          }
+          const at = Date.parse(String((a.post && (a.post.date || a.post.date_ymd)) || "")) || 0;
+          const bt = Date.parse(String((b.post && (b.post.date || b.post.date_ymd)) || "")) || 0;
           return bt - at;
         })
-        .forEach(function(post) {
-          list.appendChild(buildAssociationTile(post, selectedPrefecture));
+        .forEach(function(item) {
+          list.appendChild(buildAssociationTile(item.post, item.prefectureName));
         });
 
       section.style.display = "";
@@ -7873,27 +7983,32 @@ function renderGraphItems(items) {
         }
 
         let selectedPrefecture = maybeSelectFromQuery(prefectureMap);
+        let showAllPrefectures = false;
+        if (selectedPrefecture) showAllPrefectures = false;
 
         function rerender() {
           updateStats(prefectureMap);
           renderSelectOptions(prefectureMap, selectedPrefecture);
           renderPrefectureGroups(prefectureMap, function(prefName) {
             selectedPrefecture = prefName;
+            showAllPrefectures = false;
             syncQuery(selectedPrefecture);
             rerender();
             scrollToAssociations();
-          }, selectedPrefecture);
-          renderAssociationList(prefectureMap, selectedPrefecture);
+          }, selectedPrefecture, showAllPrefectures);
+          renderAssociationList(prefectureMap, selectedPrefecture, showAllPrefectures);
         }
 
         if (select) {
           select.addEventListener("change", function() {
             selectedPrefecture = normalizePrefectureName(this.value);
+            showAllPrefectures = !selectedPrefecture && this.value === "" ? showAllPrefectures : false;
           });
         }
 
         if (searchBtn) {
           searchBtn.addEventListener("click", function() {
+            showAllPrefectures = !selectedPrefecture;
             syncQuery(selectedPrefecture);
             rerender();
             scrollToAssociations();
@@ -7923,15 +8038,144 @@ function renderGraphItems(items) {
 })();
 
 /* ==============================================
+JA Survey Year Selector Helpers
+============================================== */
+(function(){
+  if (window.__tnSurveyYearSelectorHelpersReady) return;
+  window.__tnSurveyYearSelectorHelpersReady = true;
+
+  function getDefaultSurveyYearOptions() {
+    return [
+      { label: "2025年", value: "2025", slug: "2025" },
+      { label: "2026年", value: "2026", slug: "2026" },
+      { label: "2027年", value: "2027", slug: "2027" }
+    ];
+  }
+
+  function normalizeYearOption(option) {
+    if (!option || typeof option !== "object") return null;
+    const value = String(option.value || option.slug || option.year || option.name || "").trim();
+    if (!value) return null;
+    const labelBase = String(option.label || option.name || value).trim();
+    const label = /年$/.test(labelBase) ? labelBase : (labelBase + "年");
+    return {
+      label: label,
+      value: value,
+      slug: String(option.slug || value).trim() || value
+    };
+  }
+
+  function getSurveyTopItems(data) {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.items)) return data.items;
+    return data ? [data] : [];
+  }
+
+  function sortYearOptions(options) {
+    return Array.from(options || []).sort(function(a, b) {
+      const na = /^\d+$/.test(a.value) ? Number(a.value) : NaN;
+      const nb = /^\d+$/.test(b.value) ? Number(b.value) : NaN;
+      if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
+      return String(a.value).localeCompare(String(b.value), "ja");
+    });
+  }
+
+  function buildYearOptionsFromItems(items) {
+    const map = new Map();
+    (Array.isArray(items) ? items : []).forEach(function(item) {
+      if (!item || typeof item !== "object") return;
+      const value = String(item.survey_year || item.year || item.survey_top_year || "").trim();
+      if (!value || map.has(value)) return;
+      map.set(value, {
+        label: value + "年",
+        value: value,
+        slug: value
+      });
+    });
+
+    return sortYearOptions(Array.from(map.values()));
+  }
+
+  function getYearOptionsFromExistingDom() {
+    const buttons = Array.from(document.querySelectorAll("#surveyYearTabs .selector-tab"));
+    if (!buttons.length) return [];
+
+    const options = buttons.map(function(btn) {
+      return normalizeYearOption({
+        value: String(btn.dataset.year || "").trim(),
+        label: String(btn.textContent || "").trim()
+      });
+    }).filter(Boolean);
+
+    return sortYearOptions(options);
+  }
+
+  window.__tnGetSurveyYearOptions = function(data) {
+    if (data && Object.prototype.hasOwnProperty.call(data, "year_options")) {
+      return Array.isArray(data.year_options)
+        ? data.year_options.map(normalizeYearOption).filter(Boolean)
+        : [];
+    }
+
+    const fromDom = getYearOptionsFromExistingDom();
+    if (fromDom.length) return fromDom;
+
+    const fromItems = buildYearOptionsFromItems(getSurveyTopItems(data));
+    if (fromItems.length) return fromItems;
+
+    return getDefaultSurveyYearOptions();
+  };
+
+  window.__tnLoadSurveyTopJsonForYearSelector = async function() {
+    const getPaper = function() {
+      try {
+        const path = String(window.location.pathname || "");
+        const parts = path.split("/").filter(Boolean);
+        const idx = parts.indexOf("static");
+        if (idx >= 0 && parts[idx + 1]) return parts[idx + 1];
+      } catch (_e) {}
+      return "tomato";
+    };
+
+    const paper = getPaper();
+    const candidates = [
+      "/static/" + encodeURIComponent(paper) + "/survey-top.json",
+      "./survey-top.json",
+      "survey-top.json"
+    ];
+
+    let lastError = null;
+    for (const url of candidates) {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        const contentType = res.headers.get("content-type") || "";
+        const text = await res.text();
+        if (!res.ok) throw new Error("HTTP " + res.status + " for " + url);
+        if (contentType.includes("text/html") || text.trim().startsWith("<")) {
+          throw new Error("Not JSON response from " + url);
+        }
+        return JSON.parse(text);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (lastError) throw lastError;
+    return null;
+  };
+})();
+
+/* ==============================================
 JA Survey Year + Season Switching
 ============================================== */
 
 (function(){
   if (!document.body || !document.body.classList.contains("page-survey")) return;
 
-  const yearTabs = Array.from(document.querySelectorAll("#surveyYearTabs .selector-tab"));
+  const yearTabsRoot = document.getElementById("surveyYearTabs");
   const seasonTabs = Array.from(document.querySelectorAll("#surveySeasonTabs .selector-tab"));
-  if (!yearTabs.length && !seasonTabs.length) return;
+  if (!yearTabsRoot && !seasonTabs.length) return;
+
+  let yearTabs = Array.from(document.querySelectorAll("#surveyYearTabs .selector-tab"));
 
   function getCurrentState() {
     let year = "";
@@ -7985,27 +8229,83 @@ JA Survey Year + Season Switching
     window.location.href = nextUrl;
   }
 
-  yearTabs.forEach(function(btn) {
-    btn.addEventListener("click", function() {
-      const nextYear = String(btn.dataset.year || "").trim();
-      if (!nextYear || nextYear === state.year) return;
-      state.year = nextYear;
-      syncTabs();
-      navigateWithState();
+  function bindYearTabEvents() {
+    yearTabs.forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const nextYear = String(btn.dataset.year || "").trim();
+        if (!nextYear || nextYear === state.year) return;
+        state.year = nextYear;
+        syncTabs();
+        navigateWithState();
+      });
     });
-  });
+  }
 
-  seasonTabs.forEach(function(btn) {
-    btn.addEventListener("click", function() {
-      const nextSeason = String(btn.dataset.season || "").trim();
-      if (!nextSeason || nextSeason === state.season) return;
-      state.season = nextSeason;
-      syncTabs();
-      navigateWithState();
+  function bindSeasonTabEvents() {
+    seasonTabs.forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const nextSeason = String(btn.dataset.season || "").trim();
+        if (!nextSeason || nextSeason === state.season) return;
+        state.season = nextSeason;
+        syncTabs();
+        navigateWithState();
+      });
     });
-  });
+  }
 
+  function renderYearTabs(options) {
+    if (!yearTabsRoot || !Array.isArray(options)) return;
+
+    yearTabsRoot.innerHTML = "";
+    options.forEach(function(option) {
+      const value = String(option && option.value || "").trim();
+      const label = String(option && option.label || value).trim();
+      if (!value || !label) return;
+      const button = document.createElement("button");
+      button.className = "selector-tab";
+      button.type = "button";
+      button.dataset.year = value;
+      button.textContent = label;
+      yearTabsRoot.appendChild(button);
+    });
+
+    yearTabs = Array.from(yearTabsRoot.querySelectorAll(".selector-tab"));
+    bindYearTabEvents();
+    syncTabs();
+  }
+
+  function ensureValidVisibleYear(options) {
+    const availableYears = (Array.isArray(options) ? options : []).map(function(option) {
+      return String(option && option.value || "").trim();
+    }).filter(Boolean);
+
+    if (!availableYears.length) return;
+
+    if (!state.year || availableYears.indexOf(state.year) === -1) {
+      state.year = availableYears[0];
+      if (document.body) {
+        document.body.setAttribute("data-survey-year", state.year);
+      }
+      navigateWithState();
+    }
+  }
+
+  bindYearTabEvents();
+  bindSeasonTabEvents();
   syncTabs();
+
+  if (typeof window.__tnLoadSurveyTopJsonForYearSelector === "function" && typeof window.__tnGetSurveyYearOptions === "function") {
+    window.__tnLoadSurveyTopJsonForYearSelector()
+      .then(function(data) {
+        const options = window.__tnGetSurveyYearOptions(data);
+        if (!Array.isArray(options) || !options.length) return;
+        renderYearTabs(options);
+        ensureValidVisibleYear(options);
+      })
+      .catch(function(error) {
+        console.warn("[survey year selector] failed to load dynamic year options:", error);
+      });
+  }
 })();
 
 

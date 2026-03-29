@@ -1214,39 +1214,60 @@
 
   function setVisible(el, visible){
     if (!el) return;
-    el.style.display = visible ? '' : 'none';
+    el.hidden = !visible;
+    el.setAttribute('aria-hidden', visible ? 'false' : 'true');
+
+    if (visible) {
+      try { el.style.removeProperty('display'); } catch(_e) { el.style.display = ''; }
+      try { el.style.removeProperty('visibility'); } catch(_e) { el.style.visibility = ''; }
+      try { el.style.removeProperty('pointer-events'); } catch(_e) { el.style.pointerEvents = ''; }
+    } else {
+      el.style.setProperty('display', 'none', 'important');
+      el.style.setProperty('visibility', 'hidden', 'important');
+      el.style.setProperty('pointer-events', 'none', 'important');
+    }
   }
 
   function applyHeaderAuth(){
     const btn = document.getElementById('loginLogoutBtn');
-    if (!btn) return false;
-
-    const user = (window.TomatoAuth && TomatoAuth.currentUser) ? TomatoAuth.currentUser() : null;
-    const paper = detectPaper();
-    const root = staticRoot();
     const registerBtn = document.getElementById('registerBtn');
     const mobileRegisterBtn = document.getElementById('mobileRegisterBtn');
     const mypageBtn = document.getElementById('mypageBtn');
     const mobileMypageBtn = document.getElementById('mobileMypageBtn');
+    const heroRegisterBtn = document.getElementById('heroRegisterBtn');
+    const hasAuthTargets = !!(btn || registerBtn || mobileRegisterBtn || mypageBtn || mobileMypageBtn || heroRegisterBtn);
+    if (!hasAuthTargets) return false;
+
+    const user = (window.TomatoAuth && TomatoAuth.currentUser) ? TomatoAuth.currentUser() : null;
+    const paper = detectPaper();
+    const root = staticRoot();
+
+    if (btn){
+      if (user){
+        if (btn.textContent !== 'ログアウト') btn.textContent = 'ログアウト';
+        btn.href = 'javascript:void(0)';
+        btn.onclick = function(){
+          TomatoAuth.logout();
+          location.href = `${root}${paper}/index.html`;
+          return false;
+        };
+      } else {
+        if (btn.textContent !== 'ログイン') btn.textContent = 'ログイン';
+        btn.onclick = null;
+        btn.href = `${root}account/login.html?paper=${encodeURIComponent(paper)}`;
+      }
+    }
 
     if (user){
-      if (btn.textContent !== 'ログアウト') btn.textContent = 'ログアウト';
-      btn.href = 'javascript:void(0)';
-      btn.onclick = function(){
-        TomatoAuth.logout();
-        location.href = `${root}${paper}/index.html`;
-        return false;
-      };
       setVisible(registerBtn, false);
       setVisible(mobileRegisterBtn, false);
+      setVisible(heroRegisterBtn, false);
       setVisible(mypageBtn, true);
       setVisible(mobileMypageBtn, true);
     } else {
-      if (btn.textContent !== 'ログイン') btn.textContent = 'ログイン';
-      btn.onclick = null;
-      btn.href = `${root}account/login.html?paper=${encodeURIComponent(paper)}`;
       setVisible(registerBtn, true);
       setVisible(mobileRegisterBtn, true);
+      setVisible(heroRegisterBtn, true);
       setVisible(mypageBtn, false);
       setVisible(mobileMypageBtn, false);
     }

@@ -27,6 +27,23 @@
 </div>
 </div>
 
+  <div class="search-section">
+  <h2 class="search-title">
+    <div class="search-icon">
+      <svg viewbox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
+    </div>
+    都道府県から部会を検索
+  </h2>
+  <p class="search-subtitle">都道府県を選択すると、該当地域の部会アンケート結果が表示されます</p>
+  <div class="filter-group">
+    <label class="filter-label" for="prefectureSelect">都道府県を選択</label>
+    <select class="filter-select" id="prefectureSelect">
+      <option value="">すべての都道府県</option>
+    </select>
+  </div>
+  <button class="btn-search" id="surveySearchButton" type="button">部会を検索</button>
+</div>
+
 
 <div class="hero-banner">
 <div class="hero-content">
@@ -104,22 +121,6 @@ YEAR / SEASON SELECTOR
   <div class="stat-label">回答率</div>
   </div>
   </div>
-  <div class="search-section">
-  <h2 class="search-title">
-    <div class="search-icon">
-      <svg viewbox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
-    </div>
-    都道府県から部会を検索
-  </h2>
-  <p class="search-subtitle">都道府県を選択すると、該当地域の部会アンケート結果が表示されます</p>
-  <div class="filter-group">
-    <label class="filter-label" for="prefectureSelect">都道府県を選択</label>
-    <select class="filter-select" id="prefectureSelect">
-      <option value="">すべての都道府県</option>
-    </select>
-  </div>
-  <button class="btn-search" id="surveySearchButton" type="button">部会を検索</button>
-</div>
 
 <div class="survey-detail">
   <div class="container" id="surveyTopDynamicContent">
@@ -238,6 +239,9 @@ YEAR / SEASON SELECTOR
 
 <div class="survey-section">
   <h2 class="section-title">地域別部会一覧</h2>
+  <div style="margin:12px 0 16px;">
+    <a class="article-category" id="surveySampleLink" href="#" target="_blank" rel="noopener noreferrer" hidden>アンケートサンプル</a>
+  </div>
   <p style="color:var(--muted); margin-bottom:32px">都道府県を選択すると、該当地域の部会情報が表示されます</p>
   <div class="prefecture-list" id="prefectureList"></div>
 </div>

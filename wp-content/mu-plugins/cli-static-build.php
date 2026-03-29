@@ -1215,6 +1215,9 @@ $list = [];
           $featured_image_display_mode = 'full';
         }
 
+        $is_survey_sample = get_post_meta($post_id, '_tn_is_survey_sample', true);
+        $is_survey_sample = ($is_survey_sample === '1' || $is_survey_sample === 1 || $is_survey_sample === true);
+
 $list[] = [
           'id'       => $post_id,
           'title'    => $title,
@@ -1251,6 +1254,7 @@ $list[] = [
           'prefecture_slugs' => $prefecture_slugs,
           'free_viewable' => $free_viewable ? 1 : 0,
           'member_scope' => $free_viewable ? 'free' : 'member',
+          'is_survey_sample' => $is_survey_sample ? 1 : 0,
         ];
 
         // detail json
@@ -1387,6 +1391,7 @@ $list[] = [
           'prefecture_slugs' => $prefecture_slugs,
           'free_viewable' => $free_viewable ? 1 : 0,
           'member_scope' => $free_viewable ? 'free' : 'member',
+          'is_survey_sample' => $is_survey_sample ? 1 : 0,
           'reference_materials' => is_string($reference_materials) ? trim($reference_materials) : '',
           'writer_name' => is_string($writer_name) ? trim($writer_name) : '',
           'columnists' => $columnists,
@@ -2135,8 +2140,81 @@ $list[] = [
       return ((int)($b['id'] ?? 0)) <=> ((int)($a['id'] ?? 0));
     });
 
+    $payload = [
+      'items' => array_values($items),
+      'year_options' => self::get_visible_survey_year_options(),
+    ];
+
     $path = $static_paper_root . '/survey-top.json';
-    file_put_contents($path, wp_json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    file_put_contents($path, wp_json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+  }
+
+
+  private static function get_visible_survey_year_options(): array {
+    if (!taxonomy_exists('survey_year')) {
+      return [
+        ['label' => '2025年', 'value' => '2025', 'slug' => '2025'],
+        ['label' => '2026年', 'value' => '2026', 'slug' => '2026'],
+        ['label' => '2027年', 'value' => '2027', 'slug' => '2027'],
+      ];
+    }
+
+    $terms = get_terms([
+      'taxonomy' => 'survey_year',
+      'hide_empty' => false,
+    ]);
+
+    if (is_wp_error($terms) || !is_array($terms)) {
+      return [
+        ['label' => '2025年', 'value' => '2025', 'slug' => '2025'],
+        ['label' => '2026年', 'value' => '2026', 'slug' => '2026'],
+        ['label' => '2027年', 'value' => '2027', 'slug' => '2027'],
+      ];
+    }
+
+    $options = [];
+    foreach ($terms as $term) {
+      if (!($term instanceof WP_Term)) continue;
+
+      $visible = false;
+      if (function_exists('tn_get_survey_year_front_visible')) {
+        $visible = (bool) tn_get_survey_year_front_visible($term);
+      } else {
+        $raw = get_term_meta($term->term_id, 'show_in_survey_selector', true);
+        if ($raw === '' || $raw === null) {
+          $visible = in_array((string) $term->slug, ['2025', '2026', '2027'], true) || in_array((string) $term->name, ['2025', '2026', '2027'], true);
+        } else {
+          $visible = $raw === '1';
+        }
+      }
+
+      if (!$visible) continue;
+
+      $value = trim((string) $term->slug);
+      if ($value === '') {
+        $value = trim((string) $term->name);
+      }
+      if ($value === '') continue;
+
+      $options[] = [
+        'label' => trim((string) $term->name) !== '' ? trim((string) $term->name) . '年' : $value . '年',
+        'value' => $value,
+        'slug' => trim((string) $term->slug),
+      ];
+    }
+
+    usort($options, function($a, $b) {
+      $va = isset($a['value']) ? (string) $a['value'] : '';
+      $vb = isset($b['value']) ? (string) $b['value'] : '';
+      $na = preg_match('/^\d+$/', $va) ? (int) $va : null;
+      $nb = preg_match('/^\d+$/', $vb) ? (int) $vb : null;
+      if ($na !== null && $nb !== null && $na !== $nb) {
+        return $na <=> $nb;
+      }
+      return strcmp($va, $vb);
+    });
+
+    return array_values($options);
   }
 
   /** Build all papers that exist under /static-src */
