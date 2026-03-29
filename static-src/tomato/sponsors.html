@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>協賛社のご紹介｜トマト新聞</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body class="page-sponsors">
+  <!-- <div id="header-container"></div> -->
+
+  <main class="article-container sponsor-page-container">
+    <div class="article-header sponsor-page-header">
+      <div class="article-category">協賛社情報</div>
+      <h1 class="article-title">協賛社のご紹介</h1>
+      <p class="article-subtitle sponsor-page-subtitle">トマト新聞をご支援いただいている企業・団体の皆さま</p>
+    </div>
+
+    <section class="content-section sponsor-legend-section">
+      <div class="sponsor-legend" aria-label="協賛カテゴリ凡例">
+        <span class="sponsor-legend-item"><span class="sponsor-legend-dot dot-seedling" aria-hidden="true"></span>種苗</span>
+        <span class="sponsor-legend-item"><span class="sponsor-legend-dot dot-fertilizer" aria-hidden="true"></span>肥料/農薬/土壌改良資材</span>
+        <span class="sponsor-legend-item"><span class="sponsor-legend-dot dot-service" aria-hidden="true"></span>資機材/サービス</span>
+      </div>
+    </section>
+
+    <section class="content-section sponsor-page-section">
+      <div class="sponsor-tabs" id="sponsorTabs" role="tablist" aria-label="カテゴリフィルター">
+        <button class="sponsor-tab-btn active" type="button" data-filter="all" role="tab" aria-selected="true">すべて</button>
+        <button class="sponsor-tab-btn" type="button" data-filter="seedling" role="tab" aria-selected="false">種苗</button>
+        <button class="sponsor-tab-btn" type="button" data-filter="fertilizer" role="tab" aria-selected="false">肥料/農薬/土壌改良資材</button>
+        <button class="sponsor-tab-btn" type="button" data-filter="service" role="tab" aria-selected="false">資機材/サービス</button>
+      </div>
+
+      <div class="sponsor-results" id="sponsorResults">
+        表示中: <strong id="sponsorCount">0</strong> 社
+      </div>
+
+      <div class="sponsor-loading" id="sponsorLoading" aria-live="polite">
+        <div class="sponsor-loading-spinner" aria-hidden="true"></div>
+        <p>データを読み込んでいます...</p>
+      </div>
+
+      <div class="sponsor-grid" id="sponsorGrid" hidden></div>
+
+      <div class="sponsor-empty" id="sponsorEmpty" hidden>
+        <div class="sponsor-empty-icon" aria-hidden="true">🏢</div>
+        <div class="sponsor-empty-title">該当する協賛社がありません</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- <div id="footer-container"></div> -->
+
+  <script src="../auth.js"></script>
+  <script src="../app.js"></script>
+</body>
+</html>

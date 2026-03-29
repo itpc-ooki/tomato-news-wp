@@ -13460,3 +13460,364 @@ body.sponsor-ad-popup-open{
     padding:0 20px;
   }
 }
+
+
+/* =====================================================
+   Sponsors Page
+   ===================================================== */
+.page-sponsors .article-container{
+  max-width:none;
+  width:100%;
+}
+
+.sponsor-page-header{
+  max-width:none;
+  margin:0 0 20px;
+  padding:0;
+  text-align:left;
+  background:transparent;
+}
+
+.page-sponsors .article-category{
+  display:block;
+  padding:0;
+  margin:0 0 24px;
+  border-radius:0;
+  background:none;
+  color:var(--text);
+  font-size:1rem;
+  font-weight:700;
+  letter-spacing:0;
+}
+
+.page-sponsors section {
+    border-top: none;
+}
+
+.page-sponsors .article-title{
+  margin:0 0 32px;
+  font-size:clamp(2.25rem, 4.8vw, 2.3rem);
+  line-height:1.2;
+}
+
+.sponsor-page-subtitle{
+  max-width:none;
+  margin:0;
+  color:var(--text);
+  font-size:clamp(1rem, 2vw, 1.125rem);
+  font-weight:500;
+}
+
+.sponsor-legend-section{
+  margin-bottom:24px;
+}
+
+.sponsor-page-section{
+  margin-top:0;
+}
+
+.sponsor-legend{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+  padding:16px 20px;
+  background:#f3f4f6;
+  border-radius:8px;
+}
+
+.sponsor-legend-item{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:#6b7280;
+  font-size:0.875rem;
+  font-weight:600;
+}
+
+.sponsor-legend-dot{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  flex:0 0 auto;
+}
+
+.sponsor-legend-dot.dot-seedling{ background:#78bc25; }
+.sponsor-legend-dot.dot-fertilizer{ background:#cc4624; }
+.sponsor-legend-dot.dot-service{ background:#12b7d1; }
+
+.sponsor-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px;
+  margin-bottom:28px;
+}
+
+.sponsor-tab-btn{
+  appearance:none;
+  border:2px solid var(--border);
+  background:#fff;
+  color:#64748b;
+  border-radius:999px;
+  padding:8px 18px;
+  font-size:0.875rem;
+  font-weight:700;
+  line-height:1.3;
+  cursor:pointer;
+  transition:all .2s ease;
+}
+
+.sponsor-tab-btn:hover,
+.sponsor-tab-btn:focus-visible{
+  border-color:var(--accent);
+  color:var(--accent);
+  outline:none;
+}
+
+.sponsor-tab-btn.active{
+  color:#fff;
+  border-color:transparent;
+  background:linear-gradient(135deg, var(--accent,#e0523d), var(--accent-2,#ff9a7d));
+  box-shadow:0 10px 24px rgba(16,24,40,.10);
+}
+
+.sponsor-results{
+  text-align:right;
+  margin-bottom:20px;
+  font-size:0.875rem;
+  color:var(--muted);
+}
+
+.sponsor-loading[hidden],
+.sponsor-grid[hidden],
+.sponsor-empty[hidden],
+.sponsor-card[hidden]{
+  display:none !important;
+}
+
+.sponsor-results strong{
+  color:var(--text);
+  font-weight:700;
+}
+
+.sponsor-loading,
+.sponsor-empty{
+  text-align:center;
+  padding:56px 20px;
+}
+
+.sponsor-loading p,
+.sponsor-empty p{
+  margin:0;
+  color:var(--muted);
+}
+
+.sponsor-loading-spinner{
+  width:42px;
+  height:42px;
+  margin:0 auto 16px;
+  border:4px solid #e5e7eb;
+  border-top-color:var(--accent,#e0523d);
+  border-radius:50%;
+  animation:sponsor-spin .8s linear infinite;
+}
+
+@keyframes sponsor-spin{
+  to{ transform:rotate(360deg); }
+}
+
+.sponsor-empty-icon{
+  font-size:2.5rem;
+  line-height:1;
+  margin-bottom:12px;
+}
+
+.sponsor-empty-title{
+  font-size:1.05rem;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:6px;
+}
+
+.sponsor-empty-text{
+  font-size:0.875rem;
+}
+
+.sponsor-grid{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:18px;
+}
+
+.sponsor-card{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  background:#fff;
+  border:1px solid rgba(15,23,42,.08);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 10px 24px rgba(16,24,40,.06);
+  cursor:pointer;
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+
+.sponsor-card:hover,
+.sponsor-card:focus-visible{
+  transform:translateY(-4px);
+  box-shadow:0 16px 32px rgba(16,24,40,.12);
+  outline:none;
+}
+
+.sponsor-card-img{
+  position:relative;
+  width:100%;
+  aspect-ratio:1 / 1;
+  background:#f8fafc;
+  overflow:hidden;
+}
+
+.sponsor-card-img img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.sponsor-card-placeholder{
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  color:#94a3b8;
+  font-size:0.813rem;
+  text-align:center;
+}
+
+.sponsor-card-body{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:14px;
+  flex:1;
+}
+
+.sponsor-category-label{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  max-width:100%;
+  padding:2px 10px;
+  border-radius:999px;
+  font-size:0.688rem;
+  font-weight:700;
+  color:#fff;
+  align-self:flex-start;
+}
+
+.sponsor-category-label.cat-seedling{ background:#78bc25; }
+.sponsor-category-label.cat-fertilizer{ background:#cc4624; }
+.sponsor-category-label.cat-service{ background:#12b7d1; }
+.sponsor-category-label.cat-uncategorized{ background:#64748b; }
+
+.sponsor-card-name{
+  margin:0;
+  font-size:0.938rem;
+  line-height:1.5;
+  font-weight:700;
+  color:var(--text);
+  word-break:break-word;
+}
+
+@media (max-width:1024px){
+  .sponsor-grid{
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width:768px){
+  .page-sponsors .article-container{
+    max-width:none;
+    width:100%;
+  }
+
+  .sponsor-page-header{
+    margin-bottom:16px;
+  }
+
+  .page-sponsors .article-category{
+    margin-bottom:16px;
+    font-size:0.938rem;
+  }
+
+  .page-sponsors .article-title{
+    margin-bottom:20px;
+    font-size:clamp(2rem, 8vw, 2.5rem);
+  }
+
+  .sponsor-page-subtitle{
+    font-size:0.938rem;
+  }
+
+  .sponsor-legend-section{
+    margin-bottom:16px;
+  }
+
+  .sponsor-legend{
+    gap:12px 16px;
+    padding:14px 16px;
+  }
+
+  .sponsor-legend-item{
+    font-size:0.813rem;
+  }
+
+  .sponsor-page-section{
+    margin-top:0;
+  }
+
+  .sponsor-tabs{
+    justify-content:flex-start;
+    overflow-x:auto;
+    flex-wrap:nowrap;
+    padding-bottom:4px;
+    margin-bottom:16px;
+    scrollbar-width:none;
+  }
+
+  .sponsor-tabs::-webkit-scrollbar{
+    display:none;
+  }
+
+  .sponsor-tab-btn{
+    flex:0 0 auto;
+    font-size:0.813rem;
+    padding:7px 14px;
+  }
+
+  .sponsor-results{
+    text-align:left;
+    margin-bottom:14px;
+  }
+
+  .sponsor-grid{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:12px;
+  }
+
+  .sponsor-card{
+    border-radius:12px;
+  }
+
+  .sponsor-card-body{
+    padding:12px;
+  }
+
+  .sponsor-card-name{
+    font-size:0.875rem;
+  }
+}

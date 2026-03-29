@@ -4744,6 +4744,10 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     document.body.classList.add("sponsor-ad-popup-open");
   }
 
+  if (typeof window !== "undefined") {
+    window.openSponsorAdPopup = openSponsorAdPopup;
+  }
+
   function buildSponsorAdCard(item) {
     const a = document.createElement("a");
     a.className = "card";
@@ -5315,9 +5319,291 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     }
   }
 
+
+  function hasSponsorsPageUi() {
+    return !!document.body && document.body.classList.contains("page-sponsors") && !!document.getElementById("sponsorGrid");
+  }
+
+  function sanitizeSponsorSlug(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]+/g, "-")
+      .replace(/[・･]/g, "-")
+      .replace(/[^a-z0-9\-ぁ-んァ-ヶ一-龠ー]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  function normalizeSponsorCategory(category) {
+    const raw = String(category || "").trim();
+    if (!raw) return "";
+
+    const normalized = sanitizeSponsorSlug(raw);
+
+    const aliases = {
+      seedling: "seedling",
+      seedlings: "seedling",
+      seed: "seedling",
+      seeds: "seedling",
+      syubyo: "seedling",
+      種苗: "seedling",
+      fertilizer: "fertilizer",
+      fertilizers: "fertilizer",
+      pesticide: "fertilizer",
+      pesticides: "fertilizer",
+      agrochemical: "fertilizer",
+      agrochemicals: "fertilizer",
+      fertilizerpesticide: "fertilizer",
+      "fertilizer-pesticide": "fertilizer",
+      肥料農薬: "fertilizer",
+      "肥料-農薬": "fertilizer",
+      "肥料・農薬": "fertilizer",
+      service: "service",
+      services: "service",
+      material: "service",
+      materials: "service",
+      equipment: "service",
+      equipmentservice: "service",
+      資機材サービス: "service",
+      "資機材-サービス": "service",
+      "資機材・サービス": "service"
+    };
+
+    return aliases[raw] || aliases[normalized] || normalized;
+  }
+
+  function getSponsorCategoryMeta(category) {
+    const map = {
+      seedling: { label: "種苗", css: "cat-seedling" },
+      fertilizer: { label: "肥料・農薬", css: "cat-fertilizer" },
+      service: { label: "資機材・サービス", css: "cat-service" }
+    };
+    return map[normalizeSponsorCategory(category)] || null;
+  }
+
+  function getSponsorItemCategory(item) {
+    if (!item || typeof item !== "object") return "";
+    return normalizeSponsorCategory(
+      item.category ||
+      item.sponsor_category ||
+      item.sponsorCategory ||
+      item.category_slug ||
+      item.categorySlug ||
+      ""
+    );
+  }
+
+  function buildSponsorsPageCard(item) {
+    const card = document.createElement("a");
+    card.className = "sponsor-card";
+    card.href = "#";
+
+    const category = getSponsorItemCategory(item);
+    card.setAttribute("data-category", category);
+
+    const title = stripHtml(item && item.title ? item.title : "");
+    const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+    const meta = getSponsorCategoryMeta(category);
+
+    const imgWrap = document.createElement("div");
+    imgWrap.className = "sponsor-card-img";
+    if (imgUrl) {
+      const img = document.createElement("img");
+      img.src = imgUrl;
+      img.alt = title || "協賛社";
+      img.loading = "lazy";
+      img.decoding = "async";
+      imgWrap.appendChild(img);
+    } else {
+      const placeholder = document.createElement("div");
+      placeholder.className = "sponsor-card-placeholder";
+      placeholder.textContent = "No image";
+      imgWrap.appendChild(placeholder);
+    }
+
+    const body = document.createElement("div");
+    body.className = "sponsor-card-body";
+
+    if (meta) {
+      const label = document.createElement("span");
+      label.className = `sponsor-category-label ${meta.css}`;
+      label.textContent = meta.label;
+      body.appendChild(label);
+    }
+
+    const name = document.createElement("p");
+    name.className = "sponsor-card-name";
+    name.textContent = title || "名称未設定";
+    body.appendChild(name);
+
+    card.appendChild(imgWrap);
+    card.appendChild(body);
+
+    card.addEventListener("click", function (e) {
+      e.preventDefault();
+      openSponsorAdPopup(item || {});
+    });
+
+    return card;
+  }
+
+  function setSponsorsPageState(state) {
+    const loadingEl = document.getElementById("sponsorLoading");
+    const gridEl = document.getElementById("sponsorGrid");
+    const emptyEl = document.getElementById("sponsorEmpty");
+    if (loadingEl) loadingEl.hidden = state !== "loading";
+    if (gridEl) gridEl.hidden = state !== "grid";
+    if (emptyEl) emptyEl.hidden = state !== "empty";
+  }
+
+  function updateSponsorsPageCount(count) {
+    const countEl = document.getElementById("sponsorCount");
+    if (countEl) countEl.textContent = String(count || 0);
+  }
+
+  function filterSponsorsPageCards(category) {
+    const gridEl = document.getElementById("sponsorGrid");
+    if (!gridEl) return 0;
+    const cards = Array.from(gridEl.querySelectorAll(".sponsor-card"));
+    let visible = 0;
+    cards.forEach(function (card) {
+      const matches = category === "all" || card.getAttribute("data-category") === category;
+      card.hidden = !matches;
+      if (matches) visible += 1;
+    });
+    updateSponsorsPageCount(visible);
+    setSponsorsPageState(visible > 0 ? "grid" : "empty");
+    return visible;
+  }
+
+  function bindSponsorsPageTabs() {
+    const tabs = Array.from(document.querySelectorAll("#sponsorTabs .sponsor-tab-btn"));
+    if (!tabs.length) return;
+    tabs.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        tabs.forEach(function (tab) {
+          tab.classList.remove("active");
+          tab.setAttribute("aria-selected", "false");
+        });
+        btn.classList.add("active");
+        btn.setAttribute("aria-selected", "true");
+        filterSponsorsPageCards(btn.getAttribute("data-filter") || "all");
+      });
+    });
+  }
+
+  function renderSponsorsPage(items) {
+    const gridEl = document.getElementById("sponsorGrid");
+    if (!gridEl) return;
+    gridEl.innerHTML = "";
+
+    const normalized = Array.isArray(items) ? items.filter(function (item) {
+      return !!item && typeof item === "object";
+    }) : [];
+
+    normalized.forEach(function (item) {
+      gridEl.appendChild(buildSponsorsPageCard(item));
+    });
+
+    filterSponsorsPageCards("all");
+  }
+
+  function getSponsorPlacementsCandidates(paper) {
+    const safePaper = encodeURIComponent(String(paper || "tomato").trim() || "tomato");
+    return [
+      `/static/${safePaper}/placements.json`,
+      `./placements.json`,
+      `placements.json`
+    ];
+  }
+
+  async function fetchJsonWithTimeout(url, timeoutMs) {
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    let timer = null;
+
+    try {
+      if (controller) {
+        timer = window.setTimeout(function () {
+          controller.abort();
+        }, Math.max(1000, Number(timeoutMs) || 8000));
+      }
+
+      const res = await fetch(url, {
+        cache: "no-store",
+        signal: controller ? controller.signal : undefined
+      });
+      const contentType = res.headers.get("content-type") || "";
+      const text = await res.text();
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} for ${url}
+${text.slice(0, 200)}`);
+      }
+
+      if (contentType.includes("text/html") || text.trim().startsWith("<")) {
+        throw new Error(`Not JSON response from ${url}
+Received HTML (maybe redirected to WP).`);
+      }
+
+      return JSON.parse(text);
+    } catch (e) {
+      if (e && e.name === "AbortError") {
+        throw new Error(`Request timed out for ${url}`);
+      }
+      throw e;
+    } finally {
+      if (timer) window.clearTimeout(timer);
+    }
+  }
+
+  async function loadSponsorsPlacements(paper) {
+    const candidates = getSponsorPlacementsCandidates(paper);
+    let lastError = null;
+
+    for (const url of candidates) {
+      try {
+        return await fetchJsonWithTimeout(url, 8000);
+      } catch (e) {
+        lastError = e;
+      }
+    }
+
+    throw lastError || new Error("placements.json could not be loaded");
+  }
+
+  async function initSponsorsPage() {
+    if (!hasSponsorsPageUi()) return;
+    if (window.__SPONSORS_PAGE_INITIALIZED__) return;
+    window.__SPONSORS_PAGE_INITIALIZED__ = true;
+
+    setSponsorsPageState("loading");
+    updateSponsorsPageCount(0);
+    bindSponsorsPageTabs();
+
+    const paper = getPaperFromPath() || getCurrentPaper() || "tomato";
+
+    try {
+      const placements = await loadSponsorsPlacements(paper);
+      const items = Array.isArray(placements && placements.sponsor_ads) ? placements.sponsor_ads : [];
+      renderSponsorsPage(items);
+    } catch (e) {
+      console.warn("[sponsors] failed:", e && e.message ? e.message : e);
+      setSponsorsPageState("empty");
+      updateSponsorsPageCount(0);
+    }
+  }
+
+  window.initSponsorsPage = initSponsorsPage;
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSponsorsPage);
+  } else {
+    initSponsorsPage();
+  }
+
 async function loadAndRenderPlacementsJson(paper) {
     // Only for pages that actually have placements UI
-    if (!hasSponsorAdsUi() && !hasNewspaperAdsUi() && !hasSideAdsUi() && !hasStickyAdUi()) return;
+    if (!hasSponsorAdsUi() && !hasNewspaperAdsUi() && !hasSideAdsUi() && !hasStickyAdUi() && !hasSponsorsPageUi()) return;
 
     const url = `/static/${paper}/placements.json`;
     try {
@@ -5326,6 +5612,9 @@ async function loadAndRenderPlacementsJson(paper) {
       renderNewspaperSponsorAdsIntoDom(placements);
       renderSideAdsIntoDom(placements);
       renderStickyBannerIntoDom(placements);
+      if (hasSponsorsPageUi()) {
+        renderSponsorsPage(Array.isArray(placements && placements.sponsor_ads) ? placements.sponsor_ads : []);
+      }
     } catch (e) {
       // Do not break the page; keep hard-coded fallback
       console.warn("[placements.json] failed:", e && e.message ? e.message : e);

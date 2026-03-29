@@ -569,6 +569,11 @@ private static function sync_uploads_assets(): void {
           }
 
 
+          if ($key === 'sponsor_ads') {
+            $category = self::get_acf_field_value('sponsor_category', $id);
+            $item['category'] = is_string($category) ? sanitize_title($category) : '';
+          }
+
           if ($key === 'sponsor_videos') {
             $video_url = null;
 

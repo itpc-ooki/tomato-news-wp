@@ -66,6 +66,24 @@
     return bytes.map(b => b.toString(16).padStart(2,'0')).join('');
   }
 
+  async function pushRegistrationCompleteEvent(user){
+    try{
+      window.dataLayer = window.dataLayer || [];
+      const email = normalizeEmail(user && user.email ? user.email : '');
+      const payload = {
+        event: 'registration_complete',
+        registration_type: 'tomato_member',
+        paper: String((user && user.paper) || detectActivePaper() || 'tomato')
+      };
+
+      if (email) {
+        payload.user_email_sha256 = await sha256Hex(email);
+      }
+
+      window.dataLayer.push(payload);
+    }catch(_e){}
+  }
+
   function logout(){
     clearAuthSession();
   }
@@ -1980,7 +1998,11 @@ var currentStep = 1;
                 ? TomatoAuth.updateProfileFromMypageForm(formEl)
                 : TomatoAuth.registerFromFormData(formData);
 
-            p.then(function(){
+            p.then(function(resultUser){
+                if (!isEditMode) {
+                    pushRegistrationCompleteEvent(resultUser);
+                }
+
                 // 完了画面を表示
                 formEl.style.display = 'none';
                 document.querySelector('.progress-header').style.display = 'none';
