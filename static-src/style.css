@@ -149,14 +149,39 @@ nav ul{ list-style:none; display:flex; gap:1rem; padding:0; margin:0; align-item
   border:1px solid var(--border); 
   background:#fff;
   cursor:pointer;
-  font-size:18px;
-  line-height:1;
-  text-align:center;
   padding:0;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  text-align:center;
+  line-height:1;
+}
+.hamb-lines{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+}
+.hamb-lines span{
+  display:block;
+  width:20px;
+  height:4px;
+  border-radius:999px;
+  background:#111;
+}
+.hamb-text{
+  display:block;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:0.06em;
+  color:#111;
+  line-height:1;
 }
 @media (max-width:900px){ 
   nav{ display:none } 
-  .hamb{ display:flex !important; align-items:center; justify-content:center; } 
+  .hamb{ display:flex !important; } 
 }
 
 /* PC版：ボタン類をbrandロゴの中心に配置 */
@@ -3016,7 +3041,7 @@ header img, nav img, footer img{aspect-ratio: auto; height: auto; object-fit: co
     right: auto;
     width: 450px;
     z-index: 10;}
-  #highlight .left-hero > p{
+  #highlight .left-hero > .hero-actions{
     margin-top: 340px !important;
     margin-bottom: 8px !important;}
   body > .tomato-market-data{
@@ -8676,7 +8701,7 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
     z-index: 10;
   }
   
-  #highlight .left-hero > p {
+  #highlight .left-hero > .hero-actions {
     margin-top: 340px !important;
     margin-bottom: 8px !important;
   }
@@ -8729,11 +8754,13 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
   }
 
   .sp-hero-copy .mark{
-    font-size:1.1rem;
-    letter-spacing:.08em;
+    font-size: clamp(0.92rem, 3.2vw, 1.08rem);
+    letter-spacing:.02em;
     margin-bottom:12px;
     text-align:center;
     line-height:1.5;
+    white-space:nowrap;
+    text-wrap:balance;
   }
 
   .sp-hero-copy .pill{
@@ -13846,5 +13873,31 @@ body.sponsor-ad-popup-open{
 
   .sponsor-card-name{
     font-size:0.875rem;
+  }
+}
+
+/* =====================================================
+   TOP mobile: tighten gap above hero-actions on index only
+   - keeps global .hero-actions behavior unchanged
+   - only affects the highlight area on small screens
+   ===================================================== */
+@media (max-width:768px){
+  .sp-only-market + #highlight .left-hero{
+    justify-content:flex-start !important;
+    gap:10px !important;
+    padding-top:0px !important;
+    padding-bottom:16px !important;
+  }
+
+  .sp-only-market + #highlight .left-hero > .hero-actions{
+    order:2 !important;
+    margin-top:0 !important;
+    margin-bottom:0 !important;
+    width:100% !important;
+  }
+
+  .sp-only-market + #highlight .left-hero > .sp-lanes{
+    order:3 !important;
+    margin-top:0 !important;
   }
 }

@@ -24,7 +24,14 @@
       <a class="btn" id="loginLogoutBtn" href="/static/account/login.html?paper=tomato">ログイン</a>
       <a class="btn accent" id="registerBtn" href="/static/account/register.html?paper=tomato">会員登録（必須）</a>
       <a class="btn" id="mypageBtn" href="/static/account/mypage.html?paper=tomato">マイページ</a>
-      <button class="hamb" aria-label="メニュー" onclick="toggleMobileMenu()">☰</button>
+      <button class="hamb" aria-label="メニュー" onclick="toggleMobileMenu()">
+        <span class="hamb-lines" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+        <span class="hamb-text" aria-hidden="true">MENU</span>
+      </button>
     </div>
   </div>
   <!-- ヘッダー下 リーダーボード（表示/非表示は data-hidden で制御） -->
