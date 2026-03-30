@@ -3250,6 +3250,15 @@ async function renderNewsSection(posts, paper) {
       const titleEl = tile.querySelector(".tile-title");
       if (titleEl) titleEl.textContent = post.title || "";
 
+      const tileImgEl = tile.querySelector(".tile-img");
+      if (tileImgEl) {
+        if (String((post && post.article_type) || "").trim() === "産地データ検索") {
+          tileImgEl.classList.add("is-blurred");
+        } else {
+          tileImgEl.classList.remove("is-blurred");
+        }
+      }
+
       const imgEl = tile.querySelector(".tile-img img");
       const imgUrl = resolveUrlMaybeRelative(post.featured_image || "");
 

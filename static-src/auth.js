@@ -1456,7 +1456,7 @@
 
         try{
           await TomatoAuth.login({ email, password, remember });
-          window.location.href = './mypage.html?paper=' + encodeURIComponent(paper);
+          window.location.href = (window.__paperTop ? window.__paperTop(paper) : ('../' + paper + '/index.html'));
         }catch(err){
           alert(err?.message || 'ログインに失敗しました。入力内容をご確認ください。');
         }
