@@ -117,7 +117,7 @@
         `<div class="association-tile-img">${
           image
             ? `<img src="${escapeHtmlLocal(image)}" alt="${escapeHtmlLocal(title)}" loading="lazy">`
-            : `<div class="association-tile-placeholder">産地データ大全</div>`
+            : `<div class="association-tile-placeholder">産地データ検索</div>`
         }</div>` +
         `<div class="association-tile-overlay">` +
           `<div class="association-tile-prefecture">${escapeHtmlLocal(prefectureName)}</div>` +
@@ -135,24 +135,10 @@
     }
 
     async function loadSurveyData() {
-      const paper = getPaperLocal();
-      const candidates = [
-        `/static/${encodeURIComponent(paper)}/survey.json`,
-        `./survey.json`,
-        `survey.json`
-      ];
-
-      let data = null;
-      let lastError = null;
-      for (const url of candidates) {
-        try {
-          data = await fetchJsonLocal(url);
-          if (Array.isArray(data)) return data;
-        } catch (e) {
-          lastError = e;
-        }
-      }
-      throw lastError || new Error("survey.json could not be loaded");
+      const posts = await loadPostsIndexLocal();
+      return (Array.isArray(posts) ? posts : []).filter(function(post) {
+        return String((post && post.article_type) || "").trim() === "産地データ検索";
+      });
     }
 
     async function loadPostsIndexLocal() {
@@ -721,7 +707,7 @@ function renderGraphItems(items) {
           if (section) section.style.display = "";
           if (empty) {
             empty.hidden = false;
-            empty.textContent = "産地データ大全のデータがまだありません。";
+            empty.textContent = "産地データ検索のデータがまだありません。";
           }
           return;
         }
@@ -764,13 +750,13 @@ function renderGraphItems(items) {
 
         rerender();
       } catch (error) {
-        console.error("[産地データ大全] render failed:", error);
+        console.error("[産地データ検索] render failed:", error);
         const section = document.getElementById("associationSection");
         const empty = document.getElementById("associationEmptyMessage");
         if (section) section.style.display = "";
         if (empty) {
           empty.hidden = false;
-          empty.textContent = "産地データ大全の読み込みに失敗しました。survey.json を確認してください。";
+          empty.textContent = "産地データ検索の読み込みに失敗しました。posts.json を確認してください。";
         }
       }
     }
@@ -4323,6 +4309,11 @@ function buildDetailRelatedCard(post) {
   const thumb = document.createElement("div");
   thumb.className = "related-thumb";
 
+  const articleType = String((post && post.article_type) || "").trim();
+  if (articleType === "産地データ検索") {
+    thumb.classList.add("is-blurred");
+  }
+
   const img = document.createElement("img");
   const title = stripHtml((post && post.title) || "");
   const imgUrl = resolveUrlMaybeRelative((post && post.featured_image) || "");
@@ -7709,7 +7700,7 @@ if (typeof window.switchPestTab !== "function") {
         `<div class="association-tile-img">${
           image
             ? `<img src="${escapeHtmlLocal(image)}" alt="${escapeHtmlLocal(title)}" loading="lazy">`
-            : `<div class="association-tile-placeholder">産地データ大全</div>`
+            : `<div class="association-tile-placeholder">産地データ検索</div>`
         }</div>` +
         `<div class="association-tile-overlay">` +
           `<div class="association-tile-prefecture">${escapeHtmlLocal(prefectureName)}</div>` +
@@ -7727,24 +7718,10 @@ if (typeof window.switchPestTab !== "function") {
     }
 
     async function loadSurveyData() {
-      const paper = getPaperLocal();
-      const candidates = [
-        `/static/${encodeURIComponent(paper)}/survey.json`,
-        `./survey.json`,
-        `survey.json`
-      ];
-
-      let data = null;
-      let lastError = null;
-      for (const url of candidates) {
-        try {
-          data = await fetchJsonLocal(url);
-          if (Array.isArray(data)) return data;
-        } catch (e) {
-          lastError = e;
-        }
-      }
-      throw lastError || new Error("survey.json could not be loaded");
+      const posts = await loadPostsIndexLocal();
+      return (Array.isArray(posts) ? posts : []).filter(function(post) {
+        return String((post && post.article_type) || "").trim() === "産地データ検索";
+      });
     }
 
     function buildPrefectureIndex(posts) {
@@ -8266,7 +8243,7 @@ function renderGraphItems(items) {
           if (section) section.style.display = "";
           if (empty) {
             empty.hidden = false;
-            empty.textContent = "産地データ大全のデータがまだありません。";
+            empty.textContent = "産地データ検索のデータがまだありません。";
           }
           return;
         }
@@ -8306,13 +8283,13 @@ function renderGraphItems(items) {
 
         rerender();
       } catch (error) {
-        console.error("[産地データ大全] render failed:", error);
+        console.error("[産地データ検索] render failed:", error);
         const section = document.getElementById("associationSection");
         const empty = document.getElementById("associationEmptyMessage");
         if (section) section.style.display = "";
         if (empty) {
           empty.hidden = false;
-          empty.textContent = "産地データ大全の読み込みに失敗しました。survey.json を確認してください。";
+          empty.textContent = "産地データ検索の読み込みに失敗しました。posts.json を確認してください。";
         }
       }
     }
