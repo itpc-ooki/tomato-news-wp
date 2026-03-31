@@ -15,7 +15,7 @@
 
 
   /* =====================================================================
-   * 産地データ大全: early-safe initializer
+   * 産地データ検索: early-safe initializer
    * - page-survey is data-driven from /static/{paper}/survey.json
    * - define this early so later unrelated runtime errors do not block survey
    * ===================================================================== */
@@ -642,7 +642,7 @@ function renderGraphItems(items) {
       const seasonLabel = requestedSeason === "winter" ? "冬春" : (requestedSeason === "summer" ? "夏秋" : "");
       const heading = [requestedYear ? requestedYear + "年" : "", seasonLabel].filter(Boolean).join(" ") || "選択中の条件";
 
-      if (pageTitle) pageTitle.textContent = "産地データ大全";
+      if (pageTitle) pageTitle.textContent = "産地データ検索";
       if (pageSubtitle) pageSubtitle.textContent = heading + " のTOPデータはまだありません。";
       if (heroTitle) heroTitle.textContent = heading + " のデータ準備中";
       if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する産地データTOPが見つかりませんでした。";
@@ -1395,7 +1395,7 @@ function renderGraphItems(items) {
       const seasonLabel = requestedSeason === "winter" ? "冬春" : (requestedSeason === "summer" ? "夏秋" : "");
       const heading = [requestedYear ? requestedYear + "年" : "", seasonLabel].filter(Boolean).join(" ") || "選択中の条件";
 
-      if (pageTitle) pageTitle.textContent = "産地データ大全";
+      if (pageTitle) pageTitle.textContent = "産地データ検索";
       if (pageSubtitle) pageSubtitle.textContent = heading + " のTOPデータはまだありません。";
       if (heroTitle) heroTitle.textContent = heading + " のデータ準備中";
       if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する産地データTOPが見つかりませんでした。";
@@ -7600,7 +7600,7 @@ if (typeof window.switchPestTab !== "function") {
   }
 
   /* =====================================================================
-   * 産地データ大全: survey.json から動的表示
+   * 産地データ検索: survey.json から動的表示
    * - Source: /static/{paper}/survey.json
    * - 都道府県プルダウン、地域別都道府県一覧、部会一覧を動的生成
    * - 既存の静的HTMLは残し、該当DOMがある場合のみ動作
@@ -8195,7 +8195,7 @@ function renderGraphItems(items) {
       const seasonLabel = requestedSeason === "winter" ? "冬春" : (requestedSeason === "summer" ? "夏秋" : "");
       const heading = [requestedYear ? requestedYear + "年" : "", seasonLabel].filter(Boolean).join(" ") || "選択中の条件";
 
-      if (pageTitle) pageTitle.textContent = "産地データ大全";
+      if (pageTitle) pageTitle.textContent = "産地データ検索";
       if (pageSubtitle) pageSubtitle.textContent = heading + " のTOPデータはまだありません。";
       if (heroTitle) heroTitle.textContent = heading + " のデータ準備中";
       if (heroDescription) heroDescription.textContent = "選択された年度・シーズンに一致する産地データTOPが見つかりませんでした。";
