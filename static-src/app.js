@@ -128,9 +128,35 @@
       return a;
     }
 
+    const PREFECTURE_ORDER = [
+      "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
+      "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
+      "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県",
+      "岐阜県", "静岡県", "愛知県", "三重県",
+      "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県",
+      "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+      "徳島県", "香川県", "愛媛県", "高知県",
+      "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"
+    ];
+
+    const PREFECTURE_ORDER_INDEX = PREFECTURE_ORDER.reduce(function(map, name, index) {
+      map[name] = index;
+      return map;
+    }, {});
+
     function sortPrefectures(names) {
       return names.slice().sort(function(a, b) {
-        return String(a).localeCompare(String(b), "ja");
+        const aName = String(a);
+        const bName = String(b);
+        const aIndex = Object.prototype.hasOwnProperty.call(PREFECTURE_ORDER_INDEX, aName)
+          ? PREFECTURE_ORDER_INDEX[aName]
+          : Number.MAX_SAFE_INTEGER;
+        const bIndex = Object.prototype.hasOwnProperty.call(PREFECTURE_ORDER_INDEX, bName)
+          ? PREFECTURE_ORDER_INDEX[bName]
+          : Number.MAX_SAFE_INTEGER;
+
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        return aName.localeCompare(bName, "ja");
       });
     }
 
@@ -160,24 +186,6 @@
         }
       }
       throw lastError || new Error("posts.json could not be loaded");
-    }
-
-    function updateSurveySampleLink(posts) {
-      const link = document.getElementById("surveySampleLink");
-      if (!link) return;
-
-      const samplePost = (Array.isArray(posts) ? posts : []).find(function(post) {
-        return Number(post && post.is_survey_sample) === 1;
-      });
-
-      if (!samplePost) {
-        link.hidden = true;
-        link.removeAttribute("href");
-        return;
-      }
-
-      link.href = getDetailHref(samplePost);
-      link.hidden = false;
     }
 
     function buildPrefectureIndex(posts) {
@@ -681,13 +689,6 @@ function renderGraphItems(items) {
         const searchBtn = document.getElementById("surveySearchButton");
 
         try {
-          const postsIndex = await loadPostsIndexLocal();
-          updateSurveySampleLink(postsIndex);
-        } catch (_e) {
-          updateSurveySampleLink([]);
-        }
-
-        try {
           const surveyTopData = await loadSurveyTopData();
           const entry = pickSurveyTopEntry(surveyTopData);
           if (entry) {
@@ -769,6 +770,104 @@ function renderGraphItems(items) {
     window.addEventListener("load", run);
     setTimeout(run, 0);
     setTimeout(run, 300);
+  })();
+
+  (function setupSurveySampleSection(){
+    if (!document.body || !document.body.classList.contains("page-survey")) return;
+    if (window.__JA_SURVEY_SAMPLE_BOUND__) return;
+    window.__JA_SURVEY_SAMPLE_BOUND__ = true;
+
+    function bind() {
+      const section = document.getElementById("sampleSection");
+      const wrap = document.getElementById("sampleImageWrap");
+      const lightbox = document.getElementById("sampleLightbox");
+      const closeBtn = document.getElementById("sampleLightboxClose");
+      if (!section || !wrap || !lightbox) return;
+
+      function openLightbox() {
+        lightbox.classList.add("is-open");
+        lightbox.setAttribute("aria-hidden", "false");
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove("is-open");
+        lightbox.setAttribute("aria-hidden", "true");
+      }
+
+      function isLoggedIn() {
+        try {
+          if (window.TomatoAuth) {
+            if (typeof window.TomatoAuth.currentUser === "function") {
+              const user = window.TomatoAuth.currentUser();
+              if (user && (user.email || user.id || user.name)) return true;
+            }
+            if (typeof window.TomatoAuth.isLoggedIn === "function") {
+              return !!window.TomatoAuth.isLoggedIn();
+            }
+          }
+
+          if (window.TOMATO_AUTH && typeof window.TOMATO_AUTH.isLoggedIn === "function") {
+            return !!window.TOMATO_AUTH.isLoggedIn();
+          }
+        } catch (_e) {}
+        return false;
+      }
+
+      function updateVisibility() {
+        const loggedIn = isLoggedIn();
+        section.style.display = loggedIn ? "none" : "block";
+        if (loggedIn) closeLightbox();
+      }
+
+      if (!wrap.dataset.sampleBound) {
+        wrap.dataset.sampleBound = "1";
+        wrap.addEventListener("click", openLightbox);
+        wrap.addEventListener("keydown", function(event) {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openLightbox();
+          }
+        });
+      }
+
+      if (closeBtn && !closeBtn.dataset.sampleBound) {
+        closeBtn.dataset.sampleBound = "1";
+        closeBtn.addEventListener("click", function(event) {
+          event.stopPropagation();
+          closeLightbox();
+        });
+      }
+
+      if (!lightbox.dataset.sampleBound) {
+        lightbox.dataset.sampleBound = "1";
+        lightbox.addEventListener("click", function(event) {
+          if (event.target === lightbox) closeLightbox();
+        });
+      }
+
+      if (!document.documentElement.dataset.sampleLightboxKeyBound) {
+        document.documentElement.dataset.sampleLightboxKeyBound = "1";
+        document.addEventListener("keydown", function(event) {
+          if (event.key === "Escape") closeLightbox();
+        });
+      }
+
+      updateVisibility();
+      setTimeout(updateVisibility, 200);
+      window.addEventListener("load", function() {
+        setTimeout(updateVisibility, 200);
+      });
+      window.addEventListener("authChanged", updateVisibility);
+      document.addEventListener("visibilitychange", function() {
+        if (!document.hidden) updateVisibility();
+      });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bind);
+    } else {
+      bind();
+    }
   })();
 
   /* =====================================================================
@@ -1944,6 +2043,63 @@ function renderGraphItems(items) {
   // Fix:
   //   rewrite header/footer relative links to /static/{paper}/...
   // =========================================================
+
+  function isDetailPage() {
+    try {
+      return /(^|\/)detail\.html$/i.test(window.location.pathname || '');
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  function findDetailRegisterButton() {
+    const candidates = Array.from(document.querySelectorAll('.cta-section .btn.accent, .cta-section a.btn.accent, .cta-section button.btn.accent'));
+    return candidates.find((el) => {
+      const text = String(el.textContent || '').replace(/\s+/g, ' ').trim();
+      return text === '会員登録して使い始める';
+    }) || null;
+  }
+
+  function findDetailArchiveSearchButton() {
+    const candidates = Array.from(document.querySelectorAll('.cta-section .btn:not(.accent), .cta-section a.btn:not(.accent), .cta-section button.btn:not(.accent)'));
+    return candidates.find((el) => {
+      const text = String(el.textContent || '').replace(/\s+/g, ' ').trim();
+      return text === 'まずは記事を探す';
+    }) || null;
+  }
+
+  function bindDetailCtaButtons() {
+    if (!isDetailPage()) return;
+
+    const paper = getCurrentPaper() || getPaperFromPath() || 'tomato';
+    const registerHref = `/static/account/register.html?paper=${encodeURIComponent(paper)}`;
+    const archiveHref = `/static/${encodeURIComponent(paper)}/index.html#archive-search-form`;
+
+    const registerBtn = findDetailRegisterButton();
+    if (registerBtn && registerBtn.dataset.detailRegisterBound !== '1') {
+      if (registerBtn.tagName && registerBtn.tagName.toLowerCase() === 'a') {
+        registerBtn.setAttribute('href', registerHref);
+      } else {
+        registerBtn.addEventListener('click', function () {
+          window.location.href = registerHref;
+        });
+      }
+      registerBtn.dataset.detailRegisterBound = '1';
+    }
+
+    const archiveBtn = findDetailArchiveSearchButton();
+    if (archiveBtn && archiveBtn.dataset.detailArchiveBound !== '1') {
+      if (archiveBtn.tagName && archiveBtn.tagName.toLowerCase() === 'a') {
+        archiveBtn.setAttribute('href', archiveHref);
+      } else {
+        archiveBtn.addEventListener('click', function () {
+          window.location.href = archiveHref;
+        });
+      }
+      archiveBtn.dataset.detailArchiveBound = '1';
+    }
+  }
+
   function updatePaperMenuLinks() {
     const paper = getCurrentPaper();
     if (!paper) return;
@@ -2019,9 +2175,11 @@ function shouldSkipHref(href) {
   // Also run on first load (for pages that already have header in HTML)
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", updateHeaderAccountLinks);
+    document.addEventListener("DOMContentLoaded", bindDetailCtaButtons);
     document.addEventListener("DOMContentLoaded", updatePaperMenuLinks);
   } else {
     updateHeaderAccountLinks();
+    bindDetailCtaButtons();
     updatePaperMenuLinks();
   }
 
@@ -3252,11 +3410,7 @@ async function renderNewsSection(posts, paper) {
 
       const tileImgEl = tile.querySelector(".tile-img");
       if (tileImgEl) {
-        if (String((post && post.article_type) || "").trim() === "産地データ検索") {
-          tileImgEl.classList.add("is-blurred");
-        } else {
-          tileImgEl.classList.remove("is-blurred");
-        }
+        tileImgEl.classList.remove("is-blurred");
       }
 
       const imgEl = tile.querySelector(".tile-img img");
@@ -3406,7 +3560,8 @@ async function renderNewsSection(posts, paper) {
 
   function getListSortValue() {
     const select = document.querySelector('.sort-select');
-    return String((select && select.value) || '最新順').trim() || '最新順';
+    const value = String((select && select.value) || '最新順').trim() || '最新順';
+    return value === '人気順' ? '人気順' : '最新順';
   }
 
   function getPostSortDate(post) {
@@ -3419,15 +3574,8 @@ async function renderNewsSection(posts, paper) {
     const av = a || {};
     const bv = b || {};
     switch (sortValue) {
-      case '投稿順': {
-        const aid = Number(av.id) || 0;
-        const bid = Number(bv.id) || 0;
-        return aid - bid;
-      }
       case '人気順':
         return String(av.title || '').localeCompare(String(bv.title || ''), 'ja');
-      case 'カテゴリー順':
-        return String((getPostArticleTypes(av)[0] || '')).localeCompare(String((getPostArticleTypes(bv)[0] || '')), 'ja');
       case '最新順':
       default: {
         const ad = getPostSortDate(av);
@@ -4319,9 +4467,7 @@ function buildDetailRelatedCard(post) {
   thumb.className = "related-thumb";
 
   const articleType = String((post && post.article_type) || "").trim();
-  if (articleType === "産地データ検索") {
-    thumb.classList.add("is-blurred");
-  }
+  thumb.classList.remove("is-blurred");
 
   const img = document.createElement("img");
   const title = stripHtml((post && post.title) || "");
@@ -7720,9 +7866,35 @@ if (typeof window.switchPestTab !== "function") {
       return a;
     }
 
+    const PREFECTURE_ORDER = [
+      "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
+      "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
+      "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県",
+      "岐阜県", "静岡県", "愛知県", "三重県",
+      "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県",
+      "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+      "徳島県", "香川県", "愛媛県", "高知県",
+      "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"
+    ];
+
+    const PREFECTURE_ORDER_INDEX = PREFECTURE_ORDER.reduce(function(map, name, index) {
+      map[name] = index;
+      return map;
+    }, {});
+
     function sortPrefectures(names) {
       return names.slice().sort(function(a, b) {
-        return String(a).localeCompare(String(b), "ja");
+        const aName = String(a);
+        const bName = String(b);
+        const aIndex = Object.prototype.hasOwnProperty.call(PREFECTURE_ORDER_INDEX, aName)
+          ? PREFECTURE_ORDER_INDEX[aName]
+          : Number.MAX_SAFE_INTEGER;
+        const bIndex = Object.prototype.hasOwnProperty.call(PREFECTURE_ORDER_INDEX, bName)
+          ? PREFECTURE_ORDER_INDEX[bName]
+          : Number.MAX_SAFE_INTEGER;
+
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        return aName.localeCompare(bName, "ja");
       });
     }
 

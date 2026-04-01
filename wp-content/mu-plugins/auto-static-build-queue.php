@@ -155,6 +155,23 @@ class Tomato_Auto_Static_Build_Queue
   }
 
 
+  public static function on_save_market_data($post_id, $post, $update): void
+  {
+    if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+      return;
+    }
+    if (defined('DOING_CRON') && DOING_CRON) {
+      return;
+    }
+    if (!is_object($post) || ($post->post_type ?? '') !== 'market_data') {
+      return;
+    }
+
+    $papers = self::detect_papers_from_market_data((int) $post_id);
+    self::request_build($papers, 'save_post_market_data');
+  }
+
+
   public static function on_trashed_post($post_id): void
   {
     $post_id = (int)$post_id;
@@ -298,6 +315,70 @@ class Tomato_Auto_Static_Build_Queue
     return $san;
   }
 
+
+  private static function detect_papers_from_market_data(int $post_id): array
+  {
+    $papers = [];
+
+    $paper_slugs = wp_get_post_terms($post_id, 'paper', ['fields' => 'slugs']);
+    if (is_array($paper_slugs)) {
+      foreach ($paper_slugs as $slug) {
+        $normalized = self::normalize_paper_key((string) $slug);
+        if ($normalized !== null) {
+          $papers[] = $normalized;
+        }
+      }
+    }
+
+    $papers = array_values(array_unique(array_filter($papers)));
+
+    if (!empty($papers)) {
+      return $papers;
+    }
+
+    return self::get_default_papers();
+  }
+
+  public static function on_trashed_market_data($post_id): void
+  {
+    $post = get_post((int) $post_id);
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'market_data') {
+      return;
+    }
+
+    $papers = self::detect_papers_from_market_data((int) $post_id);
+    self::request_build($papers, 'trashed_market_data');
+  }
+
+  public static function on_deleted_market_data($post_id): void
+  {
+    $post = get_post((int) $post_id);
+    if ($post instanceof WP_Post && ($post->post_type ?? '') !== 'market_data') {
+      return;
+    }
+
+    $papers = self::get_papers_from_newspaper_master();
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers, 'deleted_market_data');
+  }
+
+  public static function on_transition_market_data_status($new_status, $old_status, $post): void
+  {
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'market_data') {
+      return;
+    }
+
+    if ($new_status === $old_status) {
+      return;
+    }
+
+    $papers = self::detect_papers_from_market_data((int) $post->ID);
+    self::request_build($papers, 'transition_market_data:' . $old_status . '->' . $new_status);
+  }
+
   private static function get_papers_for_ad_item(int $post_id): array
   {
     $post = get_post($post_id);
@@ -414,6 +495,74 @@ class Tomato_Auto_Static_Build_Queue
     self::request_build($papers, 'deleted_ad_item');
   }
 
+  public static function on_save_ja_survey_top($post_id, $post, $update): void
+  {
+    if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+      return;
+    }
+    if (defined('DOING_CRON') && DOING_CRON) {
+      return;
+    }
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'ja_survey_top') {
+      return;
+    }
+
+    $papers = self::get_papers_from_newspaper_master();
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers, 'save_post_ja_survey_top');
+  }
+
+  public static function on_trashed_ja_survey_top($post_id): void
+  {
+    $post = get_post((int) $post_id);
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'ja_survey_top') {
+      return;
+    }
+
+    $papers = self::get_papers_from_newspaper_master();
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers, 'trashed_ja_survey_top');
+  }
+
+  public static function on_deleted_ja_survey_top($post_id): void
+  {
+    $post = get_post((int) $post_id);
+    if ($post instanceof WP_Post && ($post->post_type ?? '') !== 'ja_survey_top') {
+      return;
+    }
+
+    $papers = self::get_papers_from_newspaper_master();
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers, 'deleted_ja_survey_top');
+  }
+
+  public static function on_transition_ja_survey_top_status($new_status, $old_status, $post): void
+  {
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'ja_survey_top') {
+      return;
+    }
+
+    if ($new_status === $old_status) {
+      return;
+    }
+
+    $papers = self::get_papers_from_newspaper_master();
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers, 'transition_ja_survey_top:' . $old_status . '->' . $new_status);
+  }
+
 private static function get_default_papers(): array
   {
     // Default paper(s) when 新聞マスター is not configured yet.
@@ -425,13 +574,21 @@ private static function get_default_papers(): array
 add_action('save_post', [Tomato_Auto_Static_Build_Queue::class, 'on_save_post'], 10, 3);
 add_action('save_post_newspaper', [Tomato_Auto_Static_Build_Queue::class, 'on_save_newspaper'], 10, 3);
 add_action('save_post_ad_item', [Tomato_Auto_Static_Build_Queue::class, 'on_save_ad_item'], 20, 3);
+add_action('save_post_market_data', [Tomato_Auto_Static_Build_Queue::class, 'on_save_market_data'], 20, 3);
+add_action('save_post_ja_survey_top', [Tomato_Auto_Static_Build_Queue::class, 'on_save_ja_survey_top'], 20, 3);
 
 add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_post'], 10, 1);
 add_action('deleted_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_post'], 10, 1);
 add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_ad_item'], 20, 1);
+add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_market_data'], 30, 1);
+add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_ja_survey_top'], 40, 1);
 add_action('before_delete_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_ad_item'], 20, 1);
+add_action('before_delete_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_market_data'], 30, 1);
+add_action('before_delete_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_ja_survey_top'], 40, 1);
 
 add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on_transition_post_status'], 20, 3);
+add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on_transition_market_data_status'], 30, 3);
+add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on_transition_ja_survey_top_status'], 40, 3);
 
 add_action('edited_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
 add_action('created_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);

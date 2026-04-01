@@ -27,6 +27,25 @@
 </div>
 </div>
 
+<div class="sample-section" id="sampleSection">
+  <h2 class="sample-title">
+    <div class="sample-icon">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+    </div>
+    JA部会アンケートのサンプル
+  </h2>
+  <p class="sample-description">各ＪＡ部会にアンケートした、トマトの栽培面積、主要品種、活用する農業資材、販売数量・金額、課題と対応策をまとめています。ご覧になるには会員登録が必要です。</p>
+  <div class="sample-image-wrap" id="sampleImageWrap" role="button" tabindex="0" aria-label="JA部会アンケートのサンプルを拡大表示">
+    <img src="/static/tomato/assets/images/survey_sample.png" alt="JA部会アンケートのサンプル" loading="lazy">
+  </div>
+  <p class="sample-image-hint">クリックで拡大表示</p>
+</div>
+
+<div class="sample-lightbox" id="sampleLightbox" aria-hidden="true">
+  <button class="sample-lightbox-close" id="sampleLightboxClose" type="button" aria-label="閉じる">&times;</button>
+  <img src="/static/tomato/assets/images/survey_sample.png" alt="JA部会アンケートのサンプル（拡大）">
+</div>
+
   <div class="search-section">
   <h2 class="search-title">
     <div class="search-icon">
@@ -239,9 +258,6 @@ YEAR / SEASON SELECTOR
 
 <div class="survey-section">
   <h2 class="section-title">地域別部会一覧</h2>
-  <div style="margin:12px 0 16px;">
-    <a class="article-category" id="surveySampleLink" href="#" target="_blank" rel="noopener noreferrer" hidden>アンケートサンプル</a>
-  </div>
   <p style="color:var(--muted); margin-bottom:32px">都道府県を選択すると、該当地域の部会情報が表示されます</p>
   <div class="prefecture-list" id="prefectureList"></div>
 </div>

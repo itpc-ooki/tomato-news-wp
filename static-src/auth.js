@@ -1253,7 +1253,8 @@
     const mypageBtn = document.getElementById('mypageBtn');
     const mobileMypageBtn = document.getElementById('mobileMypageBtn');
     const heroRegisterBtn = document.getElementById('heroRegisterBtn');
-    const hasAuthTargets = !!(btn || registerBtn || mobileRegisterBtn || mypageBtn || mobileMypageBtn || heroRegisterBtn);
+    const detailRegisterBtn = document.querySelector('.cta-section .btn.accent:not(#heroRegisterBtn), .cta-section a.btn.accent:not(#heroRegisterBtn), .cta-section button.btn.accent:not(#heroRegisterBtn)');
+    const hasAuthTargets = !!(btn || registerBtn || mobileRegisterBtn || mypageBtn || mobileMypageBtn || heroRegisterBtn || detailRegisterBtn);
     if (!hasAuthTargets) return false;
 
     const user = (window.TomatoAuth && TomatoAuth.currentUser) ? TomatoAuth.currentUser() : null;
@@ -1280,12 +1281,14 @@
       setVisible(registerBtn, false);
       setVisible(mobileRegisterBtn, false);
       setVisible(heroRegisterBtn, false);
+      setVisible(detailRegisterBtn, false);
       setVisible(mypageBtn, true);
       setVisible(mobileMypageBtn, true);
     } else {
       setVisible(registerBtn, true);
       setVisible(mobileRegisterBtn, true);
       setVisible(heroRegisterBtn, true);
+      setVisible(detailRegisterBtn, true);
       setVisible(mypageBtn, false);
       setVisible(mobileMypageBtn, false);
     }

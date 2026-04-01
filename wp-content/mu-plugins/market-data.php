@@ -36,6 +36,10 @@ class Tomato_Market_Data {
 
         add_action('add_meta_boxes', [__CLASS__, 'add_metabox']);
         add_action('save_post_' . self::CPT, [__CLASS__, 'save_meta'], 10, 2);
+        add_action('trashed_post', [__CLASS__, 'handle_status_change'], 10, 1);
+        add_action('untrashed_post', [__CLASS__, 'handle_status_change'], 10, 1);
+        add_action('before_delete_post', [__CLASS__, 'handle_status_change'], 10, 1);
+        add_action('set_object_terms', [__CLASS__, 'handle_term_change'], 10, 6);
 
         add_filter('manage_' . self::CPT . '_posts_columns', [__CLASS__, 'columns']);
         add_action('manage_' . self::CPT . '_posts_custom_column', [__CLASS__, 'column_content'], 10, 2);
@@ -176,6 +180,29 @@ class Tomato_Market_Data {
         wp_schedule_single_event(time() + 5, 'tomato_market_export_event', [$paper]);
     }
 
+
+    public static function handle_status_change(int $post_id): void {
+        $post = get_post($post_id);
+        if (!($post instanceof \WP_Post) || ($post->post_type ?? '') !== self::CPT) {
+            return;
+        }
+
+        self::export_json_for_paper(self::get_paper_slug($post_id));
+    }
+
+    public static function handle_term_change(int $object_id, $terms, $tt_ids, string $taxonomy, bool $append, $old_tt_ids): void {
+        if ($taxonomy !== self::TAX_PAPER) {
+            return;
+        }
+
+        $post = get_post($object_id);
+        if (!($post instanceof \WP_Post) || ($post->post_type ?? '') !== self::CPT) {
+            return;
+        }
+
+        self::export_json_for_paper(self::get_paper_slug((int)$object_id));
+    }
+
     private static function get_paper_slug(int $post_id): string {
         $paper = 'tomato';
         $terms = wp_get_post_terms($post_id, self::TAX_PAPER);
@@ -248,7 +275,9 @@ class Tomato_Market_Data {
                 continue;
             }
 
-            $as_of_date = $as_of_date ?: $latest['date'];
+            if (!empty($latest['date']) && ($as_of_date === null || strcmp($latest['date'], $as_of_date) > 0)) {
+                $as_of_date = $latest['date'];
+            }
 
             $prev = self::get_previous_entry($paper, $slug, $latest['date'], $latest['post_id']);
 
