@@ -7895,7 +7895,8 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
     }.page-pest-control .pest-table tbody tr, .page-pest-control .disease-table tbody tr{
       page-break-inside: avoid;
     }
-  }.page-pest-control .footer-grid{ display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1.5fr; gap:40px; margin-bottom:40px }.page-pest-control .footer-brand{ display:flex; flex-direction:column }.page-pest-control .social-icon{
+  }
+  .page-pest-control .footer-brand{ display:flex; flex-direction:column }.page-pest-control .social-icon{
     width:36px; height:36px; border:1px solid var(--border);
     display:flex; align-items:center; justify-content:center;
     color:var(--muted); transition:all 0.2s;
@@ -8091,7 +8092,8 @@ body.page-pest-control .importance-low{ color:var(--success); font-weight:700; }
     }.page-pest-control .pest-table tbody tr, .page-pest-control .disease-table tbody tr{
       page-break-inside: avoid;
     }
-  }.page-pest-control .footer-grid{ display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1.5fr; gap:40px; margin-bottom:40px }.page-pest-control .footer-brand{ display:flex; flex-direction:column }.page-pest-control .social-icon{
+  }
+  .page-pest-control .footer-brand{ display:flex; flex-direction:column }.page-pest-control .social-icon{
     width:36px; height:36px; border:1px solid var(--border);
     display:flex; align-items:center; justify-content:center;
     color:var(--muted); transition:all 0.2s;
