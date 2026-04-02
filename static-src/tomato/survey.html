@@ -63,6 +63,18 @@
   <button class="btn-search" id="surveySearchButton" type="button">部会を検索</button>
 </div>
 
+<div class="survey-section">
+  <h2 class="section-title">地域別部会一覧</h2>
+  <p style="color:var(--muted); margin-bottom:32px">都道府県を選択すると、該当地域の部会情報が表示されます</p>
+  <div class="prefecture-list" id="prefectureList"></div>
+</div>
+
+<div class="survey-section" id="associationSection" style="display:none">
+  <h2 class="section-title" id="selectedPrefectureTitle">部会一覧</h2>
+  <div class="association-grid" id="associationList"></div>
+  <p class="survey-empty-message" id="associationEmptyMessage" hidden>該当する部会アンケートはありません。</p>
+</div>
+
 
 <div class="hero-banner">
 <div class="hero-content">
@@ -256,17 +268,6 @@ YEAR / SEASON SELECTOR
   </div>
 </div></div>
 
-<div class="survey-section">
-  <h2 class="section-title">地域別部会一覧</h2>
-  <p style="color:var(--muted); margin-bottom:32px">都道府県を選択すると、該当地域の部会情報が表示されます</p>
-  <div class="prefecture-list" id="prefectureList"></div>
-</div>
-
-<div class="survey-section" id="associationSection" style="display:none">
-  <h2 class="section-title" id="selectedPrefectureTitle">部会一覧</h2>
-  <div class="association-grid" id="associationList"></div>
-  <p class="survey-empty-message" id="associationEmptyMessage" hidden>該当する部会アンケートはありません。</p>
-</div>
 </main>
 
   <!-- Common Footer -->
