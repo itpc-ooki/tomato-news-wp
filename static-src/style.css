@@ -14050,3 +14050,111 @@ body.sponsor-ad-popup-open{
     margin-top:0 !important;
   }
 }
+
+
+/* =========================================================
+   記事本文内画像（Gutenberg wp-block-image）
+   - 小さい画面でも画像を縮ませすぎない
+   - 投稿設定で有効な場合はタップで拡大表示
+   ========================================================= */
+.article-content figure.wp-block-image,
+.article-content .wp-block-image {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+  margin: 24px 0;
+}
+
+.article-content figure.wp-block-image img,
+.article-content .wp-block-image img,
+.article-content img.article-body-image {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  aspect-ratio: auto !important;
+  display: block;
+  margin: 0 auto;
+}
+
+.article-content figure.wp-block-image > a,
+.article-content .wp-block-image > a {
+  display: block;
+}
+
+.article-content figure.wp-block-image.is-tappable,
+.article-content figure.wp-block-image.is-tappable img {
+  cursor: zoom-in;
+}
+
+.article-image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: rgba(17, 24, 39, 0.9);
+}
+
+.article-image-lightbox.is-open {
+  display: flex;
+}
+
+.article-image-lightbox__dialog {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.article-image-lightbox__img {
+  width: auto;
+  max-width: 100%;
+  max-height: calc(100vh - 64px);
+  height: auto;
+  object-fit: contain;
+}
+
+.article-image-lightbox__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+}
+
+body.article-image-lightbox-open {
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .article-content figure.wp-block-image,
+  .article-content .wp-block-image {
+    margin: 20px 0;
+  }
+
+  .article-image-lightbox {
+    padding: 20px 12px;
+  }
+
+  .article-image-lightbox__img {
+    max-height: calc(100vh - 48px);
+  }
+}

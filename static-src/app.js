@@ -323,7 +323,16 @@
         .slice()
         .sort(function(a, b) {
           if (showAllPrefectures) {
-            const prefCompare = String(a.prefectureName || "").localeCompare(String(b.prefectureName || ""), "ja");
+            const aPrefName = String(a.prefectureName || "");
+            const bPrefName = String(b.prefectureName || "");
+            const aPrefIndex = Object.prototype.hasOwnProperty.call(PREFECTURE_ORDER_INDEX, aPrefName)
+              ? PREFECTURE_ORDER_INDEX[aPrefName]
+              : Number.MAX_SAFE_INTEGER;
+            const bPrefIndex = Object.prototype.hasOwnProperty.call(PREFECTURE_ORDER_INDEX, bPrefName)
+              ? PREFECTURE_ORDER_INDEX[bPrefName]
+              : Number.MAX_SAFE_INTEGER;
+            if (aPrefIndex !== bPrefIndex) return aPrefIndex - bPrefIndex;
+            const prefCompare = aPrefName.localeCompare(bPrefName, "ja");
             if (prefCompare !== 0) return prefCompare;
           }
           const at = Date.parse(String((a.post && (a.post.date || a.post.date_ymd)) || "")) || 0;
@@ -4042,6 +4051,7 @@ function renderSidebarAd(post) {
         // Logged in (or free viewable) -> show full and hide gate
         st.target.classList.remove("is-paywalled");
         st.target.innerHTML = st.fullHtml;
+        enhanceArticleBodyImages(st.target, st.post);
 
         hidePaywallGate();
         setAncillaryDetailVisibility(true);
@@ -4056,6 +4066,7 @@ function renderSidebarAd(post) {
         // Not logged in -> show teaser and gate
         st.target.classList.add("is-paywalled");
         st.target.innerHTML = buildTeaserHtmlFromFullHtml(st.fullHtml, 2);
+        enhanceArticleBodyImages(st.target, st.post);
 
         renderPaywallGate(st.post);
         showPaywallGate();
@@ -4266,6 +4277,113 @@ function getEffectiveFeaturedImageDisplayMode(post) {
   return 'full';
 }
 
+function getBodyImageTapAction(post) {
+  const action = String(post && post.body_image_tap_action ? post.body_image_tap_action : '').trim().toLowerCase();
+  return action === 'normal' ? 'normal' : 'popup';
+}
+
+function ensureArticleImageLightbox() {
+  let modal = document.getElementById('articleImageLightbox');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.id = 'articleImageLightbox';
+  modal.className = 'article-image-lightbox';
+  modal.setAttribute('aria-hidden', 'true');
+  modal.innerHTML = '' +
+    '<button type="button" class="article-image-lightbox__close" aria-label="閉じる">×</button>' +
+    '<div class="article-image-lightbox__dialog" role="dialog" aria-modal="true" aria-label="画像を拡大表示">' +
+      '<img class="article-image-lightbox__img" alt="">' +
+    '</div>';
+  document.body.appendChild(modal);
+
+  const closeBtn = modal.querySelector('.article-image-lightbox__close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeArticleImageLightbox);
+  }
+  modal.addEventListener('click', function (event) {
+    if (event.target === modal) closeArticleImageLightbox();
+  });
+
+  return modal;
+}
+
+function openArticleImageLightbox(src, alt) {
+  if (!src) return;
+  const modal = ensureArticleImageLightbox();
+  const img = modal.querySelector('.article-image-lightbox__img');
+  if (!img) return;
+
+  img.src = src;
+  img.alt = alt || '';
+  modal.classList.add('is-open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('article-image-lightbox-open');
+}
+
+function closeArticleImageLightbox() {
+  const modal = document.getElementById('articleImageLightbox');
+  if (!modal) return;
+  modal.classList.remove('is-open');
+  modal.setAttribute('aria-hidden', 'true');
+  const img = modal.querySelector('.article-image-lightbox__img');
+  if (img) {
+    img.removeAttribute('src');
+    img.alt = '';
+  }
+  document.body.classList.remove('article-image-lightbox-open');
+}
+
+function enhanceArticleBodyImages(target, post) {
+  if (!target) return;
+
+  const tapAction = getBodyImageTapAction(post);
+  target.setAttribute('data-body-image-tap-action', tapAction);
+
+  const figures = target.querySelectorAll('figure.wp-block-image');
+  figures.forEach(function (figure) {
+    figure.classList.add('article-body-figure');
+
+    const img = figure.querySelector('img');
+    if (!img) return;
+
+    img.classList.add('article-body-image');
+    img.style.width = '';
+    img.style.height = '';
+
+    const link = img.closest('a[href]');
+    const popupSrc = (link && link.getAttribute('href')) || img.getAttribute('src') || img.currentSrc || '';
+    const popupAlt = img.getAttribute('alt') || post && post.title || '';
+
+    figure.classList.remove('is-tappable');
+    img.classList.remove('is-tappable');
+    figure.removeAttribute('role');
+    figure.removeAttribute('tabindex');
+    figure.removeAttribute('aria-label');
+    figure.onclick = null;
+    figure.onkeydown = null;
+
+    if (tapAction !== 'popup' || !popupSrc) return;
+
+    figure.classList.add('is-tappable');
+    img.classList.add('is-tappable');
+    figure.setAttribute('role', 'button');
+    figure.setAttribute('tabindex', '0');
+    figure.setAttribute('aria-label', '画像を拡大表示');
+
+    const open = function (event) {
+      if (event) {
+        if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+      }
+      openArticleImageLightbox(popupSrc, popupAlt);
+    };
+
+    figure.addEventListener('click', open);
+    figure.addEventListener('keydown', open);
+  });
+}
+
 function applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, mode) {
   if (!mainImageWrap || !mainImageBox) return;
 
@@ -4393,6 +4511,7 @@ function renderDetail(post) {
       if (shouldGatePost(post)) {
         target.classList.add("is-paywalled");
         target.innerHTML = buildTeaserHtmlFromFullHtml(fullHtml, 2);
+        enhanceArticleBodyImages(target, post);
         renderPaywallGate(post);
         showPaywallGate();
         setAncillaryDetailVisibility(false);
@@ -4400,6 +4519,7 @@ function renderDetail(post) {
       } else {
         target.classList.remove("is-paywalled");
         target.innerHTML = fullHtml;
+        enhanceArticleBodyImages(target, post);
         hidePaywallGate();
         setAncillaryDetailVisibility(true);
       }
@@ -4435,6 +4555,8 @@ function renderDetail(post) {
       ${imgHtml}
       <div>${content}</div>
     `;
+
+    enhanceArticleBodyImages(target, post);
 
     // ✅ Article tags
     renderArticleTags(post);
@@ -6407,6 +6529,7 @@ function closeImageModal() {
 document.addEventListener('keydown', function(event) {
   if (event.key === 'Escape') {
     closeImageModal();
+    closeArticleImageLightbox();
   }
 });
 
@@ -8040,7 +8163,16 @@ if (typeof window.switchPestTab !== "function") {
         .slice()
         .sort(function(a, b) {
           if (showAllPrefectures) {
-            const prefCompare = String(a.prefectureName || "").localeCompare(String(b.prefectureName || ""), "ja");
+            const aPrefName = String(a.prefectureName || "");
+            const bPrefName = String(b.prefectureName || "");
+            const aPrefIndex = Object.prototype.hasOwnProperty.call(PREFECTURE_ORDER_INDEX, aPrefName)
+              ? PREFECTURE_ORDER_INDEX[aPrefName]
+              : Number.MAX_SAFE_INTEGER;
+            const bPrefIndex = Object.prototype.hasOwnProperty.call(PREFECTURE_ORDER_INDEX, bPrefName)
+              ? PREFECTURE_ORDER_INDEX[bPrefName]
+              : Number.MAX_SAFE_INTEGER;
+            if (aPrefIndex !== bPrefIndex) return aPrefIndex - bPrefIndex;
+            const prefCompare = aPrefName.localeCompare(bPrefName, "ja");
             if (prefCompare !== 0) return prefCompare;
           }
           const at = Date.parse(String((a.post && (a.post.date || a.post.date_ymd)) || "")) || 0;

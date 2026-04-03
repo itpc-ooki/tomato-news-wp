@@ -1220,6 +1220,15 @@ $list = [];
           $featured_image_display_mode = 'full';
         }
 
+        $body_image_tap_action = self::get_acf_field_value('body_image_tap_action', $post_id);
+        if (!is_string($body_image_tap_action) || trim($body_image_tap_action) === '') {
+          $body_image_tap_action = get_post_meta($post_id, 'body_image_tap_action', true);
+        }
+        $body_image_tap_action = trim((string) $body_image_tap_action);
+        if ($body_image_tap_action !== 'normal') {
+          $body_image_tap_action = 'popup';
+        }
+
         $is_survey_sample = get_post_meta($post_id, '_tn_is_survey_sample', true);
         $is_survey_sample = ($is_survey_sample === '1' || $is_survey_sample === 1 || $is_survey_sample === true);
 
@@ -1237,6 +1246,7 @@ $list[] = [
           'url'      => 'detail.html?id=' . $post_id,
           'featured_image' => $featured_image,
           'featured_image_display_mode' => $featured_image_display_mode,
+          'body_image_tap_action' => $body_image_tap_action,
           'article_type' => $article_type,
           'article_types' => $article_types,
           'article_type_slugs' => $article_type_slugs,
@@ -1374,6 +1384,7 @@ $list[] = [
           'categories' => [$paper],
           'featured_image' => $featured_image,
           'featured_image_display_mode' => $featured_image_display_mode,
+          'body_image_tap_action' => $body_image_tap_action,
           'article_type' => $article_type,
           'article_types' => $article_types,
           'article_type_slugs' => $article_type_slugs,

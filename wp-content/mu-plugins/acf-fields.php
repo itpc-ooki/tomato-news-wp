@@ -888,6 +888,21 @@ add_action('save_post_newspaper', function ($post_id, $post, $update) {
         'layout' => 'vertical',
         'return_format' => 'value',
       ],
+      [
+        'key' => 'field_post_body_image_tap_action',
+        'label' => '記事本文内画像のタップ時動作',
+        'name' => 'body_image_tap_action',
+        'type' => 'radio',
+        'instructions' => '記事本文内の画像（本文中の <figure class="wp-block-image"> 内画像）を、スマホなどの小さい画面でタップした際の動作を選択してください。「ポップアップで拡大」を選ぶと、画像をタップして拡大表示できます。',
+        'required' => 0,
+        'choices' => [
+          'normal' => '通常表示のみ',
+          'popup' => 'ポップアップで拡大',
+        ],
+        'default_value' => 'popup',
+        'layout' => 'vertical',
+        'return_format' => 'value',
+      ],
 
       // 記事ごとのコラムニスト（最大4名）
       [

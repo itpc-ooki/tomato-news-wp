@@ -18,6 +18,11 @@ wp-content/themes/twenty*
 # Static build output (生成物は管理しない)
 static/
 
+# Ignore varieties JSON files
+static-src/leek/varieties.json
+static-src/tomato/varieties.json
+static-src/strawberry/varieties.json
+
 # OS
 .DS_Store
 
