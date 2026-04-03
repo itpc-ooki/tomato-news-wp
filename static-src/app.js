@@ -4343,13 +4343,28 @@ function enhanceArticleBodyImages(target, post) {
   const figures = target.querySelectorAll('figure.wp-block-image');
   figures.forEach(function (figure) {
     figure.classList.add('article-body-figure');
+    figure.style.width = '';
+    figure.style.maxWidth = '';
+    figure.style.height = '';
+    figure.style.aspectRatio = '';
+    figure.style.overflow = '';
+
+    const directLink = figure.querySelector(':scope > a');
+    if (directLink) {
+      directLink.style.width = '';
+      directLink.style.maxWidth = '';
+      directLink.style.display = '';
+    }
 
     const img = figure.querySelector('img');
     if (!img) return;
 
     img.classList.add('article-body-image');
     img.style.width = '';
+    img.style.maxWidth = '';
     img.style.height = '';
+    img.style.aspectRatio = '';
+    img.style.objectFit = '';
 
     const link = img.closest('a[href]');
     const popupSrc = (link && link.getAttribute('href')) || img.getAttribute('src') || img.currentSrc || '';
