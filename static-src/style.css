@@ -14059,49 +14059,30 @@ body.sponsor-ad-popup-open{
    ========================================================= */
 .article-content figure.wp-block-image,
 .article-content .wp-block-image {
-  display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  height: auto !important;
-  aspect-ratio: auto !important;
-  overflow: visible !important;
+  width: auto;
+  max-width: 100%;
+  height: auto;
   border-radius: 0 !important;
-  background: transparent !important;
-  margin: 32px 0 !important;
+  margin: 24px 0;
+}
+
+.article-content figure.wp-block-image > img,
+.article-content figure.wp-block-image > a,
+.article-content figure.wp-block-image > a > img,
+.article-content .wp-block-image > img,
+.article-content .wp-block-image > a,
+.article-content .wp-block-image > a > img,
+.article-content img.article-body-image {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  max-height: none;
+  margin: 0;
 }
 
 .article-content figure.wp-block-image > a,
-.article-content .wp-block-image > a,
-.article-content figure.wp-block-image picture,
-.article-content .wp-block-image picture {
-  display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-.article-content figure.wp-block-image img,
-.article-content .wp-block-image img,
-.article-content img.article-body-image {
-  display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  height: auto !important;
-  max-height: none !important;
-  object-fit: contain !important;
-  object-position: center center !important;
-  aspect-ratio: auto !important;
-  margin: 0 auto !important;
-}
-
-.article-content figure.wp-block-image figcaption,
-.article-content .wp-block-image figcaption,
-.article-content figure.wp-block-image .wp-element-caption,
-.article-content .wp-block-image .wp-element-caption {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin-top: 12px !important;
+.article-content .wp-block-image > a {
+  display: block;
 }
 
 .article-content figure.wp-block-image.is-tappable,
@@ -14165,7 +14146,7 @@ body.article-image-lightbox-open {
 @media (max-width: 768px) {
   .article-content figure.wp-block-image,
   .article-content .wp-block-image {
-    margin: 24px 0 !important;
+    margin: 20px 0;
   }
 
   .article-image-lightbox {
