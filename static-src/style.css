@@ -14058,7 +14058,11 @@ body.sponsor-ad-popup-open{
    - 投稿設定で有効な場合はタップで拡大表示
    ========================================================= */
 .article-content figure.wp-block-image,
-.article-content .wp-block-image {
+.article-content .wp-block-image,
+.article-content figure.wp-block-image.article-body-figure,
+.article-content .wp-block-image.article-body-figure {
+  display: block !important;
+  box-sizing: border-box !important;
   width: 100% !important;
   max-width: 100% !important;
   height: auto !important;
@@ -14070,14 +14074,16 @@ body.sponsor-ad-popup-open{
 
 .article-content figure.wp-block-image img,
 .article-content .wp-block-image img,
-.article-content img.article-body-image {
+.article-content img.article-body-image,
+.article-content figure.wp-block-image.article-body-figure img.article-body-image,
+.article-content .wp-block-image.article-body-figure img.article-body-image {
+  display: block !important;
   width: 100% !important;
   max-width: 100% !important;
   height: auto !important;
   max-height: none !important;
   object-fit: contain !important;
   aspect-ratio: auto !important;
-  display: block;
   margin: 0 auto;
 }
 
@@ -14146,8 +14152,18 @@ body.article-image-lightbox-open {
 
 @media (max-width: 768px) {
   .article-content figure.wp-block-image,
-  .article-content .wp-block-image {
-    margin: 20px 0;
+  .article-content .wp-block-image,
+  .article-content figure.wp-block-image.article-body-figure,
+  .article-content .wp-block-image.article-body-figure {
+    width: calc(100% + 32px) !important;
+    max-width: none !important;
+    margin: 20px -16px;
+  }
+
+  .article-content figure.wp-block-image figcaption,
+  .article-content .wp-block-image figcaption {
+    padding: 0 16px;
+    box-sizing: border-box;
   }
 
   .article-image-lightbox {
