@@ -814,11 +814,21 @@ private static function sync_uploads_assets(): void {
         : [],
     ];
 
+    $expert_intro = [
+      'winter-spring' => isset($point_cards['winter-spring']['_expert_intro']) && is_array($point_cards['winter-spring']['_expert_intro'])
+        ? $point_cards['winter-spring']['_expert_intro']
+        : [],
+      'summer-autumn' => isset($point_cards['summer-autumn']['_expert_intro']) && is_array($point_cards['summer-autumn']['_expert_intro'])
+        ? $point_cards['summer-autumn']['_expert_intro']
+        : [],
+    ];
+
     $payload = [
       'paper' => $paper,
       'updated_at' => current_time('mysql'),
       'point_cards' => $point_cards,
       'variety_headings' => $variety_headings,
+      'expert_intro' => $expert_intro,
       'items' => $items,
     ];
     $json = wp_json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);

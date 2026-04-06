@@ -55,6 +55,7 @@
   let allVarieties = [];
   let pointCardsBySeason = {};
   let varietyHeadingsBySeason = {};
+  let expertIntroBySeason = {};
   let currentTab = "all";
   let currentView = "list";
   let currentSeason = getInitialSeason();
@@ -81,6 +82,7 @@
     pointCards: Array.from(document.querySelectorAll(".points-grid .point-card")),
     articleTitle: document.querySelector(".article-title"),
     articleSubtitle: document.querySelector(".article-subtitle"),
+    expertIntro: document.querySelector(".expert-intro"),
   };
 
   function normalize(s) {
@@ -190,6 +192,20 @@
     }
   }
 
+  function getExpertIntroForSeason(seasonValue) {
+    const seasonKey = normalizeSeasonValue(seasonValue);
+    const map = (expertIntroBySeason && typeof expertIntroBySeason === "object") ? expertIntroBySeason : {};
+    const fallback = map[DEFAULT_SEASON] || {};
+    return map[seasonKey] || fallback || {};
+  }
+
+  function renderExpertIntro() {
+    if (!el.expertIntro) return;
+    const intro = getExpertIntroForSeason(currentSeason);
+    const body = typeof intro.text === "string" ? intro.text.trim() : "";
+    el.expertIntro.innerHTML = body !== "" ? textToParagraphsHtml(body) : "";
+  }
+
   function getPointCardsForSeason(seasonValue) {
     const seasonKey = normalizeSeasonValue(seasonValue);
     const map = (pointCardsBySeason && typeof pointCardsBySeason === "object") ? pointCardsBySeason : {};
@@ -244,6 +260,7 @@
     syncSeasonButtons();
     syncSeasonPanels();
     renderVarietyHeading();
+    renderExpertIntro();
     renderPointCards();
     refreshCompanyOptions();
     render();
@@ -741,6 +758,9 @@
     varietyHeadingsBySeason = (!Array.isArray(json) && json && typeof json.variety_headings === 'object' && json.variety_headings)
       ? json.variety_headings
       : Object.fromEntries(Object.entries(pointCardsBySeason).map(([seasonKey, seasonData]) => [seasonKey, (seasonData && typeof seasonData === 'object' && seasonData._heading && typeof seasonData._heading === 'object') ? seasonData._heading : {}]));
+    expertIntroBySeason = (!Array.isArray(json) && json && typeof json.expert_intro === 'object' && json.expert_intro)
+      ? json.expert_intro
+      : Object.fromEntries(Object.entries(pointCardsBySeason).map(([seasonKey, seasonData]) => [seasonKey, (seasonData && typeof seasonData === 'object' && seasonData._expert_intro && typeof seasonData._expert_intro === 'object') ? seasonData._expert_intro : {}]));
     allVarieties = (items || []).map((v) => ({
       id: v.id,
       link: v.link ?? "",

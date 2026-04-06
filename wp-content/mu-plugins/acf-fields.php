@@ -1799,6 +1799,17 @@ function tomato_get_default_variety_points_cards(): array {
   ];
 }
 
+function tomato_get_default_variety_expert_intro_settings(): array {
+  return [
+    'winter-spring' => [
+      'text' => '',
+    ],
+    'summer-autumn' => [
+      'text' => '近年、夏期の気温が非常に高く推移しており、今年度（2025年）の夏の平均気温は平年と比べて2.36度高く、異常気象と呼ばれる状況が続いている。このような気象状況は、夏期のトマト生産に大きな影響を与えており、着果不良、障害果の発生、果実の肥大不足、青枯病の多発などが懸念される。',
+    ],
+  ];
+}
+
 function tomato_get_default_variety_heading_settings(): array {
   return [
     'winter-spring' => [
@@ -1845,7 +1856,9 @@ function tomato_variety_points_paper_has_registered_content($paper_data): bool {
     $heading = isset($season_data['_heading']) && is_array($season_data['_heading']) ? $season_data['_heading'] : [];
     $heading_title = isset($heading['title']) ? trim((string) $heading['title']) : '';
     $heading_subtitle = isset($heading['subtitle']) ? trim((string) $heading['subtitle']) : '';
-    if ($heading_title !== '' || $heading_subtitle !== '') {
+    $expert_intro = isset($season_data['_expert_intro']) && is_array($season_data['_expert_intro']) ? $season_data['_expert_intro'] : [];
+    $expert_intro_text = isset($expert_intro['text']) ? trim((string) $expert_intro['text']) : '';
+    if ($heading_title !== '' || $heading_subtitle !== '' || $expert_intro_text !== '') {
       return true;
     }
 
@@ -1931,6 +1944,7 @@ function tomato_normalize_variety_points_settings($settings): array {
   $papers = tomato_get_available_papers_for_variety_points();
   $defaults = tomato_get_default_variety_points_payload();
   $heading_defaults = tomato_get_default_variety_heading_settings();
+  $expert_intro_defaults = tomato_get_default_variety_expert_intro_settings();
   $normalized = [];
 
   if (!is_array($settings)) {
@@ -1958,6 +1972,16 @@ function tomato_normalize_variety_points_settings($settings): array {
       $normalized[$paper_slug][$season_slug]['_heading'] = [
         'title' => $heading_title,
         'subtitle' => $heading_subtitle,
+      ];
+
+      $default_expert_intro = $expert_intro_defaults[$season_slug] ?? ['text' => ''];
+      $expert_intro = isset($season_data['_expert_intro']) && is_array($season_data['_expert_intro']) ? $season_data['_expert_intro'] : [];
+      $expert_intro_text = isset($expert_intro['text']) ? sanitize_textarea_field((string) $expert_intro['text']) : (string) ($default_expert_intro['text'] ?? '');
+      if ($expert_intro_text === '') {
+        $expert_intro_text = (string) ($default_expert_intro['text'] ?? '');
+      }
+      $normalized[$paper_slug][$season_slug]['_expert_intro'] = [
+        'text' => $expert_intro_text,
       ];
 
       foreach ([1, 2, 3, 4] as $index) {
@@ -2062,7 +2086,7 @@ function tomato_render_variety_points_settings_page(): void {
     echo ' <a href="' . esc_url($base_url . '&paper=' . rawurlencode((string) array_key_first($papers))) . '" class="page-title-action">品種選びのポイントを追加</a>';
   }
 
-  echo '<p>variety.html の「記事タイトル」「サブタイトル」「品種選びのポイント」を、紙面ごと・SEASONごとに設定できます。</p>';
+  echo '<p>variety.html の「記事タイトル」「サブタイトル」「専門家コメント」「品種選びのポイント」を、紙面ごと・SEASONごとに設定できます。</p>';
 
   if (!$is_edit_mode) {
     $rows = tomato_get_variety_points_papers_list_rows();
@@ -2118,6 +2142,7 @@ function tomato_render_variety_points_settings_page(): void {
     echo '<h2 style="margin-top:0;">SEASON: ' . esc_html($season_label) . '</h2>';
     $max_cards = ($season_slug === 'winter-spring') ? 2 : 4;
     $heading = $paper_settings[$season_slug]['_heading'] ?? ['title' => '', 'subtitle' => ''];
+    $expert_intro = $paper_settings[$season_slug]['_expert_intro'] ?? ['text' => ''];
     echo '<table class="form-table" role="presentation" style="margin-top:0;"><tbody>';
     echo '<tr>';
     echo '<th scope="row"><label for="vp_' . esc_attr($season_slug . '_heading_title') . '">記事タイトル（H1）</label></th>';
@@ -2126,6 +2151,10 @@ function tomato_render_variety_points_settings_page(): void {
     echo '<tr>';
     echo '<th scope="row"><label for="vp_' . esc_attr($season_slug . '_heading_subtitle') . '">サブタイトル（P）</label></th>';
     echo '<td><input type="text" class="regular-text" id="vp_' . esc_attr($season_slug . '_heading_subtitle') . '" name="variety_points[' . esc_attr($season_slug) . '][_heading][subtitle]" value="' . esc_attr((string) ($heading['subtitle'] ?? '')) . '"></td>';
+    echo '</tr>';
+    echo '<tr>';
+    echo '<th scope="row"><label for="vp_' . esc_attr($season_slug . '_expert_intro_text') . '">専門家コメント（P）</label></th>';
+    echo '<td><textarea class="large-text" rows="6" id="vp_' . esc_attr($season_slug . '_expert_intro_text') . '" name="variety_points[' . esc_attr($season_slug) . '][_expert_intro][text]">' . esc_textarea((string) ($expert_intro['text'] ?? '')) . '</textarea><p class="description">expert-intro 内の本文です。改行すると、フロント側では段落ごとに表示されます。</p></td>';
     echo '</tr>';
     echo '</tbody></table>';
     echo '<p style="margin-top:0; color:#50575e;">' . ($max_cards === 2 ? '2つのポイントカードのタイトルと本文を入力してください。' : '4つのポイントカードのタイトルと本文を入力してください。') . '</p>';
