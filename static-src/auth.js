@@ -7,6 +7,51 @@
   const AUTH_TOKEN_KEY = 'tomato_member_auth_token_v1';
   const CURRENT_USER_KEY = 'tomato_member_current_user_v1';
 
+
+  function detectGaEnvironment(){
+    try{
+      const host = String(window.location.hostname || '').toLowerCase().replace(/:\d+$/, '');
+      if (!host || host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host.endsWith('.local')) return 'local';
+      if (/^stg[-.]/.test(host) || host.indexOf('staging') !== -1) return 'staging';
+    }catch(_e){}
+    return 'production';
+  }
+
+  function getGaContext(){
+    return {
+      environment: detectGaEnvironment(),
+      paper: String(detectActivePaper() || 'tomato').toLowerCase()
+    };
+  }
+
+  function installTomatoGoogleTag(){
+    const measurementId = 'G-T4XBF6622F';
+    try{
+      const gaContext = getGaContext();
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = window.gtag || function(){ window.dataLayer.push(arguments); };
+
+      if (!window.__TOMATO_GTAG_CONFIGURED__) {
+        window.__TOMATO_GTAG_CONFIGURED__ = true;
+        window.gtag('js', new Date());
+        window.gtag('set', gaContext);
+        window.gtag('config', measurementId, gaContext);
+      } else {
+        window.gtag('set', gaContext);
+      }
+
+      if (document.head && !document.querySelector('script[data-tomato-google-tag="' + measurementId + '"]')) {
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(measurementId);
+        script.setAttribute('data-tomato-google-tag', measurementId);
+        document.head.appendChild(script);
+      }
+    }catch(_e){}
+  }
+
+  installTomatoGoogleTag();
+
   function nowIso(){ return new Date().toISOString(); }
 
   function dispatchAuthChanged(){
@@ -70,10 +115,12 @@
     try{
       window.dataLayer = window.dataLayer || [];
       const email = normalizeEmail(user && user.email ? user.email : '');
+      const gaContext = getGaContext();
       const payload = {
         event: 'registration_complete',
         registration_type: 'tomato_member',
-        paper: String((user && user.paper) || detectActivePaper() || 'tomato')
+        environment: gaContext.environment,
+        paper: String((user && user.paper) || gaContext.paper || 'tomato').toLowerCase()
       };
 
       if (email) {
@@ -81,6 +128,15 @@
       }
 
       window.dataLayer.push(payload);
+
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', 'registration_complete', {
+          registration_type: payload.registration_type,
+          environment: payload.environment,
+          paper: payload.paper,
+          user_email_sha256: payload.user_email_sha256 || undefined
+        });
+      }
     }catch(_e){}
   }
 
