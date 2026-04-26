@@ -140,6 +140,8 @@
     }catch(_e){}
   }
 
+  window.pushRegistrationCompleteEvent = pushRegistrationCompleteEvent;
+
   function logout(){
     clearAuthSession();
   }
@@ -2059,7 +2061,7 @@ var currentStep = 1;
 
             p.then(function(resultUser){
                 if (!isEditMode) {
-                    pushRegistrationCompleteEvent(resultUser);
+                    window.pushRegistrationCompleteEvent(resultUser);
                 }
 
                 // 完了画面を表示
