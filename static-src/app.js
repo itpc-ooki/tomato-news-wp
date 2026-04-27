@@ -13,6 +13,81 @@
 (function () {
   "use strict";
 
+  /* =====================================================================
+   * Google Analytics 4 tag
+   * - Loaded from JS to keep HTML files free of inline scripts.
+   * - Measurement ID: G-T4XBF6622F
+   * - Sends custom parameters: environment, paper
+   * ===================================================================== */
+  function detectGaEnvironment() {
+    try {
+      var host = String(window.location.hostname || '').toLowerCase().replace(/:\d+$/, '');
+      if (!host || host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host.endsWith('.local')) return 'local';
+      if (/^stg[-.]/.test(host) || host.indexOf('staging') !== -1) return 'staging';
+    } catch (_e) {}
+    return 'production';
+  }
+
+  function detectGaPaper() {
+    try {
+      var parts = window.location.pathname.split('/').filter(Boolean);
+      var idx = parts.indexOf('static');
+      if (idx !== -1 && parts[idx + 1] && parts[idx + 1] !== 'account') return String(parts[idx + 1]).toLowerCase();
+    } catch (_e) {}
+
+    try {
+      var sp = new URLSearchParams(window.location.search || '');
+      var qp = String(sp.get('paper') || sp.get('p') || '').toLowerCase();
+      if (qp) return qp;
+    } catch (_e) {}
+
+    try {
+      var host = String(window.location.hostname || '').toLowerCase().replace(/:\d+$/, '');
+      var m = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
+      if (m && m[1] && m[1] !== 'www') return String(m[1]).toLowerCase();
+    } catch (_e) {}
+
+    try {
+      var saved = String(localStorage.getItem('tomato_active_paper_v1') || '').toLowerCase();
+      if (saved) return saved;
+    } catch (_e) {}
+
+    return 'tomato';
+  }
+
+  function getGaContext() {
+    return {
+      environment: detectGaEnvironment(),
+      paper: detectGaPaper()
+    };
+  }
+
+  (function installTomatoGoogleTag() {
+    var measurementId = 'G-T4XBF6622F';
+    try {
+      var gaContext = getGaContext();
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = window.gtag || function(){ window.dataLayer.push(arguments); };
+
+      if (!window.__TOMATO_GTAG_CONFIGURED__) {
+        window.__TOMATO_GTAG_CONFIGURED__ = true;
+        window.gtag('js', new Date());
+        window.gtag('set', gaContext);
+        window.gtag('config', measurementId, gaContext);
+      } else {
+        window.gtag('set', gaContext);
+      }
+
+      if (!document.querySelector('script[data-tomato-google-tag="' + measurementId + '"]')) {
+        var script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(measurementId);
+        script.setAttribute('data-tomato-google-tag', measurementId);
+        document.head.appendChild(script);
+      }
+    } catch (_e) {}
+  })();
+
 
   /* =====================================================================
    * 産地データ大全: early-safe initializer
