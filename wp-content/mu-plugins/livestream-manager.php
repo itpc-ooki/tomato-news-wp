@@ -191,9 +191,16 @@ class Tomato_Livestream_Manager {
     private static function normalize_start_at($value): string {
         $value = trim((string) $value);
         if ($value === '') return '';
-        $timestamp = strtotime($value);
-        if (!$timestamp) return '';
-        return wp_date('Y-m-d\TH:i:sP', $timestamp);
+
+        $timezone = wp_timezone();
+        $date = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $value, $timezone);
+        if (!$date) {
+            $timestamp = strtotime($value);
+            if (!$timestamp) return '';
+            return wp_date('Y-m-d\TH:i:sP', $timestamp);
+        }
+
+        return $date->format('Y-m-d\TH:i:sP');
     }
 
     public static function save_settings(): void {

@@ -7492,7 +7492,9 @@ function resetAutoSlide() {
     }
 
     function loadConfig() {
-      render(DEFAULT_LIVESTREAM);
+      // Keep the static fallback markup hidden until livestream.json is loaded.
+      // This prevents the live area from staying visible when the admin checkbox is OFF.
+      liveSection.hidden = true;
 
       const paper = getPaper();
       const urls = [
@@ -7505,7 +7507,11 @@ function resetAutoSlide() {
           render(json || {});
         })
         .catch(function () {
-          // Local/source fallback: keep the sample livestream visible for testing.
+          // For local/source preview only, keep the sample livestream available when JSON does not exist.
+          const host = window.location && window.location.hostname ? window.location.hostname : "";
+          const isLocalPreview = !host || host === "localhost" || host === "127.0.0.1";
+          if (isLocalPreview) render(DEFAULT_LIVESTREAM);
+          else liveSection.hidden = true;
         });
     }
 
