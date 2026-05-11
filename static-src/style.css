@@ -6702,6 +6702,8 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
     border-top:1px solid var(--border);
   }
 
+.live-section[hidden],
+.countdown-section[hidden],
 .livestream-login-gate[hidden],
 .live-player[hidden],
 .video-placeholder[hidden]{
