@@ -1,3 +1,186 @@
+/* =====================================================================
+ * WEBセミナー: Livestream admin JSON bootstrap
+ * - Kept in app.js so web-seminar.html has no inline script changes.
+ * - Controls .live-section visibility from /static/{paper}/livestream.json.
+ * ===================================================================== */
+(function tomatoLivestreamAdminBootstrap() {
+  "use strict";
+  if (window.__TOMATO_LIVESTREAM_BOOTSTRAPPED) return;
+  window.__TOMATO_LIVESTREAM_BOOTSTRAPPED = true;
+
+  function onReady(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else fn();
+  }
+
+  function getPaperFromPath() {
+    var parts = String(window.location.pathname || "").split("/").filter(Boolean);
+    var idx = parts.indexOf("static");
+    if (idx !== -1 && parts.length >= idx + 2 && parts[idx + 1] !== "account") return parts[idx + 1];
+    var m = String(window.location.search || "").match(/[?&]paper=([^&]+)/);
+    return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "tomato";
+  }
+
+  function getEl(id) { return document.getElementById(id); }
+  function setText(id, value) {
+    var el = getEl(id);
+    if (el && value !== undefined && value !== null) el.textContent = String(value);
+  }
+  function isEnabled(value) {
+    if (value === true || value === 1) return true;
+    if (value === false || value === 0 || value === null || value === undefined) return false;
+    var v = String(value).trim().toLowerCase();
+    return !(v === "" || v === "0" || v === "false" || v === "off" || v === "no");
+  }
+  function parseStartAt(value) {
+    if (!value) return null;
+    var time = new Date(String(value)).getTime();
+    return Number.isFinite(time) ? time : null;
+  }
+  function isLoggedIn() {
+    try {
+      if (window.TomatoAuth) {
+        if (typeof window.TomatoAuth.isLoggedIn === "function" && window.TomatoAuth.isLoggedIn()) return true;
+        if (typeof window.TomatoAuth.currentUser === "function") {
+          var user = window.TomatoAuth.currentUser();
+          if (user && (user.email || user.id || user.name)) return true;
+        }
+      }
+      if (window.TOMATO_AUTH && typeof window.TOMATO_AUTH.isLoggedIn === "function" && window.TOMATO_AUTH.isLoggedIn()) return true;
+      var ls = window.localStorage;
+      var ss = window.sessionStorage;
+      var keys = [
+        ls && ls.getItem("tomato_member_current_user_v1"),
+        ls && ls.getItem("tomato_member_auth_token_v1"),
+        ls && ls.getItem("tomato_session_email_v1"),
+        ss && ss.getItem("tomato_session_email_session_v1")
+      ];
+      return keys.some(function (v) { return v && String(v).trim(); });
+    } catch (_e) { return false; }
+  }
+  function normalize(raw) {
+    raw = raw && typeof raw === "object" ? raw : {};
+    return {
+      enabled: raw.enabled,
+      title: raw.title || "",
+      description: raw.description || "",
+      youtube_id: raw.youtube_id || raw.youtubeId || "",
+      start_at: raw.start_at || raw.startAt || "",
+      date_text: raw.date_text || raw.dateText || "",
+      time_text: raw.time_text || raw.timeText || "",
+      status_label: raw.status_label || raw.statusLabel || "ライブ配信中",
+      status_subtitle: raw.status_subtitle || raw.statusSubtitle || "ログイン中の会員のみ視聴できます"
+    };
+  }
+  function fetchJson(urls) {
+    var url = urls.shift();
+    if (!url) return Promise.reject(new Error("livestream.json not found"));
+    return fetch(url + (url.indexOf("?") === -1 ? "?" : "&") + "v=" + Date.now(), { cache: "no-store" })
+      .then(function (res) { if (!res.ok) throw new Error(url); return res.json(); })
+      .catch(function (err) { return urls.length ? fetchJson(urls) : Promise.reject(err); });
+  }
+
+  onReady(function () {
+    var liveSection = document.querySelector(".page-web-seminar .live-section");
+    if (!liveSection) return;
+
+    var countdownSection = liveSection.querySelector(".countdown-section");
+    var player = getEl("livestreamPlayer");
+    var playerWrapper = getEl("livestreamPlayerWrapper");
+    var placeholder = getEl("livestreamPlaceholder");
+    var loginGate = getEl("livestreamLoginGate");
+    var paper = getPaperFromPath() || "tomato";
+    var timerId = null;
+
+    function stopCountdown() {
+      if (timerId) clearInterval(timerId);
+      timerId = null;
+      if (countdownSection) countdownSection.hidden = true;
+    }
+    function setCountdownZero() {
+      ["days", "hours", "minutes", "seconds"].forEach(function (id) { setText(id, "00"); });
+    }
+    function startCountdown(targetTime) {
+      function tick() {
+        var distance = targetTime - Date.now();
+        if (distance <= 0) {
+          setCountdownZero();
+          stopCountdown();
+          return;
+        }
+        if (countdownSection) countdownSection.hidden = false;
+        setText("days", String(Math.floor(distance / 86400000)).padStart(2, "0"));
+        setText("hours", String(Math.floor((distance % 86400000) / 3600000)).padStart(2, "0"));
+        setText("minutes", String(Math.floor((distance % 3600000) / 60000)).padStart(2, "0"));
+        setText("seconds", String(Math.floor((distance % 60000) / 1000)).padStart(2, "0"));
+      }
+      if (timerId) clearInterval(timerId);
+      tick();
+      timerId = setInterval(tick, 1000);
+    }
+    function updateAccountLinks() {
+      var login = getEl("livestreamLoginLink");
+      var register = getEl("livestreamRegisterLink");
+      if (login) login.href = "/static/account/login.html?paper=" + encodeURIComponent(paper);
+      if (register) register.href = "/static/account/register.html?paper=" + encodeURIComponent(paper);
+    }
+    function render(rawConfig) {
+      var cfg = normalize(rawConfig);
+      if (!isEnabled(cfg.enabled)) {
+        liveSection.hidden = true;
+        stopCountdown();
+        if (player) player.src = "";
+        if (playerWrapper) playerWrapper.hidden = true;
+        if (placeholder) placeholder.hidden = true;
+        if (loginGate) loginGate.hidden = true;
+        return;
+      }
+
+      liveSection.hidden = false;
+      updateAccountLinks();
+      setText("livestreamTitle", cfg.title);
+      setText("livestreamDescription", cfg.description);
+      setText("livestreamDateText", cfg.date_text);
+      setText("livestreamTimeText", cfg.time_text);
+
+      var startAt = parseStartAt(cfg.start_at);
+      var isFuture = !!(startAt && startAt > Date.now());
+      var liveNow = !startAt || startAt <= Date.now();
+      window.__webSeminarLivestreamTargetDate = startAt || null;
+      window.__webSeminarLivestreamIsFuture = isFuture;
+
+      if (isFuture) startCountdown(startAt);
+      else { setCountdownZero(); stopCountdown(); }
+
+      liveSection.classList.toggle("is-live", liveNow);
+      setText("livestreamStatusLabel", liveNow ? (cfg.status_label || "ライブ配信中") : "配信予定");
+      setText("livestreamStatusSubtitle", liveNow ? (cfg.status_subtitle || "ログイン中の会員のみ視聴できます") : "次回のライブ配信をお楽しみに");
+
+      var videoId = String(cfg.youtube_id || "").trim();
+      if (liveNow && videoId && isLoggedIn()) {
+        if (placeholder) placeholder.hidden = true;
+        if (loginGate) loginGate.hidden = true;
+        if (playerWrapper) playerWrapper.hidden = false;
+        if (player) {
+          var embedUrl = "https://www.youtube.com/embed/" + encodeURIComponent(videoId) + "?autoplay=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1";
+          if (player.src !== embedUrl) player.src = embedUrl;
+        }
+      } else {
+        if (player) player.src = "";
+        if (playerWrapper) playerWrapper.hidden = true;
+        if (placeholder) placeholder.hidden = !liveNow;
+        if (loginGate) loginGate.hidden = !(liveNow && videoId && !isLoggedIn());
+      }
+    }
+
+    liveSection.hidden = true;
+    stopCountdown();
+    fetchJson(["/static/" + encodeURIComponent(paper) + "/livestream.json", "./livestream.json"])
+      .then(render)
+      .catch(function () { render({ enabled: false }); });
+  });
+})();
+
 /**
  * Global app.js for all papers (tomato/leek/strawberry/...)
  *
@@ -7330,6 +7513,7 @@ function resetAutoSlide() {
   // WEBセミナー: Livestream
   // ==========================
   (function initWebSeminarLivestream() {
+    if (window.__TOMATO_LIVESTREAM_BOOTSTRAPPED) return;
     const liveSection = document.querySelector(".page-web-seminar .live-section");
     if (!liveSection) return;
 
@@ -7532,6 +7716,7 @@ function resetAutoSlide() {
   // WEBセミナー: Countdown
   // ==========================
   (function initWebSeminarCountdown() {
+    if (window.__TOMATO_LIVESTREAM_BOOTSTRAPPED) return;
     const daysEl = document.getElementById("days");
     const hoursEl = document.getElementById("hours");
     const minutesEl = document.getElementById("minutes");
