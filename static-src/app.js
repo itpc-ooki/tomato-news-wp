@@ -7405,15 +7405,34 @@ function resetAutoSlide() {
       if (register) register.href = "/static/account/register.html?paper=" + encodeURIComponent(paper);
     }
 
+    function normalizeLivestreamConfig(config) {
+      const raw = config && typeof config === "object" ? config : {};
+      return {
+        enabled: raw.enabled,
+        title: raw.title,
+        description: raw.description,
+        youtube_id: raw.youtube_id || raw.youtubeId,
+        start_at: raw.start_at || raw.startAt,
+        date_text: raw.date_text || raw.dateText,
+        time_text: raw.time_text || raw.timeText,
+        status_label: raw.status_label || raw.statusLabel,
+        status_subtitle: raw.status_subtitle || raw.statusSubtitle
+      };
+    }
+
     function render(config) {
-      const cfg = Object.assign({}, DEFAULT_LIVESTREAM, config || {});
+      const cfg = Object.assign({}, DEFAULT_LIVESTREAM, normalizeLivestreamConfig(config));
       const player = getEl("livestreamPlayer");
       const playerWrapper = getEl("livestreamPlayerWrapper");
       const placeholder = getEl("livestreamPlaceholder");
       const loginGate = getEl("livestreamLoginGate");
 
-      if (cfg.enabled === false) {
+      const isEnabled = !(cfg.enabled === false || cfg.enabled === "0" || cfg.enabled === 0);
+      const countdownSection = liveSection.querySelector(".countdown-section");
+
+      if (!isEnabled) {
         liveSection.hidden = true;
+        if (countdownSection) countdownSection.hidden = true;
         if (player) player.src = "";
         return;
       }
@@ -7430,6 +7449,11 @@ function resetAutoSlide() {
       window.__webSeminarLivestreamTargetDate = startAt || new Date("2026-06-26T14:00:00+09:00").getTime();
 
       const liveNow = isLiveNow(cfg);
+      window.__webSeminarLivestreamIsFuture = !!(startAt && !liveNow);
+      if (countdownSection) countdownSection.hidden = !window.__webSeminarLivestreamIsFuture;
+      if (typeof window.__webSeminarUpdateCountdown === "function") {
+        window.__webSeminarUpdateCountdown();
+      }
       liveSection.classList.toggle("is-live", liveNow);
       setText("livestreamStatusLabel", liveNow ? (cfg.status_label || "ライブ配信中") : "配信予定");
       setText("livestreamStatusSubtitle", liveNow ? (cfg.status_subtitle || "ログイン中の会員のみ視聴できます") : "次回のライブ配信をお楽しみに");
@@ -7451,14 +7475,32 @@ function resetAutoSlide() {
       }
     }
 
+    function fetchLivestreamConfig(urls) {
+      const list = Array.isArray(urls) ? urls.filter(Boolean) : [];
+      const url = list.shift();
+      if (!url) return Promise.reject(new Error("livestream.json not found"));
+
+      return fetch(url, { cache: "no-store" })
+        .then(function (res) {
+          if (!res.ok) throw new Error("livestream.json not found: " + url);
+          return res.json();
+        })
+        .catch(function (error) {
+          if (!list.length) throw error;
+          return fetchLivestreamConfig(list);
+        });
+    }
+
     function loadConfig() {
       render(DEFAULT_LIVESTREAM);
 
-      fetch("./livestream.json", { cache: "no-store" })
-        .then(function (res) {
-          if (!res.ok) throw new Error("livestream.json not found");
-          return res.json();
-        })
+      const paper = getPaper();
+      const urls = [
+        "./livestream.json",
+        "/static/" + encodeURIComponent(paper) + "/livestream.json"
+      ];
+
+      fetchLivestreamConfig(urls)
         .then(function (json) {
           render(json || {});
         })
@@ -7479,39 +7521,56 @@ function resetAutoSlide() {
     const hoursEl = document.getElementById("hours");
     const minutesEl = document.getElementById("minutes");
     const secondsEl = document.getElementById("seconds");
+    const countdownSection = document.querySelector(".page-web-seminar .countdown-section");
     if (!daysEl && !hoursEl && !minutesEl && !secondsEl) return;
 
     // 配信開始日時（livestream.json がある場合は app.js 側で上書き）
     const defaultTargetDate = new Date("2026-06-26T14:00:00+09:00").getTime();
+
+    function stopCountdown() {
+      if (window.__webSeminarCountdownInterval) {
+        clearInterval(window.__webSeminarCountdownInterval);
+        window.__webSeminarCountdownInterval = null;
+      }
+      if (countdownSection) countdownSection.hidden = true;
+    }
 
     function update() {
       const now = Date.now();
       const targetDate = Number(window.__webSeminarLivestreamTargetDate || defaultTargetDate);
       const distance = targetDate - now;
 
-      const clamp = (n) => (Number.isFinite(n) && n > 0 ? n : 0);
+      if (!Number.isFinite(targetDate) || distance <= 0 || window.__webSeminarLivestreamIsFuture === false) {
+        if (daysEl) daysEl.textContent = "00";
+        if (hoursEl) hoursEl.textContent = "00";
+        if (minutesEl) minutesEl.textContent = "00";
+        if (secondsEl) secondsEl.textContent = "00";
+        stopCountdown();
+        return;
+      }
 
-      const days = Math.floor(clamp(distance) / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((clamp(distance) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((clamp(distance) % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((clamp(distance) % (1000 * 60)) / 1000);
+      if (countdownSection) countdownSection.hidden = false;
+
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
       if (daysEl) daysEl.textContent = String(days).padStart(2, "0");
       if (hoursEl) hoursEl.textContent = String(hours).padStart(2, "0");
       if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, "0");
       if (secondsEl) secondsEl.textContent = String(seconds).padStart(2, "0");
-
-      if (distance < 0) {
-        if (window.__webSeminarCountdownInterval) {
-          clearInterval(window.__webSeminarCountdownInterval);
-          window.__webSeminarCountdownInterval = null;
-        }
-      }
     }
 
-    update();
-    if (window.__webSeminarCountdownInterval) clearInterval(window.__webSeminarCountdownInterval);
-    window.__webSeminarCountdownInterval = setInterval(update, 1000);
+    function startCountdown() {
+      update();
+      if (window.__webSeminarCountdownInterval) clearInterval(window.__webSeminarCountdownInterval);
+      if (window.__webSeminarLivestreamIsFuture === false) return;
+      window.__webSeminarCountdownInterval = setInterval(update, 1000);
+    }
+
+    window.__webSeminarUpdateCountdown = startCountdown;
+    startCountdown();
   })();
 
   // ==========================
