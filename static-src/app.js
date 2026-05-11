@@ -7420,6 +7420,12 @@ function resetAutoSlide() {
       };
     }
 
+    function isEnabledValue(value) {
+      if (value === false || value === 0) return false;
+      const normalized = String(value).trim().toLowerCase();
+      return !(normalized === "0" || normalized === "false" || normalized === "off" || normalized === "no");
+    }
+
     function render(config) {
       const cfg = Object.assign({}, DEFAULT_LIVESTREAM, normalizeLivestreamConfig(config));
       const player = getEl("livestreamPlayer");
@@ -7427,7 +7433,7 @@ function resetAutoSlide() {
       const placeholder = getEl("livestreamPlaceholder");
       const loginGate = getEl("livestreamLoginGate");
 
-      const isEnabled = !(cfg.enabled === false || cfg.enabled === "0" || cfg.enabled === 0);
+      const isEnabled = isEnabledValue(cfg.enabled);
       const countdownSection = liveSection.querySelector(".countdown-section");
 
       if (!isEnabled) {
@@ -7492,9 +7498,13 @@ function resetAutoSlide() {
     }
 
     function loadConfig() {
-      // Keep the static fallback markup hidden until livestream.json is loaded.
-      // This prevents the live area from staying visible when the admin checkbox is OFF.
+      // Do not show the hardcoded HTML while the admin JSON is loading.
+      // The live area must follow the WordPress ライブ配信設定 checkbox.
       liveSection.hidden = true;
+      window.__webSeminarLivestreamIsFuture = false;
+      if (typeof window.__webSeminarUpdateCountdown === "function") {
+        window.__webSeminarUpdateCountdown();
+      }
 
       const paper = getPaper();
       const urls = [
@@ -7507,11 +7517,9 @@ function resetAutoSlide() {
           render(json || {});
         })
         .catch(function () {
-          // For local/source preview only, keep the sample livestream available when JSON does not exist.
-          const host = window.location && window.location.hostname ? window.location.hostname : "";
-          const isLocalPreview = !host || host === "localhost" || host === "127.0.0.1";
-          if (isLocalPreview) render(DEFAULT_LIVESTREAM);
-          else liveSection.hidden = true;
+          // If livestream.json is missing or cannot be loaded, keep the section hidden
+          // so stale hardcoded livestream information is not displayed.
+          render({ enabled: false });
         });
     }
 
