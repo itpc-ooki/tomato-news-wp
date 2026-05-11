@@ -896,6 +896,15 @@ private static function sync_uploads_assets(): void {
 
     self::sync_templates($paper);
 
+    // Re-export livestream settings after copying /static-src/{paper}.
+    // sync_templates() copies static-src files into /static and can overwrite
+    // /static/{paper}/livestream.json with stale source data. The livestream
+    // admin screen is the source of truth, so write the generated JSON again
+    // before S3 sync / CloudFront invalidation runs.
+    if (class_exists('Tomato_Livestream_Manager') && method_exists('Tomato_Livestream_Manager', 'export_json_for_paper')) {
+      Tomato_Livestream_Manager::export_json_for_paper($paper);
+    }
+
     $static_paper_root = self::static_root() . '/' . $paper;
     $posts_dir = $static_paper_root . '/posts';
     self::ensure_dir($posts_dir);

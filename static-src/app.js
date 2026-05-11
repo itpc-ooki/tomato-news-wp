@@ -7334,7 +7334,7 @@ function resetAutoSlide() {
     if (!liveSection) return;
 
     const DEFAULT_LIVESTREAM = {
-      enabled: true,
+      enabled: false,
       title: "第4回トマトサミット 2026",
       description: "最新のトマト栽培技術と市場動向について、業界トップクラスの専門家陣が詳しく解説します。施設園芸の最前線から実践的なノウハウまで、生産者の皆様に役立つ情報を多数お届けします。",
       youtube_id: "jfKfPfyJRdk",
@@ -7486,7 +7486,8 @@ function resetAutoSlide() {
       const url = list.shift();
       if (!url) return Promise.reject(new Error("livestream.json not found"));
 
-      return fetch(url, { cache: "no-store" })
+      const cacheBustedUrl = url + (url.indexOf("?") === -1 ? "?" : "&") + "v=" + Date.now();
+      return fetch(cacheBustedUrl, { cache: "no-store" })
         .then(function (res) {
           if (!res.ok) throw new Error("livestream.json not found: " + url);
           return res.json();
@@ -7508,8 +7509,8 @@ function resetAutoSlide() {
 
       const paper = getPaper();
       const urls = [
-        "./livestream.json",
-        "/static/" + encodeURIComponent(paper) + "/livestream.json"
+        "/static/" + encodeURIComponent(paper) + "/livestream.json",
+        "./livestream.json"
       ];
 
       fetchLivestreamConfig(urls)
