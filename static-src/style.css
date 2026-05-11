@@ -6645,7 +6645,7 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
 /* YouTube コンテンツ */
 
   .live-section{
-    max-width:1400px; margin:0 auto 40px; padding:0 20px; display: none;
+    max-width:1400px; margin:0 auto 40px; padding:0 20px;
   }
 
 
@@ -6690,6 +6690,32 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
 
 .live-player iframe{
     position:absolute; top:0; left:0; width:100%; height:100%;
+  }
+
+
+.livestream-login-gate{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:32px 20px;
+    background:#fff;
+    border-top:1px solid var(--border);
+  }
+
+.live-section[hidden],
+.countdown-section[hidden],
+.livestream-login-gate[hidden],
+.live-player[hidden],
+.video-placeholder[hidden]{
+    display:none !important;
+  }
+
+.live-section.is-live .status-banner{
+    background:linear-gradient(135deg,#fef2f2 0%,#fee2e2 100%);
+  }
+
+.live-section.is-live .status-icon{
+    color:#dc2626;
   }
 
 
