@@ -5329,8 +5329,8 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
 
   // =========================================================
   // ✅ Added: placements.json rendering for sponsor ads (index.html)
-  // - Renders placements.json "sponsor_ads" into <section id="newspaper-ads"> .grid a.card
-  // - If sponsor_ads is 0/undefined -> hides #newspaper-ads
+  // - Renders up to 4 random placements.json "sponsors" into <section id="newspaper-ads"> .grid a.card
+  // - If sponsors is 0/undefined -> hides #newspaper-ads
   // - Uses existing <a class="card"> as placeholders; creates more if needed
   // =========================================================
   function hasNewspaperAdsUi() {
@@ -5470,9 +5470,12 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     const grid = document.querySelector("#newspaper-ads .grid");
     if (!section || !grid) return;
 
-    const items = Array.isArray(placements && placements.sponsor_ads)
-      ? placements.sponsor_ads
+    const allItems = Array.isArray(placements && placements.sponsors)
+      ? placements.sponsors
       : [];
+    const items = allItems.slice().sort(function () {
+      return Math.random() - 0.5;
+    }).slice(0, 4);
 
     if (items.length === 0) {
       section.style.display = "none";
@@ -6261,7 +6264,7 @@ Received HTML (maybe redirected to WP).`);
 
     try {
       const placements = await loadSponsorsPlacements(paper);
-      const items = Array.isArray(placements && placements.sponsor_ads) ? placements.sponsor_ads : [];
+      const items = Array.isArray(placements && placements.sponsors) ? placements.sponsors : [];
       renderSponsorsPage(items);
     } catch (e) {
       console.warn("[sponsors] failed:", e && e.message ? e.message : e);
@@ -6289,7 +6292,7 @@ async function loadAndRenderPlacementsJson(paper) {
       renderSideAdsIntoDom(placements);
       renderStickyBannerIntoDom(placements);
       if (hasSponsorsPageUi()) {
-        renderSponsorsPage(Array.isArray(placements && placements.sponsor_ads) ? placements.sponsor_ads : []);
+        renderSponsorsPage(Array.isArray(placements && placements.sponsors) ? placements.sponsors : []);
       }
     } catch (e) {
       // Do not break the page; keep hard-coded fallback
