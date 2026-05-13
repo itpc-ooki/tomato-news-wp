@@ -31,7 +31,7 @@
  * Expected (for placements):
  * - CPT: ad_item (publish items)
  * - Taxonomy: paper (slug: tomato/leek/strawberry etc)  -> to decide which /static/{paper}/ to write
- * - Taxonomy: ad_type (slug: ads/pr/sponsor_ad/sponsor_video)
+ * - Taxonomy: ad_type (slug: ads/pr/sponsor_ad/sponsor_video/sponsors)
  * - Fields (recommended ACF):
  *   - link_url (URL)
  *   - image (Image: array|id|url)
@@ -468,6 +468,7 @@ private static function sync_uploads_assets(): void {
       'ads'            => ['limit' => 3, 'type_slug' => 'ads'],
       'pr'             => ['limit' => 2, 'type_slug' => 'pr'],
       'sponsor_ads'    => ['limit' => 4, 'type_slug' => 'sponsor_ad'],
+      'sponsors'       => ['limit' => 50, 'type_slug' => 'sponsors'],
       'sponsor_videos' => ['limit' => 3, 'type_slug' => 'sponsor_video'],
     ];
 
@@ -475,6 +476,7 @@ private static function sync_uploads_assets(): void {
       'ads' => [],
       'pr' => [],
       'sponsor_ads' => [],
+      'sponsors' => [],
       'sponsor_videos' => [],
       'sticky_banner' => null,
       'menu_hidden' => $menu_hidden,
@@ -569,7 +571,7 @@ private static function sync_uploads_assets(): void {
           }
 
 
-          if ($key === 'sponsor_ads') {
+          if ($key === 'sponsor_ads' || $key === 'sponsors') {
             $category = self::get_acf_field_value('sponsor_category', $id);
             $item['category'] = is_string($category) ? sanitize_title($category) : '';
           }
