@@ -5,7 +5,7 @@
  * Creates a CPT for placements and taxonomies:
  * - post_type: ad_item
  * - taxonomy:  paper   (tomato / leek / strawberry ...)
- * - taxonomy:  ad_type (ads / pr / sponsor_ad / sponsor_video)
+ * - taxonomy:  ad_type (ads / pr / sponsor_ad / sponsor_video / sponsors)
  *
  * Adds:
  * - Dropdown UI (no free text) for paper/ad_type on ad_item edit screen
@@ -119,6 +119,7 @@ add_action('init', function () {
     'pr'            => 'PR（pr）',
     'sponsor_ad'    => 'スポンサー広告（sponsor_ad）',
     'sponsor_video' => 'スポンサー動画広告紹介（sponsor_video）',
+    'sponsors'      => '協賛社（sponsors）',
   ];
 
   foreach ($default_types as $slug => $name) {
@@ -141,7 +142,7 @@ add_action('ad_type_add_form_fields', function () {
     <label for="tomato_ad_type_limit"><?php echo esc_html('上限数（1紙あたり）'); ?></label>
     <input type="number" name="tomato_ad_type_limit" id="tomato_ad_type_limit" value="" min="0" step="1" />
     <p class="description">
-      <?php echo esc_html('0 または空欄 = 制限なし。例）広告=3 / PR=2 / スポンサー広告=4 / スポンサー動画=3'); ?>
+      <?php echo esc_html('0 または空欄 = 制限なし。例）広告=3 / PR=2 / スポンサー広告=4 / スポンサー動画=3 / 協賛社=50'); ?>
     </p>
   </div>
   <?php
@@ -248,7 +249,7 @@ function tomato_render_tax_dropdown_metabox_paper($post) {
 }
 
 function tomato_render_tax_dropdown_metabox_ad_type($post) {
-  tomato_render_tax_dropdown_metabox($post, 'ad_type', 'tax_input_ad_type', '枠タイプを選択してください（ads / pr / sponsor_ad / sponsor_video）');
+  tomato_render_tax_dropdown_metabox($post, 'ad_type', 'tax_input_ad_type', '枠タイプを選択してください（ads / pr / sponsor_ad / sponsor_video / sponsors）');
 }
 
 function tomato_render_tax_dropdown_metabox($post, $taxonomy, $field_name, $help_text) {
