@@ -24,6 +24,29 @@
     };
   }
 
+  function installTomatoGoogleTagManager(){
+    const containerId = 'GTM-MXB33P6X';
+    try{
+      window.dataLayer = window.dataLayer || [];
+
+      if (!window.__TOMATO_GTM_CONFIGURED__) {
+        window.__TOMATO_GTM_CONFIGURED__ = true;
+        window.dataLayer.push({
+          'gtm.start': new Date().getTime(),
+          event: 'gtm.js'
+        });
+      }
+
+      if (document.head && !document.querySelector('script[data-tomato-gtm="' + containerId + '"]')) {
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtm.js?id=' + encodeURIComponent(containerId);
+        script.setAttribute('data-tomato-gtm', containerId);
+        document.head.appendChild(script);
+      }
+    }catch(_e){}
+  }
+
   function installTomatoGoogleTag(){
     const measurementId = 'G-T4XBF6622F';
     try{
@@ -50,6 +73,7 @@
     }catch(_e){}
   }
 
+  installTomatoGoogleTagManager();
   installTomatoGoogleTag();
 
   function nowIso(){ return new Date().toISOString(); }
