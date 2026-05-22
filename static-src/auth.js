@@ -29,19 +29,19 @@
     try{
       window.dataLayer = window.dataLayer || [];
 
-      if (!window.__TOMATO_GTM_CONFIGURED__) {
-        window.__TOMATO_GTM_CONFIGURED__ = true;
+      if (!window.__TOMATO_GTM_INSTALLED__) {
+        window.__TOMATO_GTM_INSTALLED__ = true;
         window.dataLayer.push({
           'gtm.start': new Date().getTime(),
           event: 'gtm.js'
         });
       }
 
-      if (document.head && !document.querySelector('script[data-tomato-gtm="' + containerId + '"]')) {
+      if (document.head && !document.querySelector('script[data-tomato-google-tag-manager="' + containerId + '"]')) {
         const script = document.createElement('script');
         script.async = true;
         script.src = 'https://www.googletagmanager.com/gtm.js?id=' + encodeURIComponent(containerId);
-        script.setAttribute('data-tomato-gtm', containerId);
+        script.setAttribute('data-tomato-google-tag-manager', containerId);
         document.head.appendChild(script);
       }
     }catch(_e){}
@@ -137,6 +137,8 @@
 
   async function pushRegistrationCompleteEvent(user){
     try{
+      if (window.__TOMATO_REGISTRATION_COMPLETE_PUSHED__) return;
+
       window.dataLayer = window.dataLayer || [];
       const email = normalizeEmail(user && user.email ? user.email : '');
       const gaContext = getGaContext();
@@ -151,16 +153,8 @@
         payload.user_email_sha256 = await sha256Hex(email);
       }
 
+      window.__TOMATO_REGISTRATION_COMPLETE_PUSHED__ = true;
       window.dataLayer.push(payload);
-
-      if (typeof window.gtag === 'function') {
-        window.gtag('event', 'registration_complete', {
-          registration_type: payload.registration_type,
-          environment: payload.environment,
-          paper: payload.paper,
-          user_email_sha256: payload.user_email_sha256 || undefined
-        });
-      }
     }catch(_e){}
   }
 
@@ -833,25 +827,6 @@
 
   function detectActivePaper(){
     try{
-      if (typeof window.__detectPaper === 'function') {
-        const byHelper = String(window.__detectPaper() || '').toLowerCase();
-        if (byHelper) {
-          localStorage.setItem('tomato_active_paper_v1', byHelper);
-          return byHelper;
-        }
-      }
-    }catch(_e){}
-
-    try{
-      const host = String(window.location.hostname || '').toLowerCase().replace(/:\d+$/, '');
-      const m = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
-      if (m && m[1] && m[1] !== 'www') {
-        localStorage.setItem('tomato_active_paper_v1', m[1]);
-        return m[1];
-      }
-    }catch(_e){}
-
-    try{
       const sp = new URLSearchParams(window.location.search || '');
       const paper = String(sp.get('paper') || sp.get('p') || '').toLowerCase();
       if (paper) {
@@ -874,6 +849,25 @@
         const byPath = String(m[1]).toLowerCase();
         localStorage.setItem('tomato_active_paper_v1', byPath);
         return byPath;
+      }
+    }catch(_e){}
+
+    try{
+      if (typeof window.__detectPaper === 'function') {
+        const byHelper = String(window.__detectPaper() || '').toLowerCase();
+        if (byHelper) {
+          localStorage.setItem('tomato_active_paper_v1', byHelper);
+          return byHelper;
+        }
+      }
+    }catch(_e){}
+
+    try{
+      const host = String(window.location.hostname || '').toLowerCase().replace(/:\d+$/, '');
+      const m = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
+      if (m && m[1] && m[1] !== 'www') {
+        localStorage.setItem('tomato_active_paper_v1', m[1]);
+        return m[1];
       }
     }catch(_e){}
 
@@ -2075,6 +2069,9 @@ var currentStep = 1;
             }
 
             var formEl = document.getElementById('registrationForm');
+            if (formEl && formEl.__tomatoSubmitting) return;
+            if (formEl) formEl.__tomatoSubmitting = true;
+
             var formData = new FormData(formEl);
 
             // WordPress REST API へ登録／更新
@@ -2093,6 +2090,7 @@ var currentStep = 1;
                 document.querySelector('.progress-header').style.display = 'none';
                 document.getElementById('completionMessage').style.display = 'block';
             }).catch(function(err){
+                if (formEl) formEl.__tomatoSubmitting = false;
                 alert(err?.message || (isEditMode ? '更新に失敗しました。入力内容をご確認ください。' : '登録に失敗しました。入力内容をご確認ください。'));
             });
         }
