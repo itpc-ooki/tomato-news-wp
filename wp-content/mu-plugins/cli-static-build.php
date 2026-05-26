@@ -468,7 +468,7 @@ private static function sync_uploads_assets(): void {
       'ads'            => ['limit' => 3, 'type_slug' => 'ads'],
       'pr'             => ['limit' => 2, 'type_slug' => 'pr'],
       'sponsor_ads'    => ['limit' => 4, 'type_slug' => 'sponsor_ad'],
-      'sponsors'       => ['limit' => 50, 'type_slug' => 'sponsors'],
+      'sponsors'       => ['limit' => 100, 'type_slug' => 'sponsors'],
       'sponsor_videos' => ['limit' => 3, 'type_slug' => 'sponsor_video'],
     ];
 
