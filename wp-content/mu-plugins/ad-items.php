@@ -142,7 +142,7 @@ add_action('ad_type_add_form_fields', function () {
     <label for="tomato_ad_type_limit"><?php echo esc_html('上限数（1紙あたり）'); ?></label>
     <input type="number" name="tomato_ad_type_limit" id="tomato_ad_type_limit" value="" min="0" step="1" />
     <p class="description">
-      <?php echo esc_html('0 または空欄 = 制限なし。例）広告=3 / PR=2 / スポンサー広告=4 / スポンサー動画=3 / 協賛社=50'); ?>
+      <?php echo esc_html('0 または空欄 = 制限なし。例）広告=3 / PR=2 / スポンサー広告=4 / スポンサー動画=3 / 協賛社=100'); ?>
     </p>
   </div>
   <?php
