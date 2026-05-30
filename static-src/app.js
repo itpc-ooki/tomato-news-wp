@@ -3512,6 +3512,151 @@ async function renderNewsSection(posts, paper) {
     return Array.from(document.querySelectorAll("a.vtile"));
   }
 
+  let latestTopPostsForHighlight = [];
+  let latestPlacementsForHighlight = null;
+  let mobileHighlightApplied = false;
+
+  function isSmartphoneHighlightView() {
+    return window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+  }
+
+  function getLatestPostsForMobileHighlight(posts) {
+    return (Array.isArray(posts) ? posts : [])
+      .slice()
+      .sort((a, b) => safeTopBadgeDateValue(b) - safeTopBadgeDateValue(a))
+      .slice(0, 3);
+  }
+
+  function buildMobileHighlightArticle(post) {
+    const a = document.createElement("a");
+    a.className = "vtile";
+    a.href = post && (post.url || post.id) ? (post.url || `detail.html?id=${post.id}`) : "#";
+
+    const title = stripHtml(post && post.title ? post.title : "");
+    const imgUrl = resolveUrlMaybeRelative(post && post.featured_image ? post.featured_image : "");
+
+    const thumb = document.createElement("div");
+    thumb.className = "thumb";
+    const img = document.createElement("img");
+    if (imgUrl) img.src = imgUrl;
+    img.alt = title;
+    img.loading = "lazy";
+    thumb.appendChild(img);
+
+    const cap = document.createElement("div");
+    cap.className = "cap";
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = getPostTag(post);
+    const titleEl = document.createElement("div");
+    titleEl.textContent = title;
+    cap.appendChild(meta);
+    cap.appendChild(titleEl);
+
+    a.appendChild(thumb);
+    a.appendChild(cap);
+    syncTopNewBadge(a, post);
+    return a;
+  }
+
+  function getLatestPublishedAdsForMobileHighlight(placements) {
+    // placements.json is exported with post_status=publish, so this list already excludes unpublished ads.
+    return (Array.isArray(placements && placements.ads) ? placements.ads : []).slice(0, 3);
+  }
+
+  function buildMobileHighlightAd(item) {
+    const sizeClass = getAdSlotClassFromItem(item);
+    const isHalf = sizeClass === "ad-half-vertical";
+    const wrapper = document.createElement("div");
+    wrapper.className = isHalf ? "halfpage-ad-wrapper" : "mpu-ad-wrapper";
+    wrapper.setAttribute("data-mobile-highlight-ad", "1");
+
+    const inner = document.createElement("div");
+    inner.className = isHalf ? "halfpage-inner" : "mpu-inner";
+
+    const badge = document.createElement("div");
+    badge.className = "ad-badge";
+    badge.textContent = "広告";
+
+    const img = document.createElement("img");
+    const title = stripHtml(item && item.title ? item.title : "広告");
+    const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
+    if (imgUrl) img.src = imgUrl;
+    img.alt = title;
+    img.loading = "lazy";
+
+    inner.appendChild(badge);
+    inner.appendChild(img);
+    wrapper.appendChild(inner);
+
+    const href = item && item.url ? String(item.url) : "";
+    if (href) {
+      wrapper.style.cursor = "pointer";
+      wrapper.onclick = () => window.open(href, "_blank", "noopener");
+    }
+
+    return wrapper;
+  }
+
+  function restoreMobileHighlightLayoutIfNeeded() {
+    if (!mobileHighlightApplied) return;
+
+    const colA = document.getElementById("vcolA");
+    const colB = document.getElementById("vcolB");
+    const trackA = colA ? colA.querySelector(".v-track") : null;
+    const trackB = colB ? colB.querySelector(".v-track") : null;
+
+    if (trackA && typeof trackA._desktopHtmlBeforeMobileHighlight === "string") {
+      trackA.innerHTML = trackA._desktopHtmlBeforeMobileHighlight;
+    }
+    if (trackB && typeof trackB._desktopHtmlBeforeMobileHighlight === "string") {
+      trackB.innerHTML = trackB._desktopHtmlBeforeMobileHighlight;
+    }
+    if (colB) colB.style.removeProperty("display");
+
+    mobileHighlightApplied = false;
+  }
+
+  function renderMobileHighlightLayout() {
+    if (!isSmartphoneHighlightView()) {
+      restoreMobileHighlightLayoutIfNeeded();
+      return false;
+    }
+
+    if (!latestTopPostsForHighlight.length || !latestPlacementsForHighlight) return false;
+
+    const colA = document.getElementById("vcolA");
+    const colB = document.getElementById("vcolB");
+    const trackA = colA ? colA.querySelector(".v-track") : null;
+    const trackB = colB ? colB.querySelector(".v-track") : null;
+    if (!trackA) return false;
+
+    if (typeof trackA._desktopHtmlBeforeMobileHighlight !== "string") {
+      trackA._desktopHtmlBeforeMobileHighlight = trackA.innerHTML;
+    }
+    if (trackB && typeof trackB._desktopHtmlBeforeMobileHighlight !== "string") {
+      trackB._desktopHtmlBeforeMobileHighlight = trackB.innerHTML;
+    }
+
+    const posts = getLatestPostsForMobileHighlight(latestTopPostsForHighlight);
+    const ads = getLatestPublishedAdsForMobileHighlight(latestPlacementsForHighlight);
+
+    trackA.innerHTML = "";
+    posts.forEach((post) => trackA.appendChild(buildMobileHighlightArticle(post)));
+    ads.forEach((ad) => trackA.appendChild(buildMobileHighlightAd(ad)));
+
+    if (trackB) trackB.innerHTML = "";
+    if (colB) colB.style.setProperty("display", "none", "important");
+
+    mobileHighlightApplied = true;
+    return true;
+  }
+
+  if (typeof window !== "undefined") {
+    window.__restoreMobileHighlightLayoutIfNeeded = restoreMobileHighlightLayoutIfNeeded;
+    window.__renderMobileHighlightLayout = renderMobileHighlightLayout;
+  }
+
   function renderTopVtiles(posts) {
     const vtiles = getTopVtiles();
     if (vtiles.length === 0) return;
@@ -5585,6 +5730,7 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
   function renderSideAdsIntoDom(placements) {
     if (!hasSideAdsUi()) return;
 
+    latestPlacementsForHighlight = placements || null;
     const items = Array.isArray(placements && placements.ads) ? placements.ads : [];
 
     function resetVerticalColumnForRebuild(root) {
@@ -5786,6 +5932,8 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
 
     rebuildColumn(colARoot, itemsA);
     rebuildColumn(colBRoot, itemsB);
+
+    renderMobileHighlightLayout();
 
     if (document.readyState === "complete") {
       setTimeout(() => {
@@ -6368,6 +6516,7 @@ async function loadAndRenderPlacementsJson(paper) {
     if (hasVtiles) {
       const url = `/static/${paper}/posts.json`;
       const posts = await fetchJson(url);
+      latestTopPostsForHighlight = Array.isArray(posts) ? posts.slice() : [];
       renderTopVtiles(posts);
       renderTopLaneTiles(posts); // ✅ add: fill .sp-lanes tiles too
       // ✅ Added: fill "トマトNEWS" cards (#news) from posts.json (article_type)
@@ -6569,10 +6718,16 @@ function boot(){
   ['laneTrackA','laneTrackB','laneTrackVideo'].forEach(prepareSeamless);
   const isPC = window.matchMedia('(min-width:1180px)').matches;
   if(isPC){
+    if (typeof window.__restoreMobileHighlightLayoutIfNeeded === 'function') {
+      window.__restoreMobileHighlightLayoutIfNeeded();
+    }
     initVCol('vcolA',{speed:0.32, direction:1});
     initVCol('vcolB',{speed:0.27, direction:-1});
   }else{
     destroyVCols();
+    if (typeof window.__renderMobileHighlightLayout === 'function') {
+      window.__renderMobileHighlightLayout();
+    }
   }
   // mobile sticky ad: show after delay if viewport <= 900px
   const sticky = document.getElementById('stickyAd');
