@@ -3407,7 +3407,7 @@ header img, nav img, footer img{aspect-ratio: auto; height: auto; object-fit: co
     pointer-events:none;}
   #news .card .image img, #newspaper-ads .card .image img, #paper .card .image img, footer img[alt="フッター広告"]{width:100% !important;
     height:100% !important;
-    object-fit:cover !important;
+    object-fit:contain !important;
     object-position:center !important;
     display:block !important;}
 }
@@ -13923,7 +13923,7 @@ body.sponsor-ad-popup-open{
 .sponsor-card-img img{
   width:100%;
   height:100%;
-  object-fit:cover;
+  object-fit:contain;
   display:block;
 }
 
