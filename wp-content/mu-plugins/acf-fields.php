@@ -134,6 +134,132 @@ add_action('admin_notices', function () {
 
 
 /**
+ * Admin variety duplicate action.
+ *
+ * Adds a safe "Duplicate" action for 品種マスタ in wp-admin.
+ * The duplicated 品種マスタ is always created as a draft so published items are not
+ * accidentally published twice. No front-end HTML/CSS/JS is changed here.
+ */
+if (!function_exists('tomato_duplicate_admin_variety_as_draft')) {
+  function tomato_duplicate_admin_variety_as_draft(): void {
+    if (!is_admin()) {
+      wp_die(__('Invalid request.', 'tomato'));
+    }
+
+    $source_id = isset($_GET['post']) ? absint($_GET['post']) : 0;
+    if ($source_id <= 0) {
+      wp_die(__('Post ID is missing.', 'tomato'));
+    }
+
+    check_admin_referer('tomato_duplicate_variety_' . $source_id);
+
+    $source = get_post($source_id);
+    if (!($source instanceof WP_Post) || $source->post_type !== 'variety') {
+      wp_die(__('This item cannot be duplicated.', 'tomato'));
+    }
+
+    if (!current_user_can('edit_post', $source_id) || !current_user_can('edit_posts')) {
+      wp_die(__('You do not have permission to duplicate this item.', 'tomato'));
+    }
+
+    $current_user_id = get_current_user_id();
+
+    $new_post_args = [
+      'post_author' => $current_user_id > 0 ? $current_user_id : (int) $source->post_author,
+      'post_content' => $source->post_content,
+      'post_title' => sprintf('%s - コピー', $source->post_title),
+      'post_excerpt' => $source->post_excerpt,
+      'post_status' => 'draft',
+      'post_type' => $source->post_type,
+      'comment_status' => $source->comment_status,
+      'ping_status' => $source->ping_status,
+      'post_password' => $source->post_password,
+      'post_parent' => (int) $source->post_parent,
+      'menu_order' => (int) $source->menu_order,
+    ];
+
+    // Avoid queueing a static build just because a private draft copy was created.
+    $removed_queue_hook = false;
+    if (class_exists('Tomato_Auto_Static_Build_Queue')) {
+      $removed_queue_hook = remove_action('save_post', [Tomato_Auto_Static_Build_Queue::class, 'on_save_post'], 10);
+    }
+
+    $new_post_id = wp_insert_post(wp_slash($new_post_args), true);
+
+    if ($removed_queue_hook && class_exists('Tomato_Auto_Static_Build_Queue')) {
+      add_action('save_post', [Tomato_Auto_Static_Build_Queue::class, 'on_save_post'], 10, 3);
+    }
+
+    if (is_wp_error($new_post_id) || !$new_post_id) {
+      wp_die(__('Failed to duplicate the item.', 'tomato'));
+    }
+
+    $taxonomies = get_object_taxonomies($source->post_type);
+    foreach ($taxonomies as $taxonomy) {
+      $term_ids = wp_get_object_terms($source_id, $taxonomy, ['fields' => 'ids']);
+      if (!is_wp_error($term_ids)) {
+        wp_set_object_terms($new_post_id, array_map('intval', $term_ids), $taxonomy, false);
+      }
+    }
+
+    $excluded_meta_keys = [
+      '_edit_lock',
+      '_edit_last',
+      '_wp_old_slug',
+      '_tomato_duplicated_from',
+    ];
+
+    $all_meta = get_post_meta($source_id);
+    foreach ($all_meta as $meta_key => $meta_values) {
+      if (in_array($meta_key, $excluded_meta_keys, true)) {
+        continue;
+      }
+      foreach ((array) $meta_values as $meta_value) {
+        add_post_meta($new_post_id, $meta_key, maybe_unserialize($meta_value));
+      }
+    }
+    update_post_meta($new_post_id, '_tomato_duplicated_from', $source_id);
+
+    wp_safe_redirect(add_query_arg([
+      'post' => $new_post_id,
+      'action' => 'edit',
+      'tomato_variety_duplicated' => 1,
+    ], admin_url('post.php')));
+    exit;
+  }
+}
+add_action('admin_action_tomato_duplicate_variety', 'tomato_duplicate_admin_variety_as_draft');
+
+add_filter('post_row_actions', function ($actions, $post) {
+  if (!($post instanceof WP_Post) || $post->post_type !== 'variety') {
+    return $actions;
+  }
+
+  if (!current_user_can('edit_post', $post->ID) || !current_user_can('edit_posts')) {
+    return $actions;
+  }
+
+  $url = wp_nonce_url(
+    add_query_arg([
+      'action' => 'tomato_duplicate_variety',
+      'post' => $post->ID,
+    ], admin_url('admin.php')),
+    'tomato_duplicate_variety_' . $post->ID
+  );
+
+  $actions['tomato_duplicate_variety'] = '<a href="' . esc_url($url) . '" aria-label="' . esc_attr__('Duplicate this item as a draft', 'tomato') . '">' . esc_html__('複製', 'tomato') . '</a>';
+  return $actions;
+}, 10, 2);
+
+add_action('admin_notices', function () {
+  if (!isset($_GET['tomato_variety_duplicated']) || (int) $_GET['tomato_variety_duplicated'] !== 1) {
+    return;
+  }
+  echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Variety duplicated as a draft.', 'tomato') . '</p></div>';
+});
+
+
+/**
  * Dynamic global menu helpers
  * - Keep the admin menu settings in sync with the menu.json builder.
  * - This allows clients to add a new 記事タイプ term and immediately control
