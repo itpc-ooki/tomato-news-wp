@@ -6582,13 +6582,45 @@ async function loadAndRenderPlacementsJson(paper) {
         showError("Error: id is required. e.g. detail.html?id=9");
         return;
       }
-      const url = `/static/${paper}/posts/${id}.json`;
-      const post = await fetchJson(url);
+
+      const wpPreviewNonce = getQueryParam("tomato_wp_preview") || getQueryParam("_wpnonce") || "";
+      const isWpPreview = getQueryParam("preview") === "true" || !!wpPreviewNonce;
+
+      let post;
+      if (isWpPreview) {
+        const previewParams = new URLSearchParams();
+        previewParams.set("id", id);
+        if (wpPreviewNonce) previewParams.set("_wpnonce", wpPreviewNonce);
+
+        try {
+          // Use WordPress' query-string REST route first because some local/staging
+          // environments do not have pretty permalink rewrites enabled for /wp-json/.
+          post = await fetchJson(`/?rest_route=/tomato/v1/post-preview&${previewParams.toString()}`);
+        } catch (previewError) {
+          try {
+            // Fallback for environments where /wp-json/ is available.
+            post = await fetchJson(`/wp-json/tomato/v1/post-preview?${previewParams.toString()}`);
+          } catch (fallbackError) {
+            showError(
+              `Preview data could not be loaded. Please make sure you are logged in to WordPress and refresh the preview page.\n${String(fallbackError && fallbackError.message ? fallbackError.message : fallbackError)}`
+            );
+            return;
+          }
+        }
+      } else {
+        post = await fetchJson(`/static/${paper}/posts/${id}.json`);
+      }
+
       renderDetail(post);
+
       // ✅ Detail: dynamic 関連記事 / おすすめ特集
-      renderDetailRelatedAndTokushu(paper, post).catch(() => {});
+      if (!isWpPreview) {
+        renderDetailRelatedAndTokushu(paper, post).catch(() => {});
+      }
       // 人気記事（most accessed 5）
-      renderPopularSidebar(paper, id).catch(() => {});
+      if (!isWpPreview) {
+        renderPopularSidebar(paper, id).catch(() => {});
+      }
       return;
     }
   }

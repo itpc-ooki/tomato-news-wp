@@ -134,6 +134,198 @@ add_action('admin_notices', function () {
 
 
 /**
+ * Static article preview support.
+ *
+ * WordPress is only used as the CMS, so the default preview URL (/?p=ID)
+ * does not map to the generated static article page. This changes the editor
+ * preview link for normal posts to the matching static detail page and lets
+ * app.js load the draft content through an authenticated REST endpoint.
+ */
+if (!function_exists('tomato_preview_get_post_paper_slug')) {
+  function tomato_preview_get_post_paper_slug(int $post_id): string {
+    $slugs = wp_get_post_terms($post_id, 'category', ['fields' => 'slugs']);
+    if (!is_wp_error($slugs) && !empty($slugs)) {
+      foreach ($slugs as $slug) {
+        $slug = sanitize_title((string) $slug);
+        if ($slug !== '' && $slug !== 'uncategorized') {
+          return $slug;
+        }
+      }
+    }
+
+    return 'tomato';
+  }
+}
+
+if (!function_exists('tomato_preview_build_static_url')) {
+  function tomato_preview_build_static_url(WP_Post $post): string {
+    $paper = tomato_preview_get_post_paper_slug((int) $post->ID);
+
+    return add_query_arg([
+      'id' => (int) $post->ID,
+      'preview' => 'true',
+      'tomato_wp_preview' => wp_create_nonce('wp_rest'),
+      't' => time(),
+    ], home_url('/static/' . rawurlencode($paper) . '/detail.html'));
+  }
+}
+
+add_filter('preview_post_link', function ($preview_link, $post) {
+  if ($post instanceof WP_Post && $post->post_type === 'post') {
+    return tomato_preview_build_static_url($post);
+  }
+
+  return $preview_link;
+}, 10, 2);
+
+add_filter('post_link', function ($permalink, $post, $leavename) {
+  if (is_admin() && $post instanceof WP_Post && $post->post_type === 'post' && $post->post_status !== 'publish') {
+    return tomato_preview_build_static_url($post);
+  }
+
+  return $permalink;
+}, 10, 3);
+
+if (!function_exists('tomato_preview_resolve_media_to_url')) {
+  function tomato_preview_resolve_media_to_url($value): string {
+    if (is_array($value)) {
+      if (!empty($value['url'])) return (string) $value['url'];
+      if (!empty($value['ID'])) return (string) wp_get_attachment_url((int) $value['ID']);
+      if (!empty($value['id'])) return (string) wp_get_attachment_url((int) $value['id']);
+    }
+
+    if (is_numeric($value)) {
+      return (string) wp_get_attachment_url((int) $value);
+    }
+
+    if (is_string($value)) {
+      return $value;
+    }
+
+    return '';
+  }
+}
+
+if (!function_exists('tomato_preview_get_field_value')) {
+  function tomato_preview_get_field_value(string $name, int $post_id) {
+    if (function_exists('get_field')) {
+      $value = get_field($name, $post_id);
+      if ($value !== null && $value !== false && $value !== '') {
+        return $value;
+      }
+    }
+
+    return get_post_meta($post_id, $name, true);
+  }
+}
+
+if (!function_exists('tomato_preview_build_post_payload')) {
+  function tomato_preview_build_post_payload(WP_Post $post): array {
+    $post_id = (int) $post->ID;
+    $paper = tomato_preview_get_post_paper_slug($post_id);
+
+    $article_type_terms = wp_get_post_terms($post_id, 'article_type', ['fields' => 'all']);
+    $article_types = [];
+    $article_type_slugs = [];
+    if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
+      foreach ($article_type_terms as $term) {
+        $article_types[] = (string) $term->name;
+        $article_type_slugs[] = (string) $term->slug;
+      }
+    }
+
+    $article_tag_terms = wp_get_post_terms($post_id, 'article_tag', ['fields' => 'all']);
+    $article_tags = [];
+    if (!is_wp_error($article_tag_terms) && !empty($article_tag_terms)) {
+      foreach ($article_tag_terms as $term) {
+        $article_tags[] = [
+          'name' => (string) $term->name,
+          'slug' => (string) $term->slug,
+        ];
+      }
+    }
+
+    $featured_image = get_the_post_thumbnail_url($post_id, 'full') ?: '';
+
+    $featured_image_display_mode = tomato_preview_get_field_value('featured_image_display_mode', $post_id);
+    $featured_image_display_mode = trim((string) $featured_image_display_mode);
+    if ($featured_image_display_mode !== 'third') {
+      $featured_image_display_mode = 'full';
+    }
+
+    $body_image_tap_action = tomato_preview_get_field_value('body_image_tap_action', $post_id);
+    $body_image_tap_action = trim((string) $body_image_tap_action);
+    if ($body_image_tap_action !== 'normal') {
+      $body_image_tap_action = 'popup';
+    }
+
+    $free_viewable = tomato_preview_get_field_value('free_viewable', $post_id);
+    $free_viewable = ($free_viewable === true || $free_viewable === 1 || $free_viewable === '1');
+
+    $reference_materials = tomato_preview_get_field_value('reference_materials', $post_id);
+    $writer_name = tomato_preview_get_field_value('writer_name', $post_id);
+
+    $payload = [
+      'id' => $post_id,
+      'title' => get_the_title($post),
+      'date' => get_the_date('Y.m.d', $post),
+      'date_ymd' => get_the_date('Y-m-d', $post),
+      'author' => get_the_author_meta('display_name', (int) $post->post_author),
+      'excerpt' => get_the_excerpt($post),
+      'content_plain' => wp_strip_all_tags($post->post_content),
+      'content' => apply_filters('the_content', $post->post_content),
+      'slug' => (string) $post->post_name,
+      'categories' => [$paper],
+      'featured_image' => $featured_image,
+      'featured_image_display_mode' => $featured_image_display_mode,
+      'body_image_tap_action' => $body_image_tap_action,
+      'article_type' => $article_types[0] ?? '',
+      'article_types' => $article_types,
+      'article_type_slugs' => $article_type_slugs,
+      'article_tags' => $article_tags,
+      'free_viewable' => $free_viewable ? 1 : 0,
+      'member_scope' => $free_viewable ? 'free' : 'member',
+      'reference_materials' => is_string($reference_materials) ? trim($reference_materials) : '',
+      'writer_name' => is_string($writer_name) ? trim($writer_name) : '',
+      'columnists' => [],
+      'sidebar_ad' => null,
+      'is_wp_preview' => 1,
+    ];
+
+    return $payload;
+  }
+}
+
+add_action('rest_api_init', function () {
+  register_rest_route('tomato/v1', '/post-preview', [
+    'methods' => 'GET',
+    'permission_callback' => function (WP_REST_Request $request) {
+      $post_id = absint($request->get_param('id'));
+      return $post_id > 0 && current_user_can('edit_post', $post_id);
+    },
+    'callback' => function (WP_REST_Request $request) {
+      $post_id = absint($request->get_param('id'));
+      $post = get_post($post_id);
+
+      if (!($post instanceof WP_Post) || $post->post_type !== 'post') {
+        return new WP_Error('tomato_preview_not_found', 'Preview post was not found.', ['status' => 404]);
+      }
+
+      $autosave = wp_get_post_autosave($post_id, get_current_user_id());
+      if ($autosave instanceof WP_Post && strtotime((string) $autosave->post_modified_gmt) >= strtotime((string) $post->post_modified_gmt)) {
+        $post = $autosave;
+        $post->ID = $post_id;
+      }
+
+      $response = rest_ensure_response(tomato_preview_build_post_payload($post));
+      $response->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      return $response;
+    },
+  ]);
+});
+
+
+/**
  * Admin variety duplicate action.
  *
  * Adds a safe "Duplicate" action for 品種マスタ in wp-admin.
