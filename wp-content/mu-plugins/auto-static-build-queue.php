@@ -205,6 +205,123 @@ class Tomato_Auto_Static_Build_Queue
   }
 
 
+  private static function get_papers_for_variety(int $post_id): array
+  {
+    $post = get_post($post_id);
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'variety') {
+      return [];
+    }
+
+    $papers = [];
+
+    // 品種マスタ uses the built-in category taxonomy as the paper selector
+    // (example: tomato/leek/strawberry). Detect only the edited paper so the
+    // static builder refreshes /static/{paper}/varieties.json automatically.
+    $cat_slugs = wp_get_post_terms($post_id, 'category', ['fields' => 'slugs']);
+    if (is_array($cat_slugs)) {
+      foreach ($cat_slugs as $slug) {
+        $normalized = self::normalize_paper_key((string) $slug);
+        if ($normalized !== null) {
+          $papers[] = $normalized;
+        }
+      }
+    }
+
+    // Fallback during save when taxonomy terms are still coming from POST.
+    if (empty($papers) && isset($_POST['post_category'])) {
+      $raw_terms = $_POST['post_category'];
+      if (!is_array($raw_terms)) {
+        $raw_terms = [$raw_terms];
+      }
+
+      foreach ($raw_terms as $raw_term) {
+        if (is_numeric($raw_term)) {
+          $term = get_term((int) $raw_term, 'category');
+          if ($term && !is_wp_error($term) && !empty($term->slug)) {
+            $normalized = self::normalize_paper_key((string) $term->slug);
+            if ($normalized !== null) {
+              $papers[] = $normalized;
+            }
+          }
+          continue;
+        }
+
+        $normalized = self::normalize_paper_key((string) $raw_term);
+        if ($normalized !== null) {
+          $papers[] = $normalized;
+        }
+      }
+    }
+
+    $papers = array_values(array_unique(array_filter($papers)));
+
+    if (!empty($papers)) {
+      return $papers;
+    }
+
+    return self::get_papers_from_newspaper_master() ?: self::get_default_papers();
+  }
+
+  public static function on_save_variety($post_id, $post, $update): void
+  {
+    if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+      return;
+    }
+    if (defined('DOING_CRON') && DOING_CRON) {
+      return;
+    }
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'variety') {
+      return;
+    }
+
+    $papers = self::get_papers_for_variety((int) $post_id);
+    self::request_build($papers, 'save_post_variety');
+  }
+
+  public static function on_transition_variety_status($new_status, $old_status, $post): void
+  {
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'variety') {
+      return;
+    }
+
+    if ($new_status === $old_status) {
+      return;
+    }
+
+    $papers = self::get_papers_for_variety((int) $post->ID);
+    self::request_build($papers, 'transition_variety:' . $old_status . '->' . $new_status);
+  }
+
+  public static function on_trashed_variety($post_id): void
+  {
+    $post = get_post((int) $post_id);
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'variety') {
+      return;
+    }
+
+    $papers = self::get_papers_for_variety((int) $post_id);
+    self::request_build($papers, 'trashed_variety');
+  }
+
+  public static function on_deleted_variety($post_id): void
+  {
+    $post = get_post((int) $post_id);
+
+    // before_delete_post runs before the post is actually removed, but terms may
+    // already be unstable. Rebuild all configured papers as the safest fallback.
+    if ($post instanceof WP_Post && ($post->post_type ?? '') !== 'variety') {
+      return;
+    }
+
+    $papers = self::get_papers_from_newspaper_master();
+    if (empty($papers)) {
+      $papers = self::get_default_papers();
+    }
+
+    self::request_build($papers, 'deleted_variety');
+  }
+
+
   public static function get_papers_from_newspaper_master(): array
   {
     $args = [
@@ -575,19 +692,23 @@ add_action('save_post', [Tomato_Auto_Static_Build_Queue::class, 'on_save_post'],
 add_action('save_post_newspaper', [Tomato_Auto_Static_Build_Queue::class, 'on_save_newspaper'], 10, 3);
 add_action('save_post_ad_item', [Tomato_Auto_Static_Build_Queue::class, 'on_save_ad_item'], 20, 3);
 add_action('save_post_market_data', [Tomato_Auto_Static_Build_Queue::class, 'on_save_market_data'], 20, 3);
+add_action('save_post_variety', [Tomato_Auto_Static_Build_Queue::class, 'on_save_variety'], 20, 3);
 add_action('save_post_ja_survey_top', [Tomato_Auto_Static_Build_Queue::class, 'on_save_ja_survey_top'], 20, 3);
 
 add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_post'], 10, 1);
 add_action('deleted_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_post'], 10, 1);
 add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_ad_item'], 20, 1);
 add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_market_data'], 30, 1);
+add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_variety'], 35, 1);
 add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_ja_survey_top'], 40, 1);
 add_action('before_delete_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_ad_item'], 20, 1);
 add_action('before_delete_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_market_data'], 30, 1);
+add_action('before_delete_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_variety'], 35, 1);
 add_action('before_delete_post', [Tomato_Auto_Static_Build_Queue::class, 'on_deleted_ja_survey_top'], 40, 1);
 
 add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on_transition_post_status'], 20, 3);
 add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on_transition_market_data_status'], 30, 3);
+add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on_transition_variety_status'], 35, 3);
 add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on_transition_ja_survey_top_status'], 40, 3);
 
 add_action('edited_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
