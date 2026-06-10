@@ -13,6 +13,7 @@ class Tomato_Auto_Static_Build_Queue
   private const OPTION_KEY = 'tomato_static_build_queue';
   private const LOG_DIR_REL = 'static-build-queue';
   private const LOG_FILE = 'build.log';
+  private const VARIETY_PAPERS_OPTION_KEY = 'tomato_static_build_variety_papers';
 
   private static function get_log_dir(): string
   {
@@ -205,7 +206,85 @@ class Tomato_Auto_Static_Build_Queue
   }
 
 
-  private static function get_papers_for_variety(int $post_id): array
+  private static function normalize_paper_list(array $papers): array
+  {
+    $normalized = [];
+
+    foreach ($papers as $paper) {
+      if (is_array($paper)) {
+        $normalized = array_merge($normalized, self::normalize_paper_list($paper));
+        continue;
+      }
+
+      $key = self::normalize_paper_key((string) $paper);
+      if ($key !== null) {
+        $normalized[] = $key;
+      }
+    }
+
+    return array_values(array_unique(array_filter($normalized)));
+  }
+
+  private static function get_stored_variety_papers(int $post_id): array
+  {
+    $map = get_option(self::VARIETY_PAPERS_OPTION_KEY, []);
+    if (!is_array($map)) {
+      return [];
+    }
+
+    $stored = $map[(string) $post_id] ?? $map[$post_id] ?? [];
+    if (!is_array($stored)) {
+      $stored = [$stored];
+    }
+
+    return self::normalize_paper_list($stored);
+  }
+
+  private static function remember_variety_papers(int $post_id, array $papers): void
+  {
+    $papers = self::normalize_paper_list($papers);
+    if (empty($papers)) {
+      return;
+    }
+
+    $map = get_option(self::VARIETY_PAPERS_OPTION_KEY, []);
+    if (!is_array($map)) {
+      $map = [];
+    }
+
+    $map[(string) $post_id] = $papers;
+    update_option(self::VARIETY_PAPERS_OPTION_KEY, $map, false);
+  }
+
+  private static function get_papers_from_variety_request(): array
+  {
+    $raw_terms = [];
+
+    if (isset($_POST['post_category'])) {
+      $raw_terms = array_merge($raw_terms, (array) $_POST['post_category']);
+    }
+
+    if (isset($_POST['tax_input']['category'])) {
+      $raw_terms = array_merge($raw_terms, (array) $_POST['tax_input']['category']);
+    }
+
+    $papers = [];
+    foreach ($raw_terms as $raw_term) {
+      if (is_numeric($raw_term)) {
+        $term = get_term((int) $raw_term, 'category');
+        if ($term && !is_wp_error($term) && !empty($term->slug)) {
+          $papers[] = (string) $term->slug;
+        }
+        continue;
+      }
+
+      $papers[] = (string) $raw_term;
+    }
+
+    return self::normalize_paper_list($papers);
+  }
+
+  private static function get_papers_for_variety(int $post_id, bool $include_stored = true): array
   {
     $post = get_post($post_id);
     if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'variety') {
@@ -215,45 +294,23 @@ class Tomato_Auto_Static_Build_Queue
     $papers = [];
 
     // 品種マスタ uses the built-in category taxonomy as the paper selector
-    // (example: tomato/leek/strawberry). Detect only the edited paper so the
-    // static builder refreshes /static/{paper}/varieties.json automatically.
+    // (example: tomato/leek/strawberry).
     $cat_slugs = wp_get_post_terms($post_id, 'category', ['fields' => 'slugs']);
     if (is_array($cat_slugs)) {
-      foreach ($cat_slugs as $slug) {
-        $normalized = self::normalize_paper_key((string) $slug);
-        if ($normalized !== null) {
-          $papers[] = $normalized;
-        }
-      }
+      $papers = array_merge($papers, $cat_slugs);
     }
 
-    // Fallback during save when taxonomy terms are still coming from POST.
-    if (empty($papers) && isset($_POST['post_category'])) {
-      $raw_terms = $_POST['post_category'];
-      if (!is_array($raw_terms)) {
-        $raw_terms = [$raw_terms];
-      }
+    // During admin save, also read the request directly. This makes the queue
+    // reliable even when WordPress/ACF saves terms after an earlier save hook.
+    $papers = array_merge($papers, self::get_papers_from_variety_request());
 
-      foreach ($raw_terms as $raw_term) {
-        if (is_numeric($raw_term)) {
-          $term = get_term((int) $raw_term, 'category');
-          if ($term && !is_wp_error($term) && !empty($term->slug)) {
-            $normalized = self::normalize_paper_key((string) $term->slug);
-            if ($normalized !== null) {
-              $papers[] = $normalized;
-            }
-          }
-          continue;
-        }
-
-        $normalized = self::normalize_paper_key((string) $raw_term);
-        if ($normalized !== null) {
-          $papers[] = $normalized;
-        }
-      }
+    // Include the previously remembered paper(s), so moving a variety from one
+    // paper category to another rebuilds both the old and new varieties.json.
+    if ($include_stored) {
+      $papers = array_merge($papers, self::get_stored_variety_papers($post_id));
     }
 
-    $papers = array_values(array_unique(array_filter($papers)));
+    $papers = self::normalize_paper_list($papers);
 
     if (!empty($papers)) {
       return $papers;
@@ -276,6 +333,29 @@ class Tomato_Auto_Static_Build_Queue
 
     $papers = self::get_papers_for_variety((int) $post_id);
     self::request_build($papers, 'save_post_variety');
+    self::remember_variety_papers((int) $post_id, $papers);
+  }
+
+  public static function on_acf_save_variety($post_id): void
+  {
+    $post_id = (int) $post_id;
+    if ($post_id <= 0 || wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+      return;
+    }
+    if (defined('DOING_CRON') && DOING_CRON) {
+      return;
+    }
+
+    $post = get_post($post_id);
+    if (!($post instanceof WP_Post) || ($post->post_type ?? '') !== 'variety') {
+      return;
+    }
+
+    // ACF fields are already saved at this point. Queue again after the final
+    // 品種マスタ data is available; duplicate requests are merged by paper key.
+    $papers = self::get_papers_for_variety($post_id);
+    self::request_build($papers, 'acf_save_variety');
+    self::remember_variety_papers($post_id, $papers);
   }
 
   public static function on_transition_variety_status($new_status, $old_status, $post): void
@@ -693,6 +773,7 @@ add_action('save_post_newspaper', [Tomato_Auto_Static_Build_Queue::class, 'on_sa
 add_action('save_post_ad_item', [Tomato_Auto_Static_Build_Queue::class, 'on_save_ad_item'], 20, 3);
 add_action('save_post_market_data', [Tomato_Auto_Static_Build_Queue::class, 'on_save_market_data'], 20, 3);
 add_action('save_post_variety', [Tomato_Auto_Static_Build_Queue::class, 'on_save_variety'], 20, 3);
+add_action('acf/save_post', [Tomato_Auto_Static_Build_Queue::class, 'on_acf_save_variety'], 30, 1);
 add_action('save_post_ja_survey_top', [Tomato_Auto_Static_Build_Queue::class, 'on_save_ja_survey_top'], 20, 3);
 
 add_action('trashed_post', [Tomato_Auto_Static_Build_Queue::class, 'on_trashed_post'], 10, 1);
