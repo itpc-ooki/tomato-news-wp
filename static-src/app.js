@@ -5390,7 +5390,8 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     return {
       overlay,
       image: overlay.querySelector(".sponsor-ad-popup__image"),
-      link: overlay.querySelector(".sponsor-ad-popup__link")
+      link: overlay.querySelector(".sponsor-ad-popup__link"),
+      actions: overlay.querySelector(".sponsor-ad-popup__actions")
     };
   }
 
@@ -5400,7 +5401,7 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
 
     const title = stripHtml(item && item.title ? item.title : "");
     const imgUrl = resolveUrlMaybeRelative(item && item.image ? item.image : "");
-    const href = item && item.url ? String(item.url) : "#";
+    const href = item && item.url ? String(item.url).trim() : "";
 
     if (imgUrl) {
       els.image.src = imgUrl;
@@ -5409,8 +5410,27 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     }
     els.image.alt = title || "協賛社のご紹介";
 
-    els.link.href = href;
-    els.link.style.display = href && href !== "#" ? "inline-flex" : "none";
+    if (href) {
+      els.link.href = href;
+      els.link.removeAttribute("hidden");
+      els.link.removeAttribute("aria-hidden");
+      els.link.style.setProperty("display", "inline-flex", "important");
+      if (els.actions) {
+        els.actions.removeAttribute("hidden");
+        els.actions.removeAttribute("aria-hidden");
+        els.actions.style.setProperty("display", "flex", "important");
+      }
+    } else {
+      els.link.removeAttribute("href");
+      els.link.setAttribute("hidden", "hidden");
+      els.link.setAttribute("aria-hidden", "true");
+      els.link.style.setProperty("display", "none", "important");
+      if (els.actions) {
+        els.actions.setAttribute("hidden", "hidden");
+        els.actions.setAttribute("aria-hidden", "true");
+        els.actions.style.setProperty("display", "none", "important");
+      }
+    }
 
     els.overlay.classList.add("active");
     els.overlay.setAttribute("aria-hidden", "false");
