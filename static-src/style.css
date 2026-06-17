@@ -14115,40 +14115,133 @@ body.sponsor-ad-popup-open{
 
 /* =========================================================
    記事本文内画像（Gutenberg wp-block-image）
-   - 小さい画面でも画像を縮ませすぎない
-   - 投稿設定で有効な場合はタップで拡大表示
+   - 投稿本文内だけ Gutenberg の画像・キャプション・配置を復元
+   - サムネイル/カード/広告画像には影響させない
    ========================================================= */
+.article-content .wp-block-image,
 .article-content figure.wp-block-image,
-.article-content .wp-block-image {
+.article-content .wp-block-image figure {
   width: auto;
   max-width: 100%;
-  height: auto;
+  height: auto !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+  overflow: visible !important;
   border-radius: 0 !important;
+  box-sizing: border-box;
   margin: 24px 0;
 }
 
-.article-content figure.wp-block-image > img,
-.article-content figure.wp-block-image > a,
-.article-content figure.wp-block-image > a > img,
-.article-content .wp-block-image > img,
-.article-content .wp-block-image > a,
-.article-content .wp-block-image > a > img,
+.article-content .wp-block-image img,
+.article-content figure.wp-block-image img,
 .article-content img.article-body-image {
   display: block;
-  max-width: 100%;
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
   min-width: 0;
-  max-height: none;
+  aspect-ratio: auto !important;
+  object-fit: contain !important;
   margin: 0;
 }
 
-.article-content figure.wp-block-image > a,
-.article-content .wp-block-image > a {
+.article-content .wp-block-image a,
+.article-content figure.wp-block-image a {
   display: block;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.article-content .wp-block-image.alignleft,
+.article-content figure.wp-block-image.alignleft,
+.article-content .wp-block-image figure.alignleft {
+  float: left !important;
+  clear: none !important;
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 6px 24px 16px 0 !important;
+}
+
+.article-content .wp-block-image.alignright,
+.article-content figure.wp-block-image.alignright,
+.article-content .wp-block-image figure.alignright {
+  float: right !important;
+  clear: none !important;
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 6px 0 16px 24px !important;
+}
+
+.article-content .wp-block-image.aligncenter,
+.article-content figure.wp-block-image.aligncenter,
+.article-content .wp-block-image figure.aligncenter {
+  float: none !important;
+  clear: both;
+  display: table;
+  width: auto !important;
+  max-width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.article-content .wp-block-image.alignnone,
+.article-content figure.wp-block-image.alignnone,
+.article-content .wp-block-image figure.alignnone {
+  float: none !important;
+  clear: both;
+}
+
+.article-content .wp-block-image figcaption,
+.article-content figure.wp-block-image figcaption,
+.article-content figcaption.wp-element-caption {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  text-align: left;
 }
 
 .article-content figure.wp-block-image.is-tappable,
-.article-content figure.wp-block-image.is-tappable img {
+.article-content figure.wp-block-image.is-tappable img,
+.article-content .wp-block-image figure.is-tappable,
+.article-content .wp-block-image figure.is-tappable img {
   cursor: zoom-in;
+}
+
+.article-content::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+@media (max-width: 768px) {
+  .article-content .wp-block-image,
+  .article-content figure.wp-block-image,
+  .article-content .wp-block-image figure {
+    margin: 20px 0;
+  }
+
+  .article-content .wp-block-image.alignleft,
+  .article-content figure.wp-block-image.alignleft,
+  .article-content .wp-block-image figure.alignleft,
+  .article-content .wp-block-image.alignright,
+  .article-content figure.wp-block-image.alignright,
+  .article-content .wp-block-image figure.alignright {
+    float: none !important;
+    clear: both;
+    margin: 20px 0 !important;
+  }
 }
 
 .article-image-lightbox {
@@ -14205,16 +14298,189 @@ body.article-image-lightbox-open {
 }
 
 @media (max-width: 768px) {
-  .article-content figure.wp-block-image,
-  .article-content .wp-block-image {
-    margin: 20px 0;
-  }
-
   .article-image-lightbox {
     padding: 20px 12px;
   }
 
   .article-image-lightbox__img {
     max-height: calc(100vh - 48px);
+  }
+}
+
+/* Gutenberg text color classes for article body */
+.article-content .has-text-color {
+  color: inherit;
+}
+
+.article-content .has-black-color,
+.article-content .has-black-color * {
+  color: #000000 !important;
+}
+
+.article-content .has-cyan-bluish-gray-color,
+.article-content .has-cyan-bluish-gray-color * {
+  color: #abb8c3 !important;
+}
+
+.article-content .has-white-color,
+.article-content .has-white-color * {
+  color: #ffffff !important;
+}
+
+.article-content .has-pale-pink-color,
+.article-content .has-pale-pink-color * {
+  color: #f78da7 !important;
+}
+
+.article-content .has-vivid-red-color,
+.article-content .has-vivid-red-color * {
+  color: #cf2e2e !important;
+}
+
+.article-content .has-luminous-vivid-orange-color,
+.article-content .has-luminous-vivid-orange-color * {
+  color: #ff6900 !important;
+}
+
+.article-content .has-luminous-vivid-amber-color,
+.article-content .has-luminous-vivid-amber-color * {
+  color: #fcb900 !important;
+}
+
+.article-content .has-light-green-cyan-color,
+.article-content .has-light-green-cyan-color * {
+  color: #7bdcb5 !important;
+}
+
+.article-content .has-vivid-green-cyan-color,
+.article-content .has-vivid-green-cyan-color * {
+  color: #00d084 !important;
+}
+
+.article-content .has-pale-cyan-blue-color,
+.article-content .has-pale-cyan-blue-color * {
+  color: #8ed1fc !important;
+}
+
+.article-content .has-vivid-cyan-blue-color,
+.article-content .has-vivid-cyan-blue-color * {
+  color: #0693e3 !important;
+}
+
+.article-content .has-vivid-purple-color,
+.article-content .has-vivid-purple-color * {
+  color: #9b51e0 !important;
+}
+
+/* Gutenberg highlight/background color classes for article body */
+.article-content mark,
+.article-content .has-inline-color {
+  padding: 0;
+}
+
+.article-content .has-background {
+  background-color: transparent;
+}
+
+.article-content .has-black-background-color,
+.article-content .has-black-background-color * {
+  background-color: #000000 !important;
+}
+
+.article-content .has-cyan-bluish-gray-background-color,
+.article-content .has-cyan-bluish-gray-background-color * {
+  background-color: #abb8c3 !important;
+}
+
+.article-content .has-white-background-color,
+.article-content .has-white-background-color * {
+  background-color: #ffffff !important;
+}
+
+.article-content .has-pale-pink-background-color,
+.article-content .has-pale-pink-background-color * {
+  background-color: #f78da7 !important;
+}
+
+.article-content .has-vivid-red-background-color,
+.article-content .has-vivid-red-background-color * {
+  background-color: #cf2e2e !important;
+}
+
+.article-content .has-luminous-vivid-orange-background-color,
+.article-content .has-luminous-vivid-orange-background-color * {
+  background-color: #ff6900 !important;
+}
+
+.article-content .has-luminous-vivid-amber-background-color,
+.article-content .has-luminous-vivid-amber-background-color * {
+  background-color: #fcb900 !important;
+}
+
+.article-content .has-light-green-cyan-background-color,
+.article-content .has-light-green-cyan-background-color * {
+  background-color: #7bdcb5 !important;
+}
+
+.article-content .has-vivid-green-cyan-background-color,
+.article-content .has-vivid-green-cyan-background-color * {
+  background-color: #00d084 !important;
+}
+
+.article-content .has-pale-cyan-blue-background-color,
+.article-content .has-pale-cyan-blue-background-color * {
+  background-color: #8ed1fc !important;
+}
+
+.article-content .has-vivid-cyan-blue-background-color,
+.article-content .has-vivid-cyan-blue-background-color * {
+  background-color: #0693e3 !important;
+}
+
+.article-content .has-vivid-purple-background-color,
+.article-content .has-vivid-purple-background-color * {
+  background-color: #9b51e0 !important;
+}
+
+/* =========================================================
+   Gutenberg article image size preservation
+   - Keep editor-selected image width in article body
+   - Do not affect card/list/ad thumbnail square rules
+   ========================================================= */
+.article-content figure.wp-block-image.article-body-figure,
+.article-content .wp-block-image figure.article-body-figure {
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.article-content figure.wp-block-image.article-body-figure > img.article-body-image,
+.article-content .wp-block-image figure.article-body-figure > img.article-body-image {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  aspect-ratio: auto !important;
+  object-fit: contain !important;
+  margin: 0 !important;
+}
+
+.article-content figure.wp-block-image.article-body-figure > figcaption,
+.article-content .wp-block-image figure.article-body-figure > figcaption {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 768px) {
+  .article-content figure.wp-block-image.article-body-figure,
+  .article-content .wp-block-image figure.article-body-figure {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
