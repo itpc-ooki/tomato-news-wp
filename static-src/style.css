@@ -4647,6 +4647,29 @@ a{ color:inherit; text-decoration:none}
   padding-bottom: 30px;
 }
 
+.page-register .register-banner {
+  max-width: 100%;
+  margin: 0 auto 30px;
+}
+
+.page-register .register-banner img {
+  display: block;
+  width: 70%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 12px;
+}
+
+@media (max-width: 768px) {
+  .page-register .register-banner {
+    margin-bottom: 24px;
+  }
+
+  .page-register .register-banner img {
+    border-radius: 8px;
+  }
+}
+
 /* =====================================================
    VARIETY PAGE STYLES (from TOMATO_VARIETY_COMPLETE.html)
    ===================================================== */
