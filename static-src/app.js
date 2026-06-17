@@ -4488,6 +4488,35 @@ function renderSidebarAd(post) {
   window.addEventListener("headerLoaded", syncPaywallState);
   window.addEventListener("authChanged", syncPaywallState);
 
+
+function sanitizeArticleBodyImageHtml(html) {
+    // Remove WordPress responsive image hints before inserting article HTML.
+    // If srcset/sizes exist when the browser parses the HTML, Chrome may pick
+    // the 300w file first and the image stays rendered smaller even if the
+    // attributes are removed later.  Scope this only to Gutenberg body images.
+    const raw = String(html || "");
+    if (!raw || raw.indexOf('wp-block-image') === -1) return raw;
+
+    const tmp = document.createElement("div");
+    tmp.innerHTML = raw;
+
+    tmp.querySelectorAll('figure.wp-block-image img, .wp-block-image figure img').forEach(function (img) {
+      img.removeAttribute('srcset');
+      img.removeAttribute('sizes');
+
+      // Also remove only the old square-thumbnail fallback inline styles if
+      // they were accidentally written into the article image markup.
+      if (img.style.width === '100%' && img.style.height === '100%' && img.style.aspectRatio === '1 / 1') {
+        img.style.width = '';
+        img.style.height = '';
+        img.style.objectFit = '';
+        img.style.aspectRatio = '';
+      }
+    });
+
+    return tmp.innerHTML;
+  }
+
 function buildTeaserHtmlFromFullHtml(fullHtml, ratioOrCount) {
     // Requirement:
     // - For member-only posts viewed by non-logged-in users, show only the "top 2 tags" of the post content,
@@ -4499,7 +4528,7 @@ function buildTeaserHtmlFromFullHtml(fullHtml, ratioOrCount) {
     const arg = typeof ratioOrCount === "number" ? ratioOrCount : 0.10;
 
     const tmp = document.createElement("div");
-    tmp.innerHTML = String(fullHtml || "");
+    tmp.innerHTML = sanitizeArticleBodyImageHtml(fullHtml);
 
     const nodes = Array.from(tmp.childNodes).filter((n) => {
       // ignore empty text nodes
@@ -4743,7 +4772,9 @@ function enhanceArticleBodyImages(target, post) {
   const tapAction = getBodyImageTapAction(post);
   target.setAttribute('data-body-image-tap-action', tapAction);
 
-  const figures = target.querySelectorAll('figure.wp-block-image');
+  const figures = Array.from(target.querySelectorAll('figure.wp-block-image, .wp-block-image figure')).filter(function (figure, index, list) {
+    return list.indexOf(figure) === index;
+  });
   figures.forEach(function (figure) {
     figure.classList.add('article-body-figure');
 
@@ -4752,7 +4783,34 @@ function enhanceArticleBodyImages(target, post) {
 
     img.classList.add('article-body-image');
 
-    // Keep Gutenberg/editor-defined inline sizing and aspect-ratio settings intact.
+    // Keep Gutenberg/editor-defined sizing intact.
+    // The square thumbnail fallback below is for card/list thumbnails only; if it
+    // touched a Gutenberg body image before this function ran, remove only those
+    // fallback inline styles so the WordPress image width/height can be used.
+    if (img.style.width === '100%' && img.style.height === '100%' && img.style.aspectRatio === '1 / 1') {
+      img.style.width = '';
+      img.style.height = '';
+      img.style.objectFit = '';
+      img.style.aspectRatio = '';
+    }
+    if (figure.style.aspectRatio === '1 / 1') {
+      figure.style.aspectRatio = '';
+      figure.style.overflow = '';
+    }
+
+    // WordPress outputs responsive image attributes such as:
+    // sizes="auto, (max-width: 600px) 100vw, 600px".
+    // In this static frontend, that can make Chrome choose the 300w srcset item
+    // and the rendered Gutenberg image becomes smaller than the editor size.
+    // For article-body Gutenberg images only, keep the original src/width/height
+    // and remove responsive source hints so the editor-selected size is preserved.
+    if (img.hasAttribute('srcset')) {
+      img.removeAttribute('srcset');
+    }
+    if (img.hasAttribute('sizes')) {
+      img.removeAttribute('sizes');
+    }
+
     // Only add tappable/lightbox behavior here so the admin-selected display size
     // continues to be reflected on the frontend.
 
@@ -4780,12 +4838,18 @@ function enhanceArticleBodyImages(target, post) {
       if (event) {
         if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
+        event.stopPropagation();
       }
       openArticleImageLightbox(popupSrc, popupAlt);
     };
 
     figure.addEventListener('click', open);
     figure.addEventListener('keydown', open);
+
+    const popupLink = img.closest('a[href]');
+    if (popupLink && figure.contains(popupLink)) {
+      popupLink.addEventListener('click', open);
+    }
   });
 }
 
@@ -4900,7 +4964,7 @@ function renderDetail(post) {
       applyFeaturedImageDisplayMode(mainImageWrap, mainImageBox, getEffectiveFeaturedImageDisplayMode(post));
 
       // Article body (member gating if needed)
-      const fullHtml = content;
+      const fullHtml = sanitizeArticleBodyImageHtml(content);
 
       // Store for later re-check (auth.js may load after app.js)
       try {
@@ -4958,7 +5022,7 @@ function renderDetail(post) {
       <h3>${title}</h3>
       <div style="color:#666; margin: 6px 0;">${date}</div>
       ${imgHtml}
-      <div>${content}</div>
+      <div>${sanitizeArticleBodyImageHtml(content)}</div>
     `;
 
     enhanceArticleBodyImages(target, post);
@@ -6930,6 +6994,9 @@ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState=
       if (img.closest('header, nav, footer')) return;
       if (img.closest('.seminar-video-wrapper')) return;
       if (img.closest('.main-image-full, .main-image-container')) return;
+      // Do not treat Gutenberg article body images as thumbnails.
+      // Their size must match the WordPress editor output, including captions and alignment.
+      if (img.closest('.article-content, .article-leader, figure.wp-block-image, .wp-block-image')) return;
       var p = img.parentElement;
       if(!p) return;
       var cs = getComputedStyle(p);
