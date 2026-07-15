@@ -1824,7 +1824,7 @@ function renderGraphItems(items) {
           .filter((p) => p && String(p.article_type || "") === "採録紙面")
           .sort((a, b) => safeDateValue(b) - safeDateValue(a));
 
-        const picks = recordPosts.slice(0, 3);
+        const picks = recordPosts.slice(0, 4);
 
         const seminarItems = Array.from(section.querySelectorAll(".seminar-item"));
         seminarItems.forEach((itemEl, i) => {
