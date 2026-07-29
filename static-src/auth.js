@@ -1214,7 +1214,7 @@
 
     const result = await submitMemberEndpoint('tomato-members/v1/profile', payload, {
       actionLabel: '会員情報更新',
-      timeoutMs: 4500,
+      timeoutMs: pw ? 15000 : 4500,
       noCandidateMessage: '会員情報更新APIの送信先が見つかりません。',
       headers: {
         'Authorization': 'Bearer ' + token
