@@ -1730,14 +1730,23 @@
           alert('保存に失敗しました。');
           return;
         }
+        var successMessage = document.getElementById('successMessage');
+        if (successMessage){
+          successMessage.textContent = '変更を保存しています…';
+          successMessage.classList.add('show');
+          window.scrollTo({top:0,behavior:'smooth'});
+        }
+
         window.TomatoAuth.updateProfileFromMypageForm(form).then(function(){
-          var successMessage = document.getElementById('successMessage');
           if (successMessage){
-            successMessage.classList.add('show');
-            window.scrollTo({top:0,behavior:'smooth'});
+            successMessage.textContent = '変更を保存しました';
             setTimeout(function(){ successMessage.classList.remove('show'); }, 3000);
           }
         }).catch(function(err){
+          if (successMessage){
+            successMessage.classList.remove('show');
+            successMessage.textContent = '変更を保存しました';
+          }
           alert((err && err.message) || '保存に失敗しました。');
         });
       });
