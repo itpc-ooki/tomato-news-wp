@@ -4268,6 +4268,7 @@ a{ color:inherit; text-decoration:none}
 .page-mypage .crop-item span{font-size:0.875rem;font-weight:500;color:var(--text)}
 .page-mypage .crop-item.selected span{color:var(--accent);font-weight:600}
 .page-mypage .form-actions{display:flex;gap:15px;justify-content:center;margin-top:40px;padding-top:30px;border-top:1px solid var(--border)}
+.page-mypage .save-completion-note{margin:12px 0 0;text-align:center;color:var(--muted);font-size:0.875rem;line-height:1.6}
 .page-mypage .btn-large{padding:14px 32px;border:none;border-radius:0;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;font-family:inherit}
 .page-mypage .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:var(--shadow)}
 .page-mypage .btn-primary:hover{opacity:0.9}
