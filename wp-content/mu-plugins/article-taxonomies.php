@@ -5,6 +5,77 @@
  */
 
 // --------------------------------------------------
+// Article type ownership by paper
+// --------------------------------------------------
+if (!function_exists('tomato_get_available_papers')) {
+  function tomato_get_available_papers(): array {
+    $papers = [];
+    $newspapers = get_posts([
+      'post_type' => 'newspaper',
+      'post_status' => ['publish', 'draft', 'private'],
+      'posts_per_page' => -1,
+      'orderby' => 'ID',
+      'order' => 'ASC',
+    ]);
+
+    foreach ($newspapers as $newspaper) {
+      if (!($newspaper instanceof WP_Post)) continue;
+
+      $slug = trim((string) get_post_meta($newspaper->ID, 'newspaper_slug', true));
+      if ($slug === '') {
+        $slug = sanitize_title((string) $newspaper->post_title);
+      }
+      $slug = sanitize_title($slug);
+      if ($slug === '') continue;
+
+      $display_name = trim((string) get_post_meta($newspaper->ID, 'display_name', true));
+      if ($display_name === '') {
+        $display_name = (string) $newspaper->post_title;
+      }
+      if ($display_name === '') {
+        $display_name = $slug;
+      }
+
+      $papers[$slug] = $display_name;
+    }
+
+    // Keep the released Tomato paper available even if the Newspaper Master
+    // record has not been created yet in an older environment.
+    if (!isset($papers['tomato'])) {
+      $papers = ['tomato' => 'トマト新聞'] + $papers;
+    }
+
+    return $papers;
+  }
+}
+
+if (!function_exists('tomato_get_article_type_papers')) {
+  function tomato_get_article_type_papers($term): array {
+    $term_id = $term instanceof WP_Term ? (int) $term->term_id : (int) $term;
+    if ($term_id <= 0) return ['tomato'];
+
+    $stored = get_term_meta($term_id, 'article_type_papers', true);
+    $papers = is_array($stored) ? $stored : ($stored !== '' ? [$stored] : []);
+    $papers = array_values(array_unique(array_filter(array_map(static function($paper) {
+      $paper = sanitize_title((string) $paper);
+      return $paper !== '' ? $paper : null;
+    }, $papers))));
+
+    // Backward compatibility: every term that existed before paper ownership
+    // was introduced belongs to Tomato unless explicitly reassigned.
+    return !empty($papers) ? $papers : ['tomato'];
+  }
+}
+
+if (!function_exists('tomato_article_type_belongs_to_paper')) {
+  function tomato_article_type_belongs_to_paper($term, string $paper): bool {
+    $paper = sanitize_title($paper);
+    if ($paper === '') return false;
+    return in_array($paper, tomato_get_article_type_papers($term), true);
+  }
+}
+
+// --------------------------------------------------
 // Custom taxonomies
 // --------------------------------------------------
 add_action('init', function () {
@@ -27,6 +98,29 @@ add_action('init', function () {
     'hierarchical'      => true,  // チェックボックス（親子あり）
     'show_in_rest'      => true,
     'rewrite'           => ['slug' => 'article-type'],
+  ]);
+
+  register_term_meta('article_type', 'article_type_papers', [
+    'type' => 'array',
+    'single' => true,
+    'default' => ['tomato'],
+    'sanitize_callback' => static function($value) {
+      $values = is_array($value) ? $value : [$value];
+      $values = array_values(array_unique(array_filter(array_map(static function($paper) {
+        $paper = sanitize_title((string) $paper);
+        return $paper !== '' ? $paper : null;
+      }, $values))));
+      return !empty($values) ? $values : ['tomato'];
+    },
+    'show_in_rest' => [
+      'schema' => [
+        'type' => 'array',
+        'items' => ['type' => 'string'],
+      ],
+    ],
+    'auth_callback' => static function() {
+      return current_user_can('manage_categories');
+    },
   ]);
 
   // 記事タグ（通常のタグ型 / 親カテゴリなし）
@@ -692,6 +786,150 @@ add_action('init', function () {
 // 左メニューの「投稿 > タグ」も消す（念のため）
 add_action('admin_menu', function () {
   remove_submenu_page('edit.php', 'edit-tags.php?taxonomy=post_tag');
+});
+
+add_action('article_type_add_form_fields', function () {
+  wp_nonce_field('tomato_save_article_type_papers', 'tomato_article_type_papers_nonce');
+  $papers = tomato_get_available_papers();
+  ?>
+  <div class="form-field term-article-type-papers-wrap">
+    <label><?php echo esc_html__('対象新聞', 'tomato'); ?></label>
+    <?php foreach ($papers as $slug => $label): ?>
+      <label>
+        <input type="checkbox" name="article_type_papers[]" value="<?php echo esc_attr($slug); ?>" <?php checked($slug, 'tomato'); ?>>
+        <?php echo esc_html($label); ?>（<?php echo esc_html($slug); ?>）
+      </label><br>
+    <?php endforeach; ?>
+    <p><?php echo esc_html__('この項目を使用する新聞を選択してください。既存項目は未設定の場合もトマト新聞として扱われます。', 'tomato'); ?></p>
+  </div>
+  <?php
+});
+
+add_action('article_type_edit_form_fields', function ($term) {
+  if (!($term instanceof WP_Term)) return;
+  wp_nonce_field('tomato_save_article_type_papers', 'tomato_article_type_papers_nonce');
+  $selected = tomato_get_article_type_papers($term);
+  $papers = tomato_get_available_papers();
+  ?>
+  <tr class="form-field term-article-type-papers-wrap">
+    <th scope="row"><label><?php echo esc_html__('対象新聞', 'tomato'); ?></label></th>
+    <td>
+      <?php foreach ($papers as $slug => $label): ?>
+        <label>
+          <input type="checkbox" name="article_type_papers[]" value="<?php echo esc_attr($slug); ?>" <?php checked(in_array($slug, $selected, true)); ?>>
+          <?php echo esc_html($label); ?>（<?php echo esc_html($slug); ?>）
+        </label><br>
+      <?php endforeach; ?>
+      <p class="description"><?php echo esc_html__('この項目を使用する新聞を選択してください。', 'tomato'); ?></p>
+    </td>
+  </tr>
+  <?php
+});
+
+$tomato_save_article_type_papers = static function($term_id) {
+  if (!current_user_can('manage_categories')) return;
+
+  $nonce = isset($_POST['tomato_article_type_papers_nonce'])
+    ? sanitize_text_field(wp_unslash($_POST['tomato_article_type_papers_nonce']))
+    : '';
+  if ($nonce === '' || !wp_verify_nonce($nonce, 'tomato_save_article_type_papers')) return;
+
+  $available = array_keys(tomato_get_available_papers());
+  $submitted = isset($_POST['article_type_papers']) && is_array($_POST['article_type_papers'])
+    ? wp_unslash($_POST['article_type_papers'])
+    : [];
+  $selected = array_values(array_intersect(
+    $available,
+    array_values(array_unique(array_filter(array_map('sanitize_title', $submitted))))
+  ));
+
+  // A term must always belong to at least one paper.
+  if (empty($selected)) {
+    $selected = ['tomato'];
+  }
+
+  update_term_meta((int) $term_id, 'article_type_papers', $selected);
+};
+add_action('created_article_type', $tomato_save_article_type_papers);
+add_action('edited_article_type', $tomato_save_article_type_papers);
+
+add_filter('manage_edit-article_type_columns', function ($columns) {
+  $result = [];
+  foreach ($columns as $key => $label) {
+    if ($key === 'posts') {
+      $result['article_type_papers'] = '対象新聞';
+    }
+    $result[$key] = $label;
+  }
+  if (!isset($result['article_type_papers'])) {
+    $result['article_type_papers'] = '対象新聞';
+  }
+  return $result;
+});
+
+add_filter('manage_article_type_custom_column', function ($content, $column_name, $term_id) {
+  if ($column_name !== 'article_type_papers') return $content;
+
+  $available = tomato_get_available_papers();
+  $labels = [];
+  foreach (tomato_get_article_type_papers((int) $term_id) as $paper) {
+    $labels[] = isset($available[$paper]) ? $available[$paper] : $paper;
+  }
+  return esc_html(implode('、', $labels));
+}, 10, 3);
+
+/**
+ * Limit the Gutenberg 記事タイプ panel to terms owned by the selected paper.
+ * The script is editor-only and does not run on the public static pages.
+ */
+add_action('enqueue_block_editor_assets', function () {
+  $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+  if (!$screen || $screen->base !== 'post' || $screen->post_type !== 'post') return;
+
+  $terms = get_terms([
+    'taxonomy' => 'article_type',
+    'hide_empty' => false,
+    'orderby' => 'id',
+    'order' => 'ASC',
+  ]);
+
+  $term_config = [];
+  if (!is_wp_error($terms)) {
+    foreach ($terms as $term) {
+      if (!($term instanceof WP_Term)) continue;
+      $term_config[] = [
+        'id' => (int) $term->term_id,
+        'name' => (string) $term->name,
+        'papers' => tomato_get_article_type_papers($term),
+      ];
+    }
+  }
+
+  $paper_categories = [];
+  foreach (array_keys(tomato_get_available_papers()) as $paper) {
+    $category = get_term_by('slug', $paper, 'category');
+    if ($category instanceof WP_Term) {
+      $paper_categories[(string) $category->term_id] = $paper;
+    }
+  }
+
+  $script_path = __DIR__ . '/article-type-admin.js';
+  $script_version = is_file($script_path) ? (string) filemtime($script_path) : '1.0.0';
+
+  wp_enqueue_script(
+    'tomato-article-type-admin',
+    plugins_url('article-type-admin.js', __FILE__),
+    ['wp-data', 'wp-dom-ready'],
+    $script_version,
+    true
+  );
+
+  wp_localize_script('tomato-article-type-admin', 'tomatoArticleTypeAdmin', [
+    'taxonomyLabel' => '記事タイプ',
+    'taxonomyRestBase' => 'article_type',
+    'paperCategories' => $paper_categories,
+    'terms' => $term_config,
+  ]);
 });
 
 // クラシックエディタ用のタグメタボックスも消す（念のため）

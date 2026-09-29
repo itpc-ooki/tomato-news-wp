@@ -1,31 +1,89 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>品種情報（全品種検索）｜トマト新聞</title>
-
-  <!-- NOTE:
-    - This page is intended to be placed under: static-src/tomato/variety.html
-    - It expects your existing common assets:
-        /static/common/css/styles.css  (or your merged style.css)
-        /static/common/js/app.js       (or your merged app.js)
-    - This page adds one extra script: variety.js
-  -->
-
-  <link rel="stylesheet" href="../common/css/styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>品種情報｜トマト新聞</title>
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="icon" href="/static/strawberry/assets/images/favicon.ico" type="image/x-icon">
+  <link rel="shortcut icon" href="/static/strawberry/assets/images/favicon.ico" type="image/x-icon">
 </head>
+<body class="page-variety">
 
-<body class="paper-tomato">
-  <!-- Common header include (match your existing pattern) -->
-  <div id="siteHeader"></div>
+  <!-- Common header (injected by app.js) -->
+  <div id="header-container"></div>
 
   <main class="article-container">
-    <header class="article-header">
-      <div class="article-category">品種情報</div>
-      <h1 class="article-title">トマト品種検索</h1>
-      <p class="article-subtitle">全品種／カテゴリ別で絞り込み検索できます</p>
-    </header>
+    <div class="article-header">
+      <div class="article-category">品種情報・特集</div>
+      <h1 class="article-title">主な夏秋作型向け<br>トマト品種の特性</h1>
+      <p class="article-subtitle">夏秋取りトマトの品種選びと最新動向</p>
+      <div class="selector-container variety-season-selector">
+        <div class="selector-group">
+          <span class="selector-label">作型</span>
+          <div class="selector-buttons" id="seasonSelector" role="tablist" aria-label="SEASON">
+            <button class="selector-btn" type="button" data-season="winter-spring" aria-pressed="false">冬春</button>
+            <button class="selector-btn active" type="button" data-season="summer-autumn" aria-pressed="true">夏秋</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expert Section -->
+    <section class="expert-section">
+      <div class="expert-content-wrapper">
+        <div class="expert-photo-wrapper">
+          <img src="./assets/images/misc/researcher01.png" alt="松永 啓" class="expert-photo">
+        </div>
+        <div class="expert-info">
+          <div class="expert-name">松永 啓</div>
+          <div class="expert-title">農研機構 野菜花き研究部門<br>野菜花き品種育成研究領域 領域長</div>
+          <div class="expert-intro">
+            <p>近年、夏期の気温が非常に高く推移しており、今年度（2025年）の夏の平均気温は平年と比べて2.36度高く、異常気象と呼ばれる状況が続いている。このような気象状況は、夏期のトマト生産に大きな影響を与えており、着果不良、障害果の発生、果実の肥大不足、青枯病の多発などが懸念される。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Points Section -->
+    <section class="content-section">
+      <h2 class="section-title">品種選びのポイント</h2>
+      <div class="points-grid">
+        <div class="point-card">
+          <h3 class="point-title">着果不良</h3>
+          <div class="point-text">
+            <p>着果不良が生じる主な原因として、高温による花粉稔性（ねんせい）の低下が挙げられる。トマトの花粉は25度を超えると稔性が低くなり、30度以上になると極端に低下し、着果不良が多発する。</p>
+            <p>この着果性を改善するために、細霧冷房、遮光カーテン、遮光塗料などの活用が効果的であるが、高温期の着果性に優れた品種の選択も重要である。近年、高温期の着果性が優れた品種も開発されており、各種苗会社のコメントを参考にして、栽培する品種を選択したい。</p>
+          </div>
+        </div>
+
+        <div class="point-card">
+          <h3 class="point-title">障害果の発生</h3>
+          <div class="point-text">
+            <p>高温時に発生が懸念される障害果として、日焼け果、裂果、尻腐れ果などが挙げられる。</p>
+            <p>日焼け果は果実が葉に隠れるように整理する、裂果は給水量の急激な変化を避ける、尻腐れ果はカルシウムを多施用し十分な水分を供給するなどの対策があるが、裂果と尻腐れ果は相反する対応が求められるため、日々の適切な栽培管理が重要になる。</p>
+            <p>近年は、これら障害に対して強い耐性を持つ品種が開発されており、本紙に掲載されている情報を有効に活用したい。また、以前は問題が大きかったミニトマトの裂果についても、耐裂果性を持つ品種が多く開発されているので、こちらも各社のコメントを参考にしたい。</p>
+          </div>
+        </div>
+
+        <div class="point-card">
+          <h3 class="point-title">果実の肥大不足</h3>
+          <div class="point-text">
+            <p>高温期には葉からの蒸散が活発になるため、茎葉に流れる水分は多くなるが、果実に供給される水分が少なくなり、小果が増加する。</p>
+            <p>そのため、果実肥大性の優れた品種を選択したいが、その場合、既述のように裂果の発生が懸念される。最近ではこの両形質とも優れた品種も開発されつつあるので注目したい。</p>
+          </div>
+        </div>
+
+        <div class="point-card">
+          <h3 class="point-title">青枯病対策</h3>
+          <div class="point-text">
+            <p>青枯病は、高温時に発生しやすい土壌病害で、夏秋期のトマト栽培では被害が最も大きな病害の一つである。</p>
+            <p>青枯病対策として、還元消毒や太陽熱消毒などの土壌消毒は一定の効果が認められるが、抵抗性台木用品種への接ぎ木が有効な手段とされている。近年開発されたトマト台木用品種の中には、青枯病抵抗性がかなり強い品種もあるため、青枯病の被害に悩んでいる栽培地では、適切な土壌消毒を施した上、強い青枯病抵抗性を示す台木用品種を選びたい。</p>
+            <p>なお、種苗メーカー各社は、台木用品種の青枯病抵抗性強度をランク付けしていることが多いので、その情報も参考にしたい。</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- Tabs -->
     <section class="content-section">
@@ -40,49 +98,80 @@
       </div>
     </section>
 
-    <!-- Search & Filter (shared across tabs) -->
+    <!-- Search & Filter -->
     <section class="search-section" aria-label="検索フィルター">
       <div class="search-controls">
         <div class="search-bar">
           <span class="search-icon" aria-hidden="true">🔍</span>
-          <input id="varietySearchInput" class="search-input" type="search" placeholder="品種名・特徴・会社名で検索" autocomplete="off" />
+          <input
+            type="text"
+            class="search-input"
+            id="searchInput"
+            placeholder="品種名、特徴、病害名などで検索..."
+            autocomplete="off"
+          />
         </div>
 
-        <!-- Keep it simple first: add more select filters later if needed -->
-        <div class="filter-row" id="varietyFilterRow">
+        <button class="filter-toggle" type="button" id="filterToggle" aria-expanded="false">
+          <span>フィルター</span>
+          <span class="filter-toggle-icon" aria-hidden="true">▼</span>
+        </button>
+
+        <div class="filter-row" id="filterRow">
           <div class="filter-group">
-            <label class="filter-label" for="companySelect">会社</label>
-            <select id="companySelect" class="filter-select">
-              <option value="">すべて</option>
+            <label class="filter-label" for="categoryFilter">カテゴリ</label>
+            <select class="filter-select" id="categoryFilter">
+              <!-- populated by variety.js -->
             </select>
           </div>
 
           <div class="filter-group">
-            <label class="filter-label" for="resistanceSelect">主な耐病性</label>
-            <select id="resistanceSelect" class="filter-select">
-              <option value="">すべて</option>
-              <option value="tomv">ToMV</option>
-              <option value="tylcv">TYLCV</option>
-              <option value="other">その他</option>
+            <label class="filter-label" for="companyFilter">メーカー</label>
+            <select class="filter-select" id="companyFilter">
+              <!-- populated by variety.js -->
             </select>
           </div>
 
           <div class="filter-group">
-            <label class="filter-label" for="clearBtn">　</label>
-            <button id="clearBtn" class="clear-filters" type="button">条件をクリア</button>
+            <label class="filter-label" for="diseaseFilter">病害抵抗性</label>
+            <select class="filter-select" id="diseaseFilter">
+              <!-- populated by variety.js -->
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="clearFilters">　</label>
+            <button class="clear-filters" id="clearFilters" type="button">フィルターをクリア</button>
           </div>
         </div>
+
+        <div class="filter-pills" id="activePills" aria-live="polite"></div>
       </div>
     </section>
 
     <!-- Results -->
     <section class="content-section">
       <div class="results-header">
-        <div class="results-count">該当 <strong id="resultsCount">0</strong> 件</div>
+        <div class="results-count">
+          <span id="resultsCount">検索結果: <strong>0</strong> 品種</span>
+        </div>
+        <div class="view-toggle" aria-label="表示切替">
+          <button class="view-btn" id="gridViewBtn" type="button">カード表示</button>
+          <button class="view-btn active" id="listViewBtn" type="button">リスト表示</button>
+        </div>
       </div>
 
-      <div id="varietyResults" class="variety-grid" aria-live="polite"></div>
+      <div id="varietyGrid" class="variety-grid list-view" aria-live="polite">
+        <div class="table-legend" id="tableLegend">
+          <span class="legend-title">凡例：</span>
+          <span class="legend-item"><span class="legend-symbol high">○</span> 抵抗性あり</span>
+          <span class="legend-item"><span class="legend-symbol high">◎</span> 極めて強い</span>
+          <span class="legend-item"><span class="legend-symbol filled">●</span> 複合抵抗性</span>
+          <span class="legend-item"><span class="legend-symbol medium">△</span> 中程度</span>
+        </div>
 
+        <div id="varietyGridInner"></div>
+      </div>
       <div id="emptyState" class="empty-state" style="display:none;">
         <div class="empty-icon" aria-hidden="true">🍅</div>
         <div class="empty-title">該当する品種がありません</div>
@@ -91,13 +180,14 @@
     </section>
   </main>
 
-  <!-- Common footer include (match your existing pattern) -->
-  <div id="siteFooter"></div>
+  <!-- Common footer (injected by app.js) -->
+  <div id="footer-container"></div>
 
-  <!-- Your existing common JS (adjust to your real file path) -->
-  <script src="../common/js/app.js"></script>
+  <!-- Common scripts (same order as index.html) -->
+  <script src="../auth.js"></script>
+  <script src="../app.js"></script>
 
   <!-- Variety page logic -->
-  <script src="../common/js/variety.js"></script>
+  <script src="../variety.js"></script>
 </body>
 </html>
