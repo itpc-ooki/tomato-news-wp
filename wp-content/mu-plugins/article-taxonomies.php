@@ -848,7 +848,25 @@ $tomato_save_article_type_papers = static function($term_id) {
     $selected = ['tomato'];
   }
 
+  $had_paper_assignment = metadata_exists('term', (int) $term_id, 'article_type_papers');
+  $previous = $had_paper_assignment
+    ? tomato_get_article_type_papers((int) $term_id)
+    : [];
+
   update_term_meta((int) $term_id, 'article_type_papers', $selected);
+
+  /**
+   * Fires only after the article type's paper assignment is stored.
+   *
+   * The automatic static-build queue listens to this action so it cannot
+   * rebuild menu.json with the previous assignment during term creation.
+   */
+  do_action(
+    'tomato_article_type_papers_saved',
+    (int) $term_id,
+    $selected,
+    $previous
+  );
 };
 add_action('created_article_type', $tomato_save_article_type_papers);
 add_action('edited_article_type', $tomato_save_article_type_papers);

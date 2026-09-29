@@ -122,12 +122,38 @@ class Tomato_Auto_Static_Build_Queue
 
   public static function on_terms_edited($term_id, $tt_id = null, $taxonomy = null): void
   {
+    // article_type has additional per-paper metadata. Queueing from the generic
+    // term hook can race with that metadata save and build a stale menu.json.
+    // It is queued by on_article_type_papers_saved() after the assignment is
+    // stored instead.
+    if ((string) $taxonomy === 'article_type') {
+      return;
+    }
+
     // Any taxonomy change may affect list/detail filtering; rebuild all papers.
     $papers = self::get_papers_from_newspaper_master();
     if (empty($papers)) {
       $papers = self::get_default_papers();
     }
     self::request_build($papers, 'term_edited:' . (string)$taxonomy);
+  }
+
+  public static function on_article_type_papers_saved($term_id, $papers, $previous_papers = []): void
+  {
+    $papers = is_array($papers) ? $papers : [];
+    $previous_papers = is_array($previous_papers) ? $previous_papers : [];
+
+    // Rebuild the new papers so the item is added, and the previous papers so
+    // the item is removed when its assignment changes.
+    $affected_papers = self::normalize_paper_list(array_merge($papers, $previous_papers));
+    if (empty($affected_papers)) {
+      return;
+    }
+
+    self::request_build(
+      $affected_papers,
+      'article_type_papers_saved:' . (int) $term_id
+    );
   }
 
   public static function on_save_post($post_id, $post, $update): void
@@ -466,7 +492,7 @@ class Tomato_Auto_Static_Build_Queue
   }
 
 
-  
+
   private static function normalize_paper_key(string $raw): ?string
   {
     $raw = trim($raw);
@@ -794,5 +820,6 @@ add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on
 
 add_action('edited_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
 add_action('created_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
+add_action('tomato_article_type_papers_saved', [Tomato_Auto_Static_Build_Queue::class, 'on_article_type_papers_saved'], 10, 3);
 
 // Queue is consumed by the static_builder container (polls the option).
