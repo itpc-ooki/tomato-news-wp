@@ -22,12 +22,25 @@ class Tomato_Market_Data {
     const CPT = 'market_data';
     const TAX_PAPER = 'paper';
 
-    // 品目（必要に応じて増やせます）
-    const VARIETIES = [
-        'big'   => '大玉トマト',
-        'mid'   => '中玉トマト',
-        'mini'  => 'ミニトマト',
-        'first' => 'ファーストトマト',
+    // 紙面ごとの品目。既存のトマト品目キーは変更しない。
+    const VARIETIES_BY_PAPER = [
+        'tomato' => [
+            'big'   => '大玉トマト',
+            'mid'   => '中玉トマト',
+            'mini'  => 'ミニトマト',
+            'first' => 'ファーストトマト',
+        ],
+        'strawberry' => [
+            'ichigo'      => 'イチゴ',
+            'benihoppe'   => '紅ほっぺ',
+            'amaou'       => 'あまおう',
+            'tochiotome'  => 'とちおとめ',
+        ],
+    ];
+
+    const PAPER_LABELS = [
+        'tomato'     => 'トマト新聞',
+        'strawberry' => 'イチゴ新聞',
     ];
 
     public static function init(): void {
@@ -35,6 +48,7 @@ class Tomato_Market_Data {
         add_action('init', [__CLASS__, 'maybe_register_paper_taxonomy'], 20);
 
         add_action('add_meta_boxes', [__CLASS__, 'add_metabox']);
+        add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_admin_assets']);
         add_action('save_post_' . self::CPT, [__CLASS__, 'save_meta'], 10, 2);
         add_action('trashed_post', [__CLASS__, 'handle_status_change'], 10, 1);
         add_action('untrashed_post', [__CLASS__, 'handle_status_change'], 10, 1);
@@ -76,7 +90,10 @@ class Tomato_Market_Data {
      * 無い場合だけ最低限のtaxonomyを作る（安全策）
      */
     public static function maybe_register_paper_taxonomy(): void {
-        if (taxonomy_exists(self::TAX_PAPER)) return;
+        if (taxonomy_exists(self::TAX_PAPER)) {
+            register_taxonomy_for_object_type(self::TAX_PAPER, self::CPT);
+            return;
+        }
 
         register_taxonomy(self::TAX_PAPER, [self::CPT], [
             'labels' => ['name' => '紙（paper）'],
@@ -84,6 +101,25 @@ class Tomato_Market_Data {
             'show_ui' => true,
             'hierarchical' => false,
             'show_admin_column' => true,
+        ]);
+    }
+
+    public static function enqueue_admin_assets(string $hook): void {
+        if (!in_array($hook, ['post.php', 'post-new.php'], true)) return;
+
+        $screen = get_current_screen();
+        if (!$screen || $screen->post_type !== self::CPT) return;
+
+        $asset_path = __DIR__ . '/market-data-admin.js';
+        wp_enqueue_script(
+            'tomato-market-data-admin',
+            plugins_url('market-data-admin.js', __FILE__),
+            [],
+            file_exists($asset_path) ? (string)filemtime($asset_path) : null,
+            true
+        );
+        wp_localize_script('tomato-market-data-admin', 'TomatoMarketDataConfig', [
+            'varietiesByPaper' => self::VARIETIES_BY_PAPER,
         ]);
     }
 
@@ -105,6 +141,9 @@ class Tomato_Market_Data {
         $variety      = get_post_meta($post->ID, 'market_variety', true);
         $price        = get_post_meta($post->ID, 'market_price', true);
         $volume       = get_post_meta($post->ID, 'market_volume', true);
+        $paper        = self::get_paper_slug($post->ID);
+        if (!array_key_exists($paper, self::VARIETIES_BY_PAPER)) $paper = 'tomato';
+        $varieties    = self::get_varieties_for_paper($paper);
 
         if (!$market_date) $market_date = current_time('Y-m-d');
 
@@ -119,6 +158,17 @@ class Tomato_Market_Data {
 
         <div class="tm-row">
           <div class="tm-field">
+            <label>新聞</label>
+            <select id="market_paper" name="market_paper">
+              <?php foreach (self::PAPER_LABELS as $paper_slug => $paper_label): ?>
+                <option value="<?php echo esc_attr($paper_slug); ?>" <?php selected($paper, $paper_slug); ?>>
+                  <?php echo esc_html($paper_label); ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <div class="tm-field">
             <label>日付</label>
             <input type="date" name="market_date" value="<?php echo esc_attr($market_date); ?>">
             <div class="tm-help">例：2026-02-03（この日付で「前回データ」と比較します）</div>
@@ -126,8 +176,8 @@ class Tomato_Market_Data {
 
           <div class="tm-field">
             <label>品目</label>
-            <select name="market_variety">
-              <?php foreach (self::VARIETIES as $k => $label): ?>
+            <select id="market_variety" name="market_variety">
+              <?php foreach ($varieties as $k => $label): ?>
                 <option value="<?php echo esc_attr($k); ?>" <?php selected($variety, $k); ?>>
                   <?php echo esc_html($label); ?>
                 </option>
@@ -160,24 +210,34 @@ class Tomato_Market_Data {
         if (!current_user_can('edit_post', $post_id)) return;
 
         $market_date = isset($_POST['market_date']) ? sanitize_text_field($_POST['market_date']) : '';
+        $paper       = isset($_POST['market_paper']) ? sanitize_key($_POST['market_paper']) : 'tomato';
         $variety     = isset($_POST['market_variety']) ? sanitize_text_field($_POST['market_variety']) : '';
         $price       = isset($_POST['market_price']) ? intval($_POST['market_price']) : 0;
         $volume      = isset($_POST['market_volume']) ? intval($_POST['market_volume']) : 0;
 
         if (!$market_date) $market_date = current_time('Y-m-d');
-        if (!array_key_exists($variety, self::VARIETIES)) $variety = array_key_first(self::VARIETIES);
+        if (!array_key_exists($paper, self::VARIETIES_BY_PAPER)) $paper = 'tomato';
+        $varieties = self::get_varieties_for_paper($paper);
+        if (!array_key_exists($variety, $varieties)) $variety = array_key_first($varieties);
+
+        $previous_paper = self::get_paper_slug($post_id);
 
         update_post_meta($post_id, 'market_date', $market_date);
         update_post_meta($post_id, 'market_variety', $variety);
         update_post_meta($post_id, 'market_price', $price);
         update_post_meta($post_id, 'market_volume', $volume);
 
-        // paper taxonomy 取得（未設定なら tomato）
-        $paper = self::get_paper_slug($post_id);
+        if (taxonomy_exists(self::TAX_PAPER)) {
+            wp_set_object_terms($post_id, $paper, self::TAX_PAPER, false);
+        }
 
         // 連続保存でも1回にまとめる
         wp_clear_scheduled_hook('tomato_market_export_event', [$paper]);
         wp_schedule_single_event(time() + 5, 'tomato_market_export_event', [$paper]);
+        if ($previous_paper !== $paper) {
+            wp_clear_scheduled_hook('tomato_market_export_event', [$previous_paper]);
+            wp_schedule_single_event(time() + 5, 'tomato_market_export_event', [$previous_paper]);
+        }
     }
 
 
@@ -212,8 +272,11 @@ class Tomato_Market_Data {
         return $paper;
     }
 
+    private static function get_varieties_for_paper(string $paper): array {
+        return self::VARIETIES_BY_PAPER[$paper] ?? self::VARIETIES_BY_PAPER['tomato'];
+    }
+
     public static function columns(array $cols): array {
-        $cols['paper'] = '紙';
         $cols['market_date'] = '日付';
         $cols['market_variety'] = '品目';
         $cols['market_price'] = '価格（円/kg）';
@@ -222,22 +285,14 @@ class Tomato_Market_Data {
     }
 
     public static function column_content(string $col, int $post_id): void {
-        if ($col === 'paper') {
-            $terms = wp_get_post_terms($post_id, self::TAX_PAPER);
-            if (!is_wp_error($terms) && !empty($terms)) {
-                echo esc_html($terms[0]->slug);
-            } else {
-                echo 'tomato';
-            }
-            return;
-        }
         if ($col === 'market_date') {
             echo esc_html(get_post_meta($post_id, 'market_date', true));
             return;
         }
         if ($col === 'market_variety') {
             $v = get_post_meta($post_id, 'market_variety', true);
-            echo esc_html(self::VARIETIES[$v] ?? $v);
+            $varieties = self::get_varieties_for_paper(self::get_paper_slug($post_id));
+            echo esc_html($varieties[$v] ?? $v);
             return;
         }
         if ($col === 'market_price') {
@@ -260,7 +315,7 @@ class Tomato_Market_Data {
         $items = [];
         $as_of_date = null;
 
-        foreach (self::VARIETIES as $slug => $label) {
+        foreach (self::get_varieties_for_paper($paper) as $slug => $label) {
             $latest = self::get_latest_entry($paper, $slug);
             if (!$latest) {
                 // データが無い品目は空で出す（フロントで “—” 表示しやすい）

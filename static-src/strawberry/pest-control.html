@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>病害虫対策｜トマト新聞</title>
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="icon" href="/static/strawberry/assets/images/favicon.ico" type="image/x-icon">
+  <link rel="shortcut icon" href="/static/strawberry/assets/images/favicon.ico" type="image/x-icon">
+</head>
+<body class="page-pest-control">
+
+<div id="header-container"></div>
+
+  <!-- Keyword slider injected (always visible under header) -->
+  <!-- <div id="kwbar-container"></div> -->
+
+<main class="main-wrapper">
+<div class="article-container">
+    <div class="article-header">
+      <span class="article-category">病害虫対策</span>
+      <h1 class="article-title">病虫害対策ガイド</h1>
+      <p class="article-subtitle">トマト栽培で発生する主要な病害虫の診断から防除方法まで、実践的な情報を網羅。防除に関するポータルサイト「みんなの防除」と連携し、最新の防除技術をお届けします。</p>
+    </div>
+  </div>
+
+  <div class="search-section">
+    <h2 class="search-title">症状から探す</h2>
+    <p class="search-subtitle">気になる症状や病害虫名から、適切な対策を検索できます</p>
+    
+    <div class="search-tabs">
+      <button class="search-tab active" onclick="switchTab('pest')">害虫から探す</button>
+      <button class="search-tab" onclick="switchTab('disease')">病気から探す</button>
+      <button class="search-tab" onclick="switchTab('symptom')">症状から探す</button>
+    </div>
+
+    <div class="tab-content active" id="pest-tab">
+      <div class="search-input-group">
+        <input type="text" class="search-input" placeholder="例: コナジラミ、アブラムシ、ハダニ" id="pestSearch">
+        <button class="search-btn" onclick="searchPest()">検索する</button>
+      </div>
+      <div class="quick-access">
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E3%82%B3%E3%83%8A%E3%82%B8%E3%83%A9%E3%83%9F&article_cate=', '_blank')">コナジラミ</button>
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E3%82%A2%E3%83%96%E3%83%A9%E3%83%A0%E3%82%B7&article_cate=', '_blank')">アブラムシ</button>
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E3%83%8F%E3%83%80%E3%83%8B&article_cate=', '_blank')">ハダニ</button>
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E3%82%AA%E3%82%AA%E3%82%BF%E3%83%90%E3%82%B3%E3%82%AC&article_cate=', '_blank')">オオタバコガ</button>
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E3%83%8F%E3%82%B9%E3%83%A2%E3%83%B3%E3%83%A8%E3%83%88%E3%82%A6&article_cate=', '_blank')">ハスモンヨトウ</button>
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E3%82%A2%E3%82%B6%E3%83%9F%E3%82%A6%E3%83%9E&article_cate=', '_blank')">アザミウマ</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="disease-tab">
+      <div class="search-input-group">
+        <input type="text" class="search-input" placeholder="例: 青枯病、灰色かび病、疫病" id="diseaseSearch">
+        <button class="search-btn" onclick="searchDisease()">検索する</button>
+      </div>
+      <div class="quick-access">
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E9%9D%92%E6%9E%AF%E7%97%85&article_cate=', '_blank')">青枯病</button>
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E7%81%B0%E8%89%B2%E3%81%8B%E3%81%B3%E7%97%85&article_cate=', '_blank')">灰色かび病</button>
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E7%96%AB%E7%97%85&article_cate=', '_blank')">疫病</button>
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E3%81%86%E3%81%A9%E3%82%93%E3%81%93%E7%97%85&article_cate=', '_blank')">うどんこ病</button>
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E8%91%89%E3%81%8B%E3%81%B3%E7%97%85&article_cate=', '_blank')">葉かび病</button>
+        <button class="quick-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E8%90%8E%E5%87%8B%E7%97%85&article_cate=', '_blank')">萎凋病</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="symptom-tab">
+      <div class="search-input-group">
+        <input type="text" class="search-input" placeholder="例: 葉が黄色くなる、実が腐る" id="symptomSearch">
+        <button class="search-btn" onclick="searchSymptom()">検索する</button>
+      </div>
+      <div class="quick-access">
+        <button class="quick-btn" onclick="filterSymptom('葉の変色')">葉の変色</button>
+        <button class="quick-btn" onclick="filterSymptom('果実の腐敗')">果実の腐敗</button>
+        <button class="quick-btn" onclick="filterSymptom('萎れ')">萎れ</button>
+        <button class="quick-btn" onclick="filterSymptom('斑点')">斑点</button>
+        <button class="quick-btn" onclick="filterSymptom('カビ')">カビ</button>
+        <button class="quick-btn" onclick="filterSymptom('裂果')">裂果</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="results-section">
+    <h2 class="section-title">
+      <svg class="icon-inline" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2a3 3 0 0 0-3 3v1.5a3 3 0 0 0-3 3v1a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-1a3 3 0 0 0-3-3V5a3 3 0 0 0-3-3z"/>
+        <circle cx="9" cy="7" r="1"/>
+        <circle cx="15" cy="7" r="1"/>
+        <path d="M6 13v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-4"/>
+        <path d="M6 17l-2 2M18 17l2 2M6 13l-3-1M18 13l3-1"/>
+      </svg>
+      主要害虫一覧
+    </h2>
+    <div class="pest-grid">
+      <div class="pest-card">
+        <div class="pest-card-header">
+          <div class="pest-icon">🦟</div>
+          <div class="pest-info">
+            <div class="pest-name">コナジラミ類</div>
+            <span class="pest-category">吸汁性害虫</span>
+          </div>
+        </div>
+        <div class="pest-card-body">
+          <div class="pest-severity">
+            <span class="severity-label">🔴 発生度: 高</span>
+          </div>
+          <p class="pest-description">
+            タバココナジラミ、オンシツコナジラミなど。黄化葉巻病ウイルスを媒介する重要害虫。成虫・幼虫ともに葉裏から吸汁し、すす病を誘発します。
+          </p>
+          <div class="pest-symptoms">
+            <div class="symptoms-title">主な症状</div>
+            <ul class="symptoms-list">
+              <li>葉裏に白い小虫が多数付着</li>
+              <li>葉が黄化・巻縮する</li>
+              <li>すす病の発生</li>
+            </ul>
+          </div>
+          <div class="pest-controls">
+            <span class="control-tag">防虫ネット</span>
+            <span class="control-tag">黄色粘着板</span>
+            <span class="control-tag">天敵利用</span>
+            <span class="control-tag">薬剤防除</span>
+          </div>
+          <button class="detail-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E3%82%B3%E3%83%8A%E3%82%B8%E3%83%A9%E3%83%9F&article_cate=', '_blank')">詳細を見る</button>
+        </div>
+      </div>
+
+      <div class="pest-card">
+        <div class="pest-card-header">
+          <div class="pest-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2a3 3 0 0 0-3 3v1.5a3 3 0 0 0-3 3v1a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-1a3 3 0 0 0-3-3V5a3 3 0 0 0-3-3z"/>
+              <circle cx="9" cy="7" r="1"/>
+              <circle cx="15" cy="7" r="1"/>
+              <path d="M6 13v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-4"/>
+            </svg>
+          </div>
+          <div class="pest-info">
+            <div class="pest-name">オオタバコガ</div>
+            <span class="pest-category">食害性害虫</span>
+          </div>
+        </div>
+        <div class="pest-card-body">
+          <div class="pest-severity">
+            <span class="severity-label">🔴 発生度: 高</span>
+          </div>
+          <p class="pest-description">
+            果実や芯部に食入する重要害虫。幼虫が果実内部を食害するため、商品価値が著しく低下します。夜行性で昼間は見つけにくい特徴があります。
+          </p>
+          <div class="pest-symptoms">
+            <div class="symptoms-title">主な症状</div>
+            <ul class="symptoms-list">
+              <li>果実に穴が開き内部を食害</li>
+              <li>茎や芯部への食入</li>
+              <li>糞の排出による汚染</li>
+            </ul>
+          </div>
+          <div class="pest-controls">
+            <span class="control-tag">フェロモントラップ</span>
+            <span class="control-tag">BT剤</span>
+            <span class="control-tag">選択性農薬</span>
+          </div>
+          <button class="detail-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E3%82%AA%E3%82%AA%E3%82%BF%E3%83%90%E3%82%B3%E3%82%AC&article_cate=', '_blank')">詳細を見る</button>
+        </div>
+      </div>
+
+      <div class="pest-card">
+        <div class="pest-card-header">
+          <div class="pest-icon">🕷️</div>
+          <div class="pest-info">
+            <div class="pest-name">ハダニ類</div>
+            <span class="pest-category">吸汁性害虫</span>
+          </div>
+        </div>
+        <div class="pest-card-body">
+          <div class="pest-severity">
+            <span class="severity-label">🟡 発生度: 中</span>
+          </div>
+          <p class="pest-description">
+            ナミハダニ、カンザワハダニなど。葉裏から吸汁し、葉を白化・落葉させます。高温乾燥条件で爆発的に増殖するため、予防的管理が重要です。
+          </p>
+          <div class="pest-symptoms">
+            <div class="symptoms-title">主な症状</div>
+            <ul class="symptoms-list">
+              <li>葉の白化・褐変</li>
+              <li>葉裏にクモの巣状の網</li>
+              <li>生育不良・落葉</li>
+            </ul>
+          </div>
+          <div class="pest-controls">
+            <span class="control-tag">天敵利用</span>
+            <span class="control-tag">微粒剤</span>
+            <span class="control-tag">気門封鎖剤</span>
+          </div>
+          <button class="detail-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E3%83%8F%E3%83%80%E3%83%8B&article_cate=', '_blank')">詳細を見る</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="results-section">
+    <h2 class="section-title">
+      <svg class="icon-inline" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        <circle cx="12" cy="12" r="7" stroke-dasharray="2 2"/>
+      </svg>
+      主要病害一覧
+    </h2>
+    <div class="pest-grid">
+      <div class="pest-card">
+        <div class="pest-card-header">
+          <div class="pest-icon">🌡️</div>
+          <div class="pest-info">
+            <div class="pest-name">青枯病</div>
+            <span class="pest-category">細菌病</span>
+          </div>
+        </div>
+        <div class="pest-card-body">
+          <div class="pest-severity">
+            <span class="severity-label">🔴 発生度: 高</span>
+          </div>
+          <p class="pest-description">
+            土壌伝染性の細菌病。根から侵入し、維管束を侵して急速に萎凋します。高温期に多発し、一度発生すると防除が困難です。
+          </p>
+          <div class="pest-symptoms">
+            <div class="symptoms-title">主な症状</div>
+            <ul class="symptoms-list">
+              <li>日中に萎凋、夜間に回復</li>
+              <li>やがて枯死する</li>
+              <li>茎の維管束が褐変</li>
+            </ul>
+          </div>
+          <div class="pest-controls">
+            <span class="control-tag">抵抗性品種</span>
+            <span class="control-tag">接ぎ木</span>
+            <span class="control-tag">土壌消毒</span>
+            <span class="control-tag">排水対策</span>
+          </div>
+          <button class="detail-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E9%9D%92%E6%9E%AF%E7%97%85&article_cate=', '_blank')">詳細を見る</button>
+        </div>
+      </div>
+
+      <div class="pest-card">
+        <div class="pest-card-header">
+          <div class="pest-icon">☁️</div>
+          <div class="pest-info">
+            <div class="pest-name">灰色かび病</div>
+            <span class="pest-category">糸状菌病</span>
+          </div>
+        </div>
+        <div class="pest-card-body">
+          <div class="pest-severity">
+            <span class="severity-label">🔴 発生度: 高</span>
+          </div>
+          <p class="pest-description">
+            低温多湿条件で多発するカビ病。花や果実、葉柄部から侵入し、灰色のカビを生じます。施設栽培で特に問題となる重要病害です。
+          </p>
+          <div class="pest-symptoms">
+            <div class="symptoms-title">主な症状</div>
+            <ul class="symptoms-list">
+              <li>花弁や果実に灰色のカビ</li>
+              <li>茎や葉柄の褐変・腐敗</li>
+              <li>果実の軟化・腐敗</li>
+            </ul>
+          </div>
+          <div class="pest-controls">
+            <span class="control-tag">換気</span>
+            <span class="control-tag">摘葉・摘花</span>
+            <span class="control-tag">予防散布</span>
+          </div>
+          <button class="detail-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E7%81%B0%E8%89%B2%E3%81%8B%E3%81%B3%E7%97%85&article_cate=', '_blank')">詳細を見る</button>
+        </div>
+      </div>
+
+      <div class="pest-card">
+        <div class="pest-card-header">
+          <div class="pest-icon">🍄</div>
+          <div class="pest-info">
+            <div class="pest-name">疫病</div>
+            <span class="pest-category">卵菌病</span>
+          </div>
+        </div>
+        <div class="pest-card-body">
+          <div class="pest-severity">
+            <span class="severity-label">🟡 発生度: 中</span>
+          </div>
+          <p class="pest-description">
+            低温多湿条件で発生する重要病害。葉・茎・果実に暗褐色の病斑を形成し、急速に拡大します。露地栽培で特に注意が必要です。
+          </p>
+          <div class="pest-symptoms">
+            <div class="symptoms-title">主な症状</div>
+            <ul class="symptoms-list">
+              <li>葉に暗褐色の病斑</li>
+              <li>茎の黒変・腐敗</li>
+              <li>果実の暗褐色腐敗</li>
+            </ul>
+          </div>
+          <div class="pest-controls">
+            <span class="control-tag">排水対策</span>
+            <span class="control-tag">予防散布</span>
+            <span class="control-tag">罹病部除去</span>
+          </div>
+          <button class="detail-btn" onclick="window.open('https://boujo.agrinews.co.jp/article?searchword=%E7%96%AB%E7%97%85&article_cate=', '_blank')">詳細を見る</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="reference-table-section">
+    <h2 class="section-title">
+      <svg class="icon-inline" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+        <path d="M9 12h6M9 16h6"/>
+      </svg>
+      病害虫 簡易診断表
+    </h2>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>分類</th>
+            <th>病害虫名</th>
+            <th>主な症状</th>
+            <th>発生時期</th>
+            <th>重要度</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>害虫</td>
+            <td>コナジラミ類</td>
+            <td>葉裏に白い小虫、黄化、すす病</td>
+            <td>周年</td>
+            <td class="severity-high">高</td>
+          </tr>
+          <tr>
+            <td>害虫</td>
+            <td>オオタバコガ</td>
+            <td>果実への食入、芯部の食害</td>
+            <td>5〜10月</td>
+            <td class="severity-high">高</td>
+          </tr>
+          <tr>
+            <td>害虫</td>
+            <td>ハスモンヨトウ</td>
+            <td>葉の食害、生育点の食害</td>
+            <td>6〜10月</td>
+            <td class="severity-medium">中</td>
+          </tr>
+          <tr>
+            <td>害虫</td>
+            <td>ハダニ類</td>
+            <td>葉の白化、クモの巣状の網</td>
+            <td>5〜10月</td>
+            <td class="severity-medium">中</td>
+          </tr>
+          <tr>
+            <td>害虫</td>
+            <td>アブラムシ類</td>
+            <td>新芽への寄生、すす病</td>
+            <td>4〜6月</td>
+            <td class="severity-medium">中</td>
+          </tr>
+          <tr>
+            <td>病気</td>
+            <td>青枯病</td>
+            <td>急速な萎凋、維管束の褐変</td>
+            <td>6〜9月</td>
+            <td class="severity-high">高</td>
+          </tr>
+          <tr>
+            <td>病気</td>
+            <td>灰色かび病</td>
+            <td>灰色のカビ、果実・茎の腐敗</td>
+            <td>11〜5月</td>
+            <td class="severity-high">高</td>
+          </tr>
+          <tr>
+            <td>病気</td>
+            <td>疫病</td>
+            <td>暗褐色の病斑、急速な拡大</td>
+            <td>6〜7月</td>
+            <td class="severity-medium">中</td>
+          </tr>
+          <tr>
+            <td>病気</td>
+            <td>うどんこ病</td>
+            <td>葉に白色の粉状カビ</td>
+            <td>4〜6月</td>
+            <td class="severity-medium">中</td>
+          </tr>
+          <tr>
+            <td>病気</td>
+            <td>葉かび病</td>
+            <td>葉裏にビロード状のカビ</td>
+            <td>周年</td>
+            <td class="severity-medium">中</td>
+          </tr>
+          <tr>
+            <td>病気</td>
+            <td>萎凋病</td>
+            <td>下葉から黄化・萎凋</td>
+            <td>周年</td>
+            <td class="severity-high">高</td>
+          </tr>
+          <tr>
+            <td>病気</td>
+            <td>黄化葉巻病</td>
+            <td>葉の黄化・巻縮、生育不良</td>
+            <td>周年</td>
+            <td class="severity-high">高</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 詳細察知表セクション -->
+  <div class="detailed-detection-section">
+    <h2 class="section-title">
+      <svg class="icon-inline" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 18h8"/>
+        <path d="M3 22h18"/>
+        <path d="M14 22a7 7 0 1 0 0-14h-1"/>
+        <path d="M9 14h.01"/>
+        <path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2"/>
+        <path d="M12 6V4a2 2 0 0 0-2-2h-1a2 2 0 0 0-2 2v2"/>
+      </svg>
+      冬春トマトの病害&害虫
+    </h2>
+    <p class="section-description">
+      高品質なトマトを安定的に生産するには、病害虫の予防と早期の対応が重要だ。とりわけ冬春<br>
+      トマトは施設で加温栽培することから、病害虫の活動が活発になりやすい。この記事では、冬春<br>
+      トマトで発生しやすい病害虫の主な確認点と主な有効薬剤をまとめた察知表を紹介する。
+    </p>
+    
+    <!-- タブ切り替え -->
+    <div class="detection-tabs">
+      <button class="detection-tab active" onclick="switchDetectionTab('pest')">
+        <span class="tab-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a3 3 0 0 0-3 3v1.5a3 3 0 0 0-3 3v1a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-1a3 3 0 0 0-3-3V5a3 3 0 0 0-3-3z"/>
+            <circle cx="9" cy="7" r="1"/>
+            <circle cx="15" cy="7" r="1"/>
+            <path d="M6 13v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-4"/>
+            <path d="M6 17l-2 2M18 17l2 2M6 13l-3-1M18 13l3-1"/>
+          </svg>
+        </span>
+        <span class="tab-label">害虫</span>
+      </button>
+      <button class="detection-tab" onclick="switchDetectionTab('disease')">
+        <span class="tab-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            <circle cx="12" cy="12" r="7" stroke-dasharray="2 2"/>
+          </svg>
+        </span>
+        <span class="tab-label">病害</span>
+      </button>
+    </div>
+
+    <!-- 害虫察知表 -->
+    <div class="detection-content active" id="pest-detection">
+      <div class="detection-note">
+        <p>※（　）内の英数字はIRACコード（同じコードの連用は避ける）</p>
+        <p>※1 トマトのみ登録、※2 施設栽培のみ、※3 ミカンキイロアザミウマのみ、※4 タバココナジラミのみ</p>
+      </div>
+      
+      <div class="table-container detailed-table">
+        <table class="detection-table pest-table">
+          <thead>
+            <tr>
+              <th class="col-pest-name">害虫</th>
+              <th class="col-characteristics">特徴<br>葉(花)・茎・果実を見る</th>
+              <th class="col-trap">害虫・トラップを見る</th>
+              <th class="col-chemicals">主な有効薬剤</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- オオタバコガ -->
+            <tr>
+              <td class="pest-name">オオタバコガ</td>
+              <td class="characteristics">
+                ・若齢幼虫が新芽の先端や花蕾（からい）<br>
+                ・葉を食害し、葉には丸い小さな穴が開く<br>
+                ・中老齢幼虫が茎や果実の内部に食入し、<br>
+                穴からふんを出す<br>
+                ・食入部分から上の生育が抑制され、<br>
+                折れ曲がることもある
+              </td>
+              <td class="trap-info">
+                ・食入した穴のある果実や茎の内部<br>
+                に中老齢幼虫がいる<br>
+                ・若齢幼虫は見つけにくく、<br>
+                ハスモンヨトウ幼虫と間違えやすい<br>
+                ・主に秋に発生する
+              </td>
+              <td class="chemicals">
+                スピノエース顆粒水和剤（5）、アファーム乳剤（6）<br>
+                、コテツフロアブル（13）、カスケード乳剤（15）、<br>
+                マトリックフロアブル（18）、トルネードエースDF（22A）<br>
+                ※1、プレバソンフロアブル5（28）、グレーシア乳剤（30）<br>
+                ＜天敵・生物農薬＞<br>
+                BT剤（エスマルクDFほか）
+              </td>
+            </tr>
+            <!-- ハスモンヨトウ -->
+            <tr>
+              <td class="pest-name">ハスモンヨトウ</td>
+              <td class="characteristics">
+                ・卵は葉裏などに集団（卵塊）で産み付けられ、<br>
+                雌成虫が付けたクリーム色の鱗毛（りんもう）<br>
+                で覆われる
+                ・ふ化幼虫は葉の表皮を残して集団で食害し、<br>
+                葉は白変する
+                ・果実の表面を食害して丸い穴（くぼみ）を作る<br>
+                ・オオタバコガのように果実の内部まで<br>
+                潜り込まない
+              </td>
+              <td class="trap-info">
+                ・若齢幼虫は集団で食害し、3齢幼虫<br>
+                以降に分散する<br>
+                ・老齢幼虫は昼間に土中に潜り、<br>
+                夜間に地上部に上がってくるので<br>
+                見つけにくい<br>
+                ・主に秋に発生する
+              </td>
+              <td class="chemicals">
+                ディアナSC（5）、アニキ乳剤（6）、ノーモルト乳剤（15）、<br>
+                ファルコンフロアブル（18）※1、アクセルフロアブル（22B）、<br>
+                フェニックス顆粒水和剤（28）、グレーシア乳剤（30）<br>
+                ＜天敵・生物農薬＞<br>
+                BT剤（バシレックス水和剤ほか）
+              </td>
+            </tr>
+            <!-- タバココナジラミ、オンシツコナジラミ -->
+            <tr>
+              <td class="pest-name">タバココナジラミ、オンシツコナジラミ</td>
+              <td class="characteristics">
+                ・幼虫は甘露を排せつし、<br>
+                葉の表面をべたべたにする<br>
+                ・甘露が多いとすす病が発生する<br>
+                ・タバココナジラミが多発すると<br>
+                果実に着色不良が生じる
+              </td>
+              <td class="trap-info">
+                ・寄生している葉に触れると<br>
+                成虫が飛び立つ<br>
+                ・タバココナジラミの成虫は薄い黄白色、<br>
+                オンシツコナジラミは純白色でやや大きい<br>
+                ・タバココナジラミは重要病害の黄化葉巻病<br>
+                （TYLCV）や黄化病（ToCV）を媒介する<br>
+                ・黄色粘着トラップで成虫を誘殺し、<br>
+                施設内への侵入や施設内での増殖の<br>
+                目安にする
+              </td>
+              <td class="chemicals">
+                トランスフォームフロアブル（4C）、ディアナSC（5）、<br>
+                コロマイト乳剤（6）、チェス顆粒水和剤（9B）、<br>
+                コルト顆粒水和剤（9B）、マッチ乳剤（15）、<br>
+                アプロードエースフロアブル（16、21A）※1、<br>
+                クリアザールフロアブル（23）、ファインセーブ<br>
+                フロアブル（34）※4、ベネビアOD（28）、ベミデタッチ、<br>
+                フーモン、ムシラップ、サンクリスタル乳剤、<br>
+                サフオイル乳剤、粘着くん液剤<br>
+                ＜天敵・生物農薬＞<br>
+                バコトップ※2、エンストリップ※2、エルカード※2、<br>
+                マイコタール※2、ボタニガードES
+              </td>
+            </tr>
+            <!-- チューリップヒゲナガアブラムシ、モモアカアブラムシ、ワタアブラムシ -->
+            <tr>
+              <td class="pest-name">チューリップヒゲナガアブラムシ、モモアカアブラムシ、ワタアブラムシ</td>
+              <td class="characteristics">
+                ・チューリップヒゲナガアブラムシや<br>
+                モモアカアブラムシは新芽や茎に集団で<br>
+                寄生し、ワタアブラムシは葉裏に寄生する<br>
+                ・吸汁された葉は緑色が薄くなったり萎縮する<br>
+                ・排せつした甘露によってすす病が発生し、<br>
+                すすに覆われた部分は着色不良になる
+              </td>
+              <td class="trap-info">
+                ・モモアカアブラムシの体色は緑黄色<br>
+                もしくは赤褐色、ワタアブラムシは黒褐色<br>
+                が多い<br>
+                ・チューリップヒゲナガアブラムシは緑黄色<br>
+                でモモアカアブラムシよりも体型が細長で
+                触角や脚が長い<br>
+                ・黄色粘着トラップで有翅（ゆうし）成虫を<br>
+                誘殺し、侵入や増殖の目安にする
+              </td>
+              <td class="chemicals">
+                トランスフォームフロアブル（4C）、<br>
+                チェス顆粒水和剤（9B）、コルト顆粒水和剤（9B）、<br>
+                モベントフロアブル（23）、ウララDF（29）、<br>
+                フーモン、ムシラップ、アーリーセーフ、粘着くん液剤、<br>
+                エコピタ液剤<br>
+                ＜天敵・生物農薬＞<br>
+                アフィパール※2、チャバラ※2、テントップ※2、<br>
+                カメノコS※2、ボタニガードES
+              </td>
+            </tr>
+            <!-- トマトハモグリバエ、マメハモグリバエ、ナスハモグリバエ -->
+            <tr>
+              <td class="pest-name">トマトハモグリバエ、マメハモグリバエ、ナスハモグリバエ</td>
+              <td class="characteristics">
+                ・成虫が産卵管を挿して産卵や葉液の<br>
+                摂取を行うため葉に多数の白い斑点が残る<br>
+                ・ふ化幼虫は葉肉を食べながら葉の中を<br>
+                潜孔し不規則な線状痕を作る<br>
+                ・幼虫の食害が進むと表皮だけが残り、<br>
+                葉全体が白変する
+              </td>
+              <td class="trap-info">
+                ・幼虫は体色が黄色で潜孔の先端<br>
+                で見つかる
+                ・トマトハモグリバエとマメハモグリバエは、<br>
+                葉から落下して土壌表層やマルチ上で<br>
+                蛹（さなぎ）になる<br>
+                ・ナスハモグリバエは、葉裏に付着したまま<br>
+                蛹になる<br>
+                ・大きさが2mm程度、体の大部分が黄色で、<br>
+                頭、胸、脚の一部が黒色である<br>
+                ・成虫の肉眼での識別は困難である<br>
+                ・黄色粘着トラップで成虫を誘殺し、<br>
+                侵入や増殖の目安にする
+              </td>
+              <td class="chemicals">
+                スピノエース顆粒水和剤（5）、アファーム乳剤（6）、<br>
+                カウンター乳剤（15）、トリガード液剤（17）、<br>
+                プレバソンフロアブル5（28）、プレオフロアブル（UN）<br>
+                ＜天敵・生物農薬＞<br>
+                ミドリヒメ※2
+              </td>
+            </tr>
+            <!-- ミカンキイロアザミウマ、ヒラズハナアザミウマ -->
+            <tr>
+              <td class="pest-name">ミカンキイロアザミウマ、ヒラズハナアザミウマ</td>
+              <td class="characteristics">
+                ・花の中に好んで生息する<br>
+                ・成虫が花の子房に産卵すると、果実肥大後に<br>
+                産卵痕が白ぶくれとなる
+              </td>
+              <td class="trap-info">
+                ・白いバットの上で花や葉をたたき、<br>
+                落下する成幼虫を観察する<br>
+                ・ミカンキイロアザミウマとヒラズハナ<br>
+                アザミウマは識別が難しい<br>
+                ・両種とも黄化えそ病（TSWV）を<br>
+                媒介する<br>
+                ・黄色粘着トラップや青色粘着トラップで<br>
+                成虫を誘殺し、侵入や増殖の目安にする
+              </td>
+              <td class="chemicals">
+                ディアナSC（5）、アニキ乳剤（6）※3、コテツフ<br>
+                ロアブル（13）※3、カウンター乳剤（15）、<br>
+                モベントフロアブル（23）、ウララDF（29）※3、<br>
+                グレーシア乳剤（30）、ファインセーブフロアブル（34）、<br>
+                ジャスモメート液剤（忌避剤）<br>
+                ＜天敵・生物農薬＞<br>
+                ボタニガードES
+              </td>
+            </tr>
+            <!-- トマトサビダニ -->
+            <tr>
+              <td class="pest-name">トマトサビダニ</td>
+              <td class="characteristics">
+                ・新芽付近や葉柄の褐変から症状が<br>
+                現れる<br>
+                ・葉裏の加害部は光沢を帯びた褐色に、<br>
+                葉全体も黄褐色になり裏側に向かって<br>
+                反り返る<br>
+                ・加害された茎は褐変する<br>
+                ・果実表面が褐変硬化して肥大が<br>
+                停止する
+              </td>
+              <td class="trap-info">
+                ・黄褐色でくさび型の体型、体長0.2mm<br>
+                程度と極めて小さい<br>
+                ・夏から秋の乾燥した時期に<br>
+                被害が出やすい
+              </td>
+              <td class="chemicals">
+                コロマイト乳剤（6）、コテツフロアブル（13）、<br>
+                カスケード乳剤（15）、マイトコーネフロアブル（20D）、<br>
+                ダニトロンフロアブル（21A）、クリアザールフロアブル（23）、<br>
+                グレーシア乳剤（30）、ファインセーブフロアブル（34）、<br>
+                サンクリスタル乳剤、サフオイル乳剤
+              </td>
+            </tr>
+            <!-- トマトキバガ -->
+            <tr>
+              <td class="pest-name">トマトキバガ</td>
+              <td class="characteristics">
+                ・幼虫が葉や茎を食害し、葉に潜って<br>
+                食害痕（マイン）をつくる。<br>
+                ・マメハモグリバエ類のマインとは<br>
+                形が異なり、平面状に広がる。<br>
+                ・ふんはマインの1カ所に集まっている<br>
+                ことが多い（ふんがマインに沿って線状に<br>
+                見られるハモグリバエ類と異なる）。<br>
+                ・果実に穴を開けて食入する。へたから<br>
+                食入することもある。<br>
+                ・食害によって収量の低下や果実の<br>
+                品質低下を引き起こす。被害が激しい<br>
+                場合には、株全体が枯死する。
+              </td>
+              <td class="trap-info">
+                ・成虫は1cm程度、老齢幼虫<br>
+                は8mm程度と小さく、特に1齢幼虫<br>
+                は1mm以下で肉眼で見つけるのは<br>
+                困難である。<br>
+                ・土中や茎葉で蛹になる。マルチの<br>
+                裏で多数の蛹が見つかることがある。<br>
+                ・フェロモントラップで雄成虫を<br>
+                誘殺し、発生や増殖の目安にする。
+              </td>
+              <td class="chemicals">
+                プリロッソ粒剤オメガ（28）、ベリマークSC（28）、<br>
+                ベネビアOD（28）、フェニックス顆粒水和剤（28）、<br>
+                アクセルフロアブル（22B）、コテツフロアブル（13）、<br>
+                アファーム乳剤（6）、グレーシア乳剤（30）、<br>
+                ダブルシューターSE（-,5）、トルネードエースDF<br>
+                （22A）※1、ヨーバルフロアブル（28）、<br>
+                アグリメック（6）※1、プレオフロアブル（UN）、<br>
+                ラディアントSC（5）、ディアナSC（5）、アニキ乳剤（6）、<br>
+                ファイントリムDF（22A）※1、プレバソンフロアブル5（28）、<br>
+                ＜天敵・生物農薬＞エスマルクDF（11A）、<br>
+                チェーンアップ顆粒水和剤（11A）、ゼンターリ<br>
+                顆粒水和剤（11A）、サブリナフロアブル（11A）、<br>
+                デルフィン顆粒水和剤（11A）
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 病害察知表 -->
+    <div class="detection-content" id="disease-detection">
+      <div class="table-container detailed-table">
+        <table class="detection-table disease-table">
+          <thead>
+            <tr>
+              <th class="col-disease-name">病害</th>
+              <th class="col-leaf">葉・茎を見る</th>
+              <th class="col-fruit">果実・根を見る</th>
+              <th class="col-other">その他</th>
+              <th class="col-chemicals">主な有効薬剤</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="disease-name">葉かび病<br>すすかび病</td>
+              <td class="leaf-symptom">
+               ・葉の表に黄色の斑紋（後に褐変）<br>
+                ［葉かび病］比較的明るい黄色斑紋<br>
+                ［すすかび病］くすんだ淡黄色斑紋<br>
+               ・葉裏に褐色のかび<br>
+                ［葉かび病］灰褐色～褐色のかび<br>
+                ［すすかび病］褐色～黒褐色のかび<br>
+                ※なお病斑での識別は熟練を要する
+              </td>
+              <td class="fruit-symptom">—</td>
+              <td class="other-info">
+                葉かび病は20<br>
+                ～25度でまん延<br>
+                しやすく、すすか<br>
+                び病は25～30<br>
+                度でまん延しや<br>
+                すい
+              </td>
+              <td class="chemicals">
+                イデクリーン水和剤、クリーンカップ、ダコニール1000、<br>
+                ベルクートフロアブル、ペンコゼブフロアブル、<br>
+                トリフミン乳剤、ベジセイバー、アミスターオプティフロアブル、<br>
+                ネクスターフロアブル、ラリー乳剤、ジーファイン水和剤、<br>
+                パレード20フロアブル、シグナムWDG、ニマイバー水和剤、<br>
+                ファンタジスタ顆粒水和剤、クプロシールド、<br>
+                インプレッションクリア、アフェットフロアブル
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">斑点病</td>
+              <td class="leaf-symptom">
+               ・葉に2〜3mmの褐色斑点<br>
+                （周囲が黄色）<br>
+               ・病斑中心部が破れやすい
+              </td>
+              <td class="fruit-symptom">
+               ・まれに果実に病斑
+              </td>
+              <td class="other-info">—</td>
+              <td class="chemicals">
+                【トマト･ミニトマトで登録されている農薬】<br>
+                アミスターオプティフロアブル、ロブラール水和剤、<br>
+                ファンタジスタ顆粒水和剤、ドイツボルドーA、<br>
+                ダコニール1000、スクレアフロアブル、パレ―ド20<br>
+                フロアブル、セイビアーフロアブル20<br>
+                <br>
+                【ミニトマトでのみ登録されている農薬】<br>
+                アグロケア水和剤、アフェットフロアブル、<br>
+                ベルクートフロアブル、ベジセイバー、カーニバル水和剤
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">輪紋病</td>
+              <td class="leaf-symptom">
+               ・数mm～10mmの褐色同心輪紋<br>
+               ・葉は多湿条件で病斑中心部にかび<br>
+                が発生
+              </td>
+              <td class="fruit-symptom">
+               ・果実に少しくぼん<br>
+                だ同心輪紋
+              </td>
+              <td class="other-info">
+                病勢が進むと株<br>
+                が枯れ上がる
+              </td>
+              <td class="chemicals">
+                ダコニール1000、ロブラール水和剤、<br>
+                ネクスターフロアブル、ペンコゼブフロアブル、<br>
+                Zボルドー、カスミンボルドー、カッパーシン水和剤、<br>
+                シグナムWDG
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">灰色<br>かび病</td>
+              <td class="leaf-symptom">
+                ・葉にしばしば灰色のかびを伴う<br>
+                大型病斑<br>
+                ・茎に長楕円形の大型病斑
+              </td>
+              <td class="fruit-symptom">
+                ・果実が軟化腐敗し、<br>
+                灰色のかびを生じる<br>
+                ・腐敗せず、2〜3mmの<br>
+                黄白色の円形斑紋を<br>
+                生じる場合もある
+              </td>
+              <td class="other-info">
+                主茎の下部が<br>
+                侵されると青枯病に<br>
+                似た全身萎凋<br>
+                （いちょう）症状<br>
+                となる
+              </td>
+              <td class="chemicals">
+                インプレッションクリア、カリグリーン、<br>
+                クリーンカップ、サンヨール、セイビアーフロアブル20、<br>
+                ダコニール1000、タフパール、ベルクートフロアブル、<br>
+                ピカットフロアブル、ベジセイバー、ネクスターフロアブル、<br>
+                アミスターオプティフロアブル、ブロードワン顆粒水和剤、<br>
+                ショウチノスケフロアブル、カーニバル水和剤、<br>
+                ニマイバー水和剤、シグナムWDG、ピクシオDF、<br>
+                ファンタジスタ顆粒水和剤、プロブラッド液剤、<br>
+                ミギワ10フロアブル
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">疫病</td>
+              <td class="leaf-symptom">
+                ・葉に緑灰色の不規則な病斑を生じ<br>
+                大型の褐色病斑に拡大（最初は熱湯<br>
+                をかけたような症状）<br>
+                ・茎にも褐色病斑
+              </td>
+              <td class="fruit-symptom">
+                ・果実が褐色となり<br>
+                腐敗し、かびを生じる
+              </td>
+              <td class="other-info">—</td>
+              <td class="chemicals">
+                イデクリーン水和剤、クリーンカップ、ダコニール1000、<br>
+                プロポーズ顆粒水和剤、ライメイフロアブル、<br>
+                ベジセイバー、ザンプロDMフロアブル、ピシロックフロアブル、<br>
+                アミスターオプティフロアブル、ペンコゼブフロアブル、<br>
+                ジーファイン水和剤、フェスティバル水和剤、<br>
+                ホライズンドライフロアブル、レーバスフロアブル、<br>
+                カーニバル水和剤、フォリオゴールド、Zボルドー、<br>
+                ゾーベックエンテクタSE、オロンディスウルトラSC
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">かいよう病</td>
+              <td class="leaf-symptom">
+                【病斑型症状】<br>
+                ・中下位葉の葉縁に黒褐色病斑、<br>
+                葉縁の巻き上がり、茎に褐色の<br>
+                かさぶた状の斑点<br>
+                【萎凋型症状】<br>
+                ・中下位葉にしおれと脱水斑<br>
+                ・中下位葉の脈間が黄化･褐変<br>
+                ・茎に褐色のかさぶた状の斑点を<br>
+                生じることがある<br>
+                ・髄部が淡褐色に変色、粉状化、<br>
+                空洞化
+              </td>
+              <td class="fruit-symptom">
+                ・果実に褐色のかさぶた<br>
+                状の斑点（症状のない場合<br>
+                も多い）
+              </td>
+              <td class="other-info">
+                病勢が進むと株が<br>
+                枯れ上がる
+              </td>
+              <td class="chemicals">
+                【トマト・ミニトマトで登録されている農薬】<br>
+                野菜類種子消毒用ドイツボルドーＡ、カスミンボルドー、<br>
+                カッパーシン水和剤、クプロシールド、マスタピース水和剤<br>
+                【トマトのみで登録されている農薬】<br>
+                マイコシールド
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">うどんこ病</td>
+              <td class="leaf-symptom">
+                ・葉に白い粉を振ったようなかびが<br>
+                生える
+              </td>
+              <td class="fruit-symptom">—</td>
+              <td class="other-info">—</td>
+              <td class="chemicals">
+                イデクリーン水和剤、インプレッションクリア、<br>
+                カリグリーン、クリーンカップ、サンヨール、<br>
+                ダコニール1000、フーモン、ベルクートフロアブル、<br>
+                ピカットフロアブル、ベジセイバー、トリフミン乳剤、<br>
+                ネクスターフロアブル、ショウチノスケフロアブル、<br>
+                カーニバル水和剤、ボタニガードES、シグナムWDG、<br>
+                タフパール、粘着くん液剤、イオウフロアブル、<br>
+                ボトキラー水和剤、プロブラッド液剤
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">半身<br>萎凋病</td>
+              <td class="leaf-symptom">
+                ・小葉の部分的な萎凋<br>
+                ・葉縁からくさび形状に黄化・枯死<br>
+                ・維管束部の褐変
+              </td>
+              <td class="fruit-symptom">—</td>
+              <td class="other-info">—</td>
+              <td class="chemicals">
+                土壌消毒剤のみ登録がある<br>
+                クロルピクリン、ディ・トラペックス、バスアミド、<br>
+                ガスタード、キルパー
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">青枯病</td>
+              <td class="leaf-symptom">
+                ・葉の萎凋<br>
+                ・茎先端部より萎凋<br>
+                ・維管束部の褐変
+              </td>
+              <td class="fruit-symptom">
+                ・細根が褐変･腐敗
+              </td>
+              <td class="other-info">
+                茎切断面から白色<br>
+                の菌泥が出る
+              </td>
+              <td class="chemicals">
+                土壌消毒剤のみ登録がある<br>
+                クロルピクリン、バスアミド、ガスタード、<br>
+                ソイリーン
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">萎凋病</td>
+              <td class="leaf-symptom">
+                ・下位葉から黄化・萎凋<br>
+                ・維管束部の褐変
+              </td>
+              <td class="fruit-symptom">
+                ・感染した根が褐変
+              </td>
+              <td class="other-info">
+                病勢が進むと株<br>
+                が枯れ上がる
+              </td>
+              <td class="chemicals">
+                ベンレート水和剤<br>
+                【土壌消毒剤】クロルピクリン、ディ・トラぺックス、<br>
+                ソイリーン、バスアミド、ガスタード、キルパー、<br>
+                ダブルストッパー
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">軟腐病</td>
+              <td class="leaf-symptom">
+                ・葉縁から萎凋・黄化<br>
+                ・茎に条状、不定形の黒ずみ<br>
+                ・髄部が軟化腐敗、悪臭を伴う
+              </td>
+              <td class="fruit-symptom">—</td>
+              <td class="other-info">—</td>
+              <td class="chemicals">
+                クプロシールド、Zボルドー、マスタピース水和剤、<br>
+                カスミンボルドー、カッパーシン水和剤、<br>
+                コサイド3000
+              </td>
+            </tr>
+            <tr>
+              <td class="disease-name">ウイルス病</td>
+              <td class="leaf-symptom">
+                ・葉にモザイク、黄化、えそ斑、萎縮、<br>
+                葉巻、糸葉
+                ・茎にえそ（葉にえそ斑があるとき）、<br>
+                内部奇形など
+              </td>
+              <td class="fruit-symptom">—</td>
+              <td class="other-info">—</td>
+              <td class="chemicals">
+                登録農薬はない
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Footer will be loaded here by JavaScript -->
+<div id="footer-container"></div>
+
+  <!-- 全paper共通 -->
+  <script src="../auth.js"></script>
+  <script src="../app.js"></script>
+</body>
+</html>

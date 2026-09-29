@@ -1546,6 +1546,10 @@ $list[] = [
     if ($newspaper_post_id <= 0) return [];
 
     $menu_settings_map = [];
+    $newspaper_paper = sanitize_title((string) self::get_acf_field_value('newspaper_slug', $newspaper_post_id));
+    if ($newspaper_paper === '') {
+      $newspaper_paper = 'tomato';
+    }
     $article_type_terms = get_terms([
       'taxonomy' => 'article_type',
       'hide_empty' => false,
@@ -1560,6 +1564,7 @@ $list[] = [
     if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
       foreach ($article_type_terms as $term) {
         if (!($term instanceof WP_Term) || !isset($term->name)) continue;
+        if (function_exists('tomato_article_type_belongs_to_paper') && !tomato_article_type_belongs_to_paper($term, $newspaper_paper)) continue;
 
         $name = trim((string) $term->name);
         $slug = isset($term->slug) ? trim((string) $term->slug) : '';
@@ -1746,6 +1751,7 @@ $list[] = [
     if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
       foreach ($article_type_terms as $term) {
         if (!($term instanceof WP_Term) || !isset($term->name)) continue;
+        if (function_exists('tomato_article_type_belongs_to_paper') && !tomato_article_type_belongs_to_paper($term, $paper)) continue;
 
         $name = trim((string) $term->name);
         $slug = isset($term->slug) ? trim((string) $term->slug) : '';
@@ -1931,7 +1937,10 @@ $list[] = [
     ]);
     if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
       foreach ($article_type_terms as $term) {
-        if ($term instanceof WP_Term && isset($term->name) && $term->name !== '') {
+        if ($term instanceof WP_Term
+          && isset($term->name)
+          && $term->name !== ''
+          && (!function_exists('tomato_article_type_belongs_to_paper') || tomato_article_type_belongs_to_paper($term, $paper))) {
           $article_types[] = (string) $term->name;
           $article_type_details[] = [
             'name' => (string) $term->name,

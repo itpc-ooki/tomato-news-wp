@@ -542,7 +542,8 @@ if (!function_exists('tomato_normalize_global_menu_item_from_term')) {
 }
 
 if (!function_exists('tomato_get_global_menu_default_items')) {
-  function tomato_get_global_menu_default_items(): array {
+  function tomato_get_global_menu_default_items(string $paper = ''): array {
+    $paper = sanitize_title($paper);
     $items = [
       'featured' => [
         'key' => 'featured',
@@ -559,6 +560,7 @@ if (!function_exists('tomato_get_global_menu_default_items')) {
     ]);
     if (!is_wp_error($terms) && !empty($terms)) {
       foreach ($terms as $term) {
+        if ($paper !== '' && function_exists('tomato_article_type_belongs_to_paper') && !tomato_article_type_belongs_to_paper($term, $paper)) continue;
         $item = tomato_normalize_global_menu_item_from_term($term);
         if (!is_array($item)) continue;
 
@@ -640,15 +642,27 @@ if (!function_exists('tomato_get_global_menu_default_items')) {
 }
 
 if (!function_exists('tomato_get_global_menu_choices')) {
-  function tomato_get_global_menu_choices(): array {
+  function tomato_get_global_menu_choices(string $paper = ''): array {
     $choices = [];
-    foreach (tomato_get_global_menu_default_items() as $item) {
+    foreach (tomato_get_global_menu_default_items($paper) as $item) {
       $key = isset($item['key']) ? (string) $item['key'] : '';
       $label = isset($item['label']) ? (string) $item['label'] : '';
       if ($key === '' || $label === '') continue;
       $choices[$key] = $label;
     }
     return $choices;
+  }
+}
+
+if (!function_exists('tomato_get_newspaper_paper_slug')) {
+  function tomato_get_newspaper_paper_slug(int $post_id): string {
+    if ($post_id <= 0) return '';
+
+    $paper = function_exists('get_field') ? get_field('newspaper_slug', $post_id) : '';
+    if (!is_string($paper) || trim($paper) === '') {
+      $paper = get_post_meta($post_id, 'newspaper_slug', true);
+    }
+    return sanitize_title((string) $paper);
   }
 }
 
@@ -1177,7 +1191,14 @@ add_action('acf/init', function () {
   // from WordPress admin without code changes.
   add_filter('acf/load_field/name=hidden_menu_items', function ($field) {
     if (!is_array($field)) $field = [];
-    $field['choices'] = tomato_get_global_menu_choices();
+    $post_id = 0;
+    if (isset($_GET['post'])) {
+      $post_id = absint($_GET['post']);
+    } elseif (isset($_POST['post_id'])) {
+      $post_id = absint($_POST['post_id']);
+    }
+    $paper = tomato_get_newspaper_paper_slug($post_id);
+    $field['choices'] = tomato_get_global_menu_choices($paper);
     return $field;
   });
 
@@ -1209,10 +1230,12 @@ add_action('add_meta_boxes', function () {
 
       wp_nonce_field('tomato_save_newspaper_menu_settings', 'tomato_newspaper_menu_settings_nonce');
 
+      $paper = tomato_get_newspaper_paper_slug((int) $post->ID);
+
       echo '<p>各メニューの順番とURLをここで直接編集できます。順番の小さいものほど先に表示されます。URL未入力時は既定URLを使用します。</p>';
       echo '<table class="form-table" role="presentation"><tbody>';
 
-      foreach (tomato_get_global_menu_default_items() as $item) {
+      foreach (tomato_get_global_menu_default_items($paper) as $item) {
         $menu_key = isset($item['key']) ? sanitize_title((string) $item['key']) : '';
         $menu_label = isset($item['label']) ? (string) $item['label'] : $menu_key;
         if ($menu_key === '') continue;
@@ -1260,7 +1283,8 @@ add_action('save_post_newspaper', function ($post_id, $post, $update) {
   $nonce = isset($_POST['tomato_newspaper_menu_settings_nonce']) ? wp_unslash($_POST['tomato_newspaper_menu_settings_nonce']) : '';
   if (!$nonce || !wp_verify_nonce($nonce, 'tomato_save_newspaper_menu_settings')) return;
 
-  foreach (tomato_get_global_menu_default_items() as $item) {
+  $paper = tomato_get_newspaper_paper_slug((int) $post_id);
+  foreach (tomato_get_global_menu_default_items($paper) as $item) {
     $menu_key = isset($item['key']) ? sanitize_title((string) $item['key']) : '';
     if ($menu_key === '') continue;
 
@@ -2627,4 +2651,3 @@ function tomato_render_variety_points_settings_page(): void {
   echo '</form>';
   echo '</div>';
 }
-
