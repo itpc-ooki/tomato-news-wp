@@ -227,7 +227,10 @@
     try {
       var host = String(window.location.hostname || '').toLowerCase().replace(/:\d+$/, '');
       var m = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
-      if (m && m[1] && m[1] !== 'www') return String(m[1]).toLowerCase();
+      if (m && m[1] && m[1] !== 'www') {
+        var hostnamePaper = String(m[1]).toLowerCase();
+        return hostnamePaper === 'ichigo' ? 'strawberry' : hostnamePaper;
+      }
     } catch (_e) {}
 
     try {
@@ -1860,6 +1863,22 @@ function renderGraphItems(items) {
    * (merged from /static/common/js/components.js)
    * ===================================================================== */
 
+  function applyPaperHeaderBranding(headerContainer) {
+    if (getCurrentPaper() !== 'strawberry') return;
+
+    const brandLink = headerContainer.querySelector('.brand a');
+    const brandImage = headerContainer.querySelector('.brand img');
+
+    if (brandLink) {
+      brandLink.setAttribute('href', '/static/strawberry/index.html');
+    }
+
+    if (brandImage) {
+      brandImage.setAttribute('src', '/static/common/img/ichigopaper_logo.png');
+      brandImage.setAttribute('alt', 'イチゴ新聞 ロゴ');
+    }
+  }
+
   // Load header component
   (async function() {
     try {
@@ -1868,6 +1887,7 @@ function renderGraphItems(items) {
       const headerContainer = document.getElementById('header-container');
       if (headerContainer) {
         headerContainer.innerHTML = html;
+        applyPaperHeaderBranding(headerContainer);
         window.dispatchEvent(new CustomEvent('headerLoaded'));
       }
     } catch (error) {
@@ -2144,6 +2164,17 @@ function renderGraphItems(items) {
   } else {
     renderDynamicMenus();
   }
+
+  function applyPaperFooterBranding(footerContainer) {
+    if (getCurrentPaper() !== 'strawberry') return;
+
+    const footerLogo = footerContainer.querySelector('.footer-logo img');
+    if (footerLogo) {
+      footerLogo.setAttribute('src', '/static/common/img/ichigopaper_logo.png');
+      footerLogo.setAttribute('alt', 'イチゴ新聞 ロゴ');
+    }
+  }
+
 // Load footer component
   (async function() {
     try {
@@ -2152,6 +2183,7 @@ function renderGraphItems(items) {
       const footerContainer = document.getElementById('footer-container');
       if (footerContainer) {
         footerContainer.innerHTML = html;
+        applyPaperFooterBranding(footerContainer);
         window.dispatchEvent(new CustomEvent('footerLoaded'));
       }
     } catch (error) {
@@ -3354,13 +3386,16 @@ async function renderNewsSection(posts, paper) {
   if (!grid) return;
 
   const all = Array.isArray(posts) ? posts : [];
+  const targetArticleType = String(paper || "").trim() === "strawberry"
+    ? "独自ニュース"
+    : "PickUp新聞記事";
   const newsPosts = all.filter((p) => {
     if (!p) return false;
     const primaryType = String((p && p.article_type) || "").trim();
     const typeList = Array.isArray(p && p.article_types)
       ? p.article_types.map((t) => String(t || "").trim()).filter(Boolean)
       : [];
-    return primaryType === "PickUp新聞記事" || typeList.includes("PickUp新聞記事");
+    return primaryType === targetArticleType || typeList.includes(targetArticleType);
   });
 
   // Load PR from placements.json (if available)
@@ -5180,7 +5215,22 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     );
   }
 
-  function mapVarietyKeyToCode(varietyKey) {
+  function mapVarietyKeyToCode(varietyKey, paper) {
+    if (String(paper || '').toLowerCase() === 'strawberry') {
+      switch (String(varietyKey || '').toLowerCase()) {
+        case 'ichigo':
+          return 'ichigo';
+        case 'benihoppe':
+          return 'benihoppe';
+        case 'amaou':
+          return 'amaou';
+        case 'tochiotome':
+          return 'tochiotome';
+        default:
+          return null;
+      }
+    }
+
     // Based on your current index.html IDs:
     // big -> 34400, mid -> 34480, mini -> 34460, first -> 34410
     switch (String(varietyKey || "").toLowerCase()) {
@@ -5274,7 +5324,7 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
     });
 
     market.items.forEach((item) => {
-      const code = mapVarietyKeyToCode(item && item.variety_key);
+      const code = mapVarietyKeyToCode(item && item.variety_key, market.paper);
       if (!code) return;
 
       const price = typeof item.price === "number" ? String(item.price) : "—";
@@ -7332,6 +7382,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const pcGrid = document.getElementById('market-grid-pc');
   const spGrid = document.getElementById('market-grid-sp');
+
+  document.querySelectorAll('.market-indicators .indicator-dot[data-market-page]').forEach((dot) => {
+    dot.addEventListener('click', () => {
+      const pageIndex = Number.parseInt(dot.dataset.marketPage || '0', 10);
+      const marketSection = dot.closest('.tomato-market-data');
+      if (marketSection && marketSection.classList.contains('sp-only-market')) {
+        goToMarketPageSP(pageIndex);
+      } else {
+        goToMarketPage(pageIndex);
+      }
+    });
+  });
   
   // 初期状態で最初の2つのカードのみ表示（インデックス0と1）
   if (pcGrid) {
@@ -9928,7 +9990,9 @@ Desktop header nav auto-fit (single line)
     try {
       var host = String(window.location.hostname || '').toLowerCase();
       var match = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
-      if (match && match[1] && match[1] !== 'www') return match[1];
+      if (match && match[1] && match[1] !== 'www') {
+        return String(match[1]).toLowerCase() === 'ichigo' ? 'strawberry' : String(match[1]).toLowerCase();
+      }
     } catch(_e) {}
 
     try {

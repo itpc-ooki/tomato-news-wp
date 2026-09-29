@@ -5,45 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tomato List</title>
   <link rel="stylesheet" href="../style.css" />
+  <link rel="icon" href="/static/strawberry/assets/images/favicon.ico" type="image/x-icon">
+  <link rel="shortcut icon" href="/static/strawberry/assets/images/favicon.ico" type="image/x-icon">
 </head>
-<body>
+<body class="page-list">
   <div id="header-container"></div>
+
+  <!-- Keyword slider injected (always visible under header) -->
+  <!-- <div id="kwbar-container"></div> -->
 
   <!-- メイン -->
   <div class="main">
-    
+
     <!-- ページヘッダー -->
     <div class="page-header">
-      <h1 class="page-title">記事一覧</h1>
-      <p class="page-desc">トマト新聞の最新記事をカテゴリー別にご覧いただけます。</p>
-    </div>
-
-    <!-- コントロール -->
-    <div class="controls">
-      <div class="filter-tabs">
-        <div class="filter-tab active">すべて</div>
-        <div class="filter-tab">特集</div>
-        <div class="filter-tab">ニュース</div>
-        <div class="filter-tab">品種</div>
-        <div class="filter-tab">栽培技術</div>
-        <div class="filter-tab">市場動向</div>
-        <div class="filter-tab">病害虫対策</div>
-        <div class="filter-tab">コラム</div>
+      <div class="page-header-content">
+        <h1 class="page-title">記事一覧</h1>
+        <p class="page-desc">トマト新聞の最新記事をカテゴリー別にご覧いただけます。</p>
       </div>
       <div class="sort-control">
         <label>並び順：</label>
         <select class="sort-select">
           <option>最新順</option>
-          <option>投稿順</option>
           <option>人気順</option>
-          <option>カテゴリー順</option>
         </select>
       </div>
     </div>
 
     <!-- 正方形グリッド -->
     <div class="grid">
-      
+
       <!-- 1. メイン記事（大・正方形） -->
       <div class="tile large">
         <div class="tile-img">
@@ -58,7 +49,7 @@
         </div>
       </div>
 
-      <!-- 2. 中カード（大カードの右上） -->
+      <!-- 2. 中カード×2 -->
       <div class="tile medium">
         <div class="tile-img">
           <img>
@@ -72,7 +63,6 @@
         </div>
       </div>
 
-      <!-- 3. 中カード（大カードの右下） -->
       <div class="tile medium">
         <div class="tile-img">
           <img>
@@ -86,7 +76,6 @@
         </div>
       </div>
 
-      <!-- 4. 中カード -->
       <div class="tile medium">
         <div class="tile-img">
           <img>
@@ -100,7 +89,6 @@
         </div>
       </div>
 
-      <!-- 5. 中カード -->
       <div class="tile medium">
         <div class="tile-img">
           <img>
@@ -114,14 +102,7 @@
         </div>
       </div>
 
-      <!-- 6. 中サイズ広告 -->
-      <div class="tile medium ad">
-        <span class="ad-badge">PR</span>
-        <img src="./paperad_1.jpg" alt="">
-      </div>
-
-      <!-- 6. 小サイズ記事 + 広告（正方形×4の中に広告1つ含む） -->
-      <div class="tile small">
+      <div class="tile medium">
         <div class="tile-img">
           <img>
         </div>
@@ -134,92 +115,7 @@
         </div>
       </div>
 
-      <!-- 7. 広告（小サイズ） -->
-      <div class="tile small ad">
-        <span class="ad-badge">広告</span>
-        <img src="./paperad_2.jpg" alt="">
-      </div>
-
-      <div class="tile small">
-        <div class="tile-img">
-          <img>
-        </div>
-        <div class="tile-content">
-          <div class="tile-meta">
-            <span class="tile-category"></span>
-            <time></time>
-          </div>
-          <h3 class="tile-title"></h3>
-        </div>
-      </div>
-
-      <div class="tile small">
-        <div class="tile-img">
-          <img>
-        </div>
-        <div class="tile-content">
-          <div class="tile-meta">
-            <span class="tile-category"></span>
-            <time></time>
-          </div>
-          <h3 class="tile-title"></h3>
-        </div>
-      </div>
-
-      <!-- 8. 小サイズ記事×4 -->
-      <div class="tile small">
-        <div class="tile-img">
-          <img>
-        </div>
-        <div class="tile-content">
-          <div class="tile-meta">
-            <span class="tile-category"></span>
-            <time></time>
-          </div>
-          <h3 class="tile-title"></h3>
-        </div>
-      </div>
-
-      <div class="tile small">
-        <div class="tile-img">
-          <img>
-        </div>
-        <div class="tile-content">
-          <div class="tile-meta">
-            <span class="tile-category"></span>
-            <time></time>
-          </div>
-          <h3 class="tile-title"></h3>
-        </div>
-      </div>
-
-      <div class="tile small">
-        <div class="tile-img">
-          <img>
-        </div>
-        <div class="tile-content">
-          <div class="tile-meta">
-            <span class="tile-category"></span>
-            <time></time>
-          </div>
-          <h3 class="tile-title"></h3>
-        </div>
-      </div>
-
-      <div class="tile small">
-        <div class="tile-img">
-          <img src="./news_12.jpg" alt="">
-        </div>
-        <div class="tile-content">
-          <div class="tile-meta">
-            <span class="tile-category"></span>
-            <time></time>
-          </div>
-          <h3 class="tile-title"></h3>
-        </div>
-      </div>
-
-      <!-- 9. 小サイズ記事×4 -->
+      <!-- 3. 小サイズ記事×4 -->
       <div class="tile small">
         <div class="tile-img">
           <img>
@@ -272,7 +168,7 @@
         </div>
       </div>
 
-      <!-- 10. 小サイズ記事×4 -->
+      <!-- 4. 小サイズ記事×4 -->
       <div class="tile small">
         <div class="tile-img">
           <img>
@@ -325,6 +221,111 @@
         </div>
       </div>
 
+      <!-- 5. 小サイズ記事×4 -->
+      <div class="tile small">
+        <div class="tile-img">
+          <img>
+        </div>
+        <div class="tile-content">
+          <div class="tile-meta">
+            <span class="tile-category"></span>
+            <time></time>
+          </div>
+          <h3 class="tile-title"></h3>
+        </div>
+      </div>
+
+      <div class="tile small">
+        <div class="tile-img">
+          <img>
+        </div>
+        <div class="tile-content">
+          <div class="tile-meta">
+            <span class="tile-category"></span>
+            <time></time>
+          </div>
+          <h3 class="tile-title"></h3>
+        </div>
+      </div>
+
+      <div class="tile small">
+        <div class="tile-img">
+          <img>
+        </div>
+        <div class="tile-content">
+          <div class="tile-meta">
+            <span class="tile-category"></span>
+            <time></time>
+          </div>
+          <h3 class="tile-title"></h3>
+        </div>
+      </div>
+
+      <div class="tile small">
+        <div class="tile-img">
+          <img>
+        </div>
+        <div class="tile-content">
+          <div class="tile-meta">
+            <span class="tile-category"></span>
+            <time></time>
+          </div>
+          <h3 class="tile-title"></h3>
+        </div>
+      </div>
+
+      <!-- 6. 小サイズ記事×4 -->
+      <div class="tile small">
+        <div class="tile-img">
+          <img>
+        </div>
+        <div class="tile-content">
+          <div class="tile-meta">
+            <span class="tile-category"></span>
+            <time></time>
+          </div>
+          <h3 class="tile-title"></h3>
+        </div>
+      </div>
+
+      <div class="tile small">
+        <div class="tile-img">
+          <img>
+        </div>
+        <div class="tile-content">
+          <div class="tile-meta">
+            <span class="tile-category"></span>
+            <time></time>
+          </div>
+          <h3 class="tile-title"></h3>
+        </div>
+      </div>
+
+      <div class="tile small">
+        <div class="tile-img">
+          <img>
+        </div>
+        <div class="tile-content">
+          <div class="tile-meta">
+            <span class="tile-category"></span>
+            <time></time>
+          </div>
+          <h3 class="tile-title"></h3>
+        </div>
+      </div>
+
+      <div class="tile small">
+        <div class="tile-img">
+          <img>
+        </div>
+        <div class="tile-content">
+          <div class="tile-meta">
+            <span class="tile-category"></span>
+            <time></time>
+          </div>
+          <h3 class="tile-title"></h3>
+        </div>
+      </div>
     </div>
 
     <!-- ページネーション -->
