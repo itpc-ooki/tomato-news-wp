@@ -11,7 +11,7 @@
   var taxonomyLabel = String(config.taxonomyLabel || '記事タイプ').trim();
   var taxonomyRestBase = String(config.taxonomyRestBase || 'article_type').trim();
   var termById = {};
-  var termByName = {};
+  var termsByName = {};
   var scheduled = false;
   var lastSelectionKey = '';
 
@@ -22,7 +22,16 @@
 
     if (!id) return;
     termById[id] = { id: id, name: name, papers: papers };
-    if (name) termByName[name] = termById[id];
+    if (name) {
+      if (!termsByName[name]) termsByName[name] = [];
+      termsByName[name].push(termById[id]);
+    }
+  });
+
+  Object.keys(termsByName).forEach(function (name) {
+    termsByName[name].sort(function (a, b) {
+      return a.id - b.id;
+    });
   });
 
   function getEditorSelect() {
@@ -50,16 +59,64 @@
     });
   }
 
-  function getTermFromCheckbox(input) {
+  function getCheckboxLabel(input) {
     var inputId = String(input.id || '');
-    var idMatch = inputId.match(/(\d+)$/);
-    if (idMatch && termById[Number(idMatch[1])]) {
-      return termById[Number(idMatch[1])];
-    }
-
     var label = inputId ? document.querySelector('label[for="' + inputId.replace(/"/g, '\\"') + '"]') : null;
-    var name = label ? String(label.textContent || '').trim() : '';
-    return name && termByName[name] ? termByName[name] : null;
+    return label ? String(label.textContent || '').trim() : '';
+  }
+
+  function buildCheckboxTermMap(panel) {
+    var groups = {};
+    var checkboxTermMap = new Map();
+    var editor = getEditorSelect();
+    var selectedTerms = editor && typeof editor.getEditedPostAttribute === 'function'
+      ? editor.getEditedPostAttribute(taxonomyRestBase)
+      : [];
+    selectedTerms = Array.isArray(selectedTerms) ? selectedTerms.map(Number) : [];
+
+    panel.querySelectorAll('input[type="checkbox"]').forEach(function (input) {
+      var name = getCheckboxLabel(input);
+      if (!name || !termsByName[name]) return;
+      if (!groups[name]) groups[name] = [];
+      groups[name].push(input);
+    });
+
+    Object.keys(groups).forEach(function (name) {
+      var inputs = groups[name];
+      var candidates = termsByName[name].slice();
+      var usedIds = {};
+
+      // Gutenberg does not expose a term ID in the checkbox markup. Match any
+      // checked controls to the editor's selected term IDs first, then map the
+      // remaining same-name controls in stable term-ID order.
+      inputs.forEach(function (input) {
+        if (!input.checked) return;
+
+        var selectedCandidate = candidates.find(function (term) {
+          return !usedIds[term.id] && selectedTerms.indexOf(term.id) !== -1;
+        });
+
+        if (selectedCandidate) {
+          checkboxTermMap.set(input, selectedCandidate);
+          usedIds[selectedCandidate.id] = true;
+        }
+      });
+
+      inputs.forEach(function (input) {
+        if (checkboxTermMap.has(input)) return;
+
+        var candidate = candidates.find(function (term) {
+          return !usedIds[term.id];
+        });
+
+        if (candidate) {
+          checkboxTermMap.set(input, candidate);
+          usedIds[candidate.id] = true;
+        }
+      });
+    });
+
+    return checkboxTermMap;
   }
 
   function findArticleTypePanel() {
@@ -77,9 +134,10 @@
     var panel = findArticleTypePanel();
     if (!panel) return;
 
+    var checkboxTermMap = buildCheckboxTermMap(panel);
     var checkboxes = panel.querySelectorAll('input[type="checkbox"]');
     checkboxes.forEach(function (input) {
-      var term = getTermFromCheckbox(input);
+      var term = checkboxTermMap.get(input);
       if (!term) return;
 
       var choice = input.closest(
