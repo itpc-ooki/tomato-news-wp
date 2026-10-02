@@ -126,7 +126,7 @@ class Tomato_Auto_Static_Build_Queue
     // term hook can race with that metadata save and build a stale menu.json.
     // It is queued by on_article_type_papers_saved() after the assignment is
     // stored instead.
-    if ((string) $taxonomy === 'article_type') {
+    if (in_array((string) $taxonomy, ['article_type', 'variety_category'], true)) {
       return;
     }
 
@@ -153,6 +153,22 @@ class Tomato_Auto_Static_Build_Queue
     self::request_build(
       $affected_papers,
       'article_type_papers_saved:' . (int) $term_id
+    );
+  }
+
+  public static function on_variety_category_papers_saved($term_id, $papers, $previous_papers = []): void
+  {
+    $papers = is_array($papers) ? $papers : [];
+    $previous_papers = is_array($previous_papers) ? $previous_papers : [];
+
+    $affected_papers = self::normalize_paper_list(array_merge($papers, $previous_papers));
+    if (empty($affected_papers)) {
+      return;
+    }
+
+    self::request_build(
+      $affected_papers,
+      'variety_category_papers_saved:' . (int) $term_id
     );
   }
 
@@ -821,5 +837,6 @@ add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on
 add_action('edited_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
 add_action('created_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
 add_action('tomato_article_type_papers_saved', [Tomato_Auto_Static_Build_Queue::class, 'on_article_type_papers_saved'], 10, 3);
+add_action('tomato_variety_category_papers_saved', [Tomato_Auto_Static_Build_Queue::class, 'on_variety_category_papers_saved'], 10, 3);
 
 // Queue is consumed by the static_builder container (polls the option).
