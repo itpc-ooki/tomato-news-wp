@@ -891,6 +891,32 @@ add_action('manage_variety_posts_custom_column', function ($column, $post_id) {
  * - ACF「カテゴリ（variety_category）」のプルダウンを、管理画面で編集可能にするための分類
  * - term slug を varieties.json の category 値として利用（例: large / midi / mini / rootstock）
  */
+if (!function_exists('tomato_get_variety_category_papers')) {
+  function tomato_get_variety_category_papers($term): array {
+    $term_id = $term instanceof WP_Term ? (int) $term->term_id : (int) $term;
+    if ($term_id <= 0) return ['tomato'];
+
+    $stored = get_term_meta($term_id, 'variety_category_papers', true);
+    $papers = is_array($stored) ? $stored : ($stored !== '' ? [$stored] : []);
+    $papers = array_values(array_unique(array_filter(array_map(static function($paper) {
+      $paper = sanitize_title((string) $paper);
+      return $paper !== '' ? $paper : null;
+    }, $papers))));
+
+    // Backward compatibility: categories created before paper ownership was
+    // introduced remain assigned to the released Tomato paper.
+    return !empty($papers) ? $papers : ['tomato'];
+  }
+}
+
+if (!function_exists('tomato_variety_category_belongs_to_paper')) {
+  function tomato_variety_category_belongs_to_paper($term, string $paper): bool {
+    $paper = sanitize_title($paper);
+    if ($paper === '') return false;
+    return in_array($paper, tomato_get_variety_category_papers($term), true);
+  }
+}
+
 add_action('init', function () {
   $tax = 'variety_category';
 
@@ -919,6 +945,29 @@ add_action('init', function () {
     'rest_controller_class' => 'WP_REST_Terms_Controller',
   ]);
 
+  register_term_meta($tax, 'variety_category_papers', [
+    'type' => 'array',
+    'single' => true,
+    'default' => ['tomato'],
+    'sanitize_callback' => static function($value) {
+      $values = is_array($value) ? $value : [$value];
+      $values = array_values(array_unique(array_filter(array_map(static function($paper) {
+        $paper = sanitize_title((string) $paper);
+        return $paper !== '' ? $paper : null;
+      }, $values))));
+      return !empty($values) ? $values : ['tomato'];
+    },
+    'show_in_rest' => [
+      'schema' => [
+        'type' => 'array',
+        'items' => ['type' => 'string'],
+      ],
+    ],
+    'auth_callback' => static function() {
+      return current_user_can('manage_categories');
+    },
+  ]);
+
   // Seed default terms (only if missing)
   // NOTE: Admin can freely add/edit/delete terms later from WP admin.
   $defaults = [
@@ -933,6 +982,162 @@ add_action('init', function () {
       wp_insert_term($name, $tax, ['slug' => $slug]);
     }
   }
+});
+
+add_action('variety_category_add_form_fields', function () {
+  wp_nonce_field('tomato_save_variety_category_papers', 'tomato_variety_category_papers_nonce');
+  $papers = function_exists('tomato_get_available_papers')
+    ? tomato_get_available_papers()
+    : ['tomato' => 'トマト新聞'];
+  ?>
+  <div class="form-field term-variety-category-papers-wrap">
+    <label><?php echo esc_html__('対象新聞', 'tomato'); ?></label>
+    <?php foreach ($papers as $slug => $label): ?>
+      <label>
+        <input type="checkbox" name="variety_category_papers[]" value="<?php echo esc_attr($slug); ?>" <?php checked($slug, 'tomato'); ?>>
+        <?php echo esc_html($label); ?>（<?php echo esc_html($slug); ?>）
+      </label><br>
+    <?php endforeach; ?>
+    <p><?php echo esc_html__('この品種カテゴリを使用する新聞を選択してください。既存項目は未設定の場合もトマト新聞として扱われます。', 'tomato'); ?></p>
+  </div>
+  <?php
+});
+
+add_action('variety_category_edit_form_fields', function ($term) {
+  if (!($term instanceof WP_Term)) return;
+  wp_nonce_field('tomato_save_variety_category_papers', 'tomato_variety_category_papers_nonce');
+  $selected = tomato_get_variety_category_papers($term);
+  $papers = function_exists('tomato_get_available_papers')
+    ? tomato_get_available_papers()
+    : ['tomato' => 'トマト新聞'];
+  ?>
+  <tr class="form-field term-variety-category-papers-wrap">
+    <th scope="row"><label><?php echo esc_html__('対象新聞', 'tomato'); ?></label></th>
+    <td>
+      <?php foreach ($papers as $slug => $label): ?>
+        <label>
+          <input type="checkbox" name="variety_category_papers[]" value="<?php echo esc_attr($slug); ?>" <?php checked(in_array($slug, $selected, true)); ?>>
+          <?php echo esc_html($label); ?>（<?php echo esc_html($slug); ?>）
+        </label><br>
+      <?php endforeach; ?>
+      <p class="description"><?php echo esc_html__('この品種カテゴリを使用する新聞を選択してください。', 'tomato'); ?></p>
+    </td>
+  </tr>
+  <?php
+});
+
+$tomato_save_variety_category_papers = static function($term_id) {
+  if (!current_user_can('manage_categories')) return;
+
+  $nonce = isset($_POST['tomato_variety_category_papers_nonce'])
+    ? sanitize_text_field(wp_unslash($_POST['tomato_variety_category_papers_nonce']))
+    : '';
+  if ($nonce === '' || !wp_verify_nonce($nonce, 'tomato_save_variety_category_papers')) return;
+
+  $available_papers = function_exists('tomato_get_available_papers')
+    ? tomato_get_available_papers()
+    : ['tomato' => 'トマト新聞'];
+  $submitted = isset($_POST['variety_category_papers']) && is_array($_POST['variety_category_papers'])
+    ? wp_unslash($_POST['variety_category_papers'])
+    : [];
+  $selected = array_values(array_intersect(
+    array_keys($available_papers),
+    array_values(array_unique(array_filter(array_map('sanitize_title', $submitted))))
+  ));
+
+  if (empty($selected)) {
+    $selected = ['tomato'];
+  }
+
+  $had_assignment = metadata_exists('term', (int) $term_id, 'variety_category_papers');
+  $previous = $had_assignment
+    ? tomato_get_variety_category_papers((int) $term_id)
+    : [];
+
+  update_term_meta((int) $term_id, 'variety_category_papers', $selected);
+  do_action('tomato_variety_category_papers_saved', (int) $term_id, $selected, $previous);
+};
+add_action('created_variety_category', $tomato_save_variety_category_papers);
+add_action('edited_variety_category', $tomato_save_variety_category_papers);
+
+add_filter('manage_edit-variety_category_columns', function ($columns) {
+  $result = [];
+  foreach ($columns as $key => $label) {
+    if ($key === 'posts') {
+      $result['variety_category_papers'] = '対象新聞';
+    }
+    $result[$key] = $label;
+  }
+  if (!isset($result['variety_category_papers'])) {
+    $result['variety_category_papers'] = '対象新聞';
+  }
+  return $result;
+});
+
+add_filter('manage_variety_category_custom_column', function ($content, $column_name, $term_id) {
+  if ($column_name !== 'variety_category_papers') return $content;
+
+  $available_papers = function_exists('tomato_get_available_papers')
+    ? tomato_get_available_papers()
+    : ['tomato' => 'トマト新聞'];
+  $labels = [];
+  foreach (tomato_get_variety_category_papers((int) $term_id) as $paper) {
+    $labels[] = isset($available_papers[$paper]) ? $available_papers[$paper] : $paper;
+  }
+  return esc_html(implode('、', $labels));
+}, 10, 3);
+
+add_action('enqueue_block_editor_assets', function () {
+  $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+  if (!$screen || $screen->base !== 'post' || $screen->post_type !== 'post') return;
+
+  $terms = get_terms([
+    'taxonomy' => 'variety_category',
+    'hide_empty' => false,
+    'orderby' => 'id',
+    'order' => 'ASC',
+  ]);
+
+  $term_config = [];
+  if (!is_wp_error($terms)) {
+    foreach ($terms as $term) {
+      if (!($term instanceof WP_Term)) continue;
+      $term_config[] = [
+        'id' => (int) $term->term_id,
+        'name' => (string) $term->name,
+        'papers' => tomato_get_variety_category_papers($term),
+      ];
+    }
+  }
+
+  $paper_categories = [];
+  $available_papers = function_exists('tomato_get_available_papers')
+    ? tomato_get_available_papers()
+    : ['tomato' => 'トマト新聞'];
+  foreach (array_keys($available_papers) as $paper) {
+    $category = get_term_by('slug', $paper, 'category');
+    if ($category instanceof WP_Term) {
+      $paper_categories[(string) $category->term_id] = $paper;
+    }
+  }
+
+  $script_path = __DIR__ . '/variety-category-admin.js';
+  $script_version = is_file($script_path) ? (string) filemtime($script_path) : '1.0.0';
+
+  wp_enqueue_script(
+    'tomato-variety-category-admin',
+    plugins_url('variety-category-admin.js', __FILE__),
+    ['wp-data', 'wp-dom-ready'],
+    $script_version,
+    true
+  );
+
+  wp_localize_script('tomato-variety-category-admin', 'tomatoVarietyCategoryAdmin', [
+    'taxonomyLabel' => '品種カテゴリ',
+    'taxonomyRestBase' => 'variety_category',
+    'paperCategories' => $paper_categories,
+    'terms' => $term_config,
+  ]);
 });
 
 

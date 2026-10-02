@@ -1975,7 +1975,10 @@ $list[] = [
     ]);
     if (!is_wp_error($variety_terms) && !empty($variety_terms)) {
       foreach ($variety_terms as $term) {
-        if ($term instanceof WP_Term && isset($term->name) && $term->name !== '') {
+        if ($term instanceof WP_Term
+          && isset($term->name)
+          && $term->name !== ''
+          && (!function_exists('tomato_variety_category_belongs_to_paper') || tomato_variety_category_belongs_to_paper($term, $paper))) {
           $variety_categories[] = (string) $term->name;
         }
       }
