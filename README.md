@@ -158,7 +158,7 @@ Bucket: tomatonews-static-stg
 /static
 /tomato
 /leek
-/strawberry
+/ichigo
 
 ```
 

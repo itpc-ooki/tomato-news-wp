@@ -1824,7 +1824,7 @@ HTML;
 
             $papers = array_values(array_unique(array_filter($papers)));
             if (empty($papers)) {
-                $papers = array('tomato', 'leek', 'strawberry');
+                $papers = array('tomato', 'leek', 'ichigo');
             }
             return $papers;
         }
@@ -1880,7 +1880,7 @@ HTML;
             $map = array(
                 'tomato'     => 'トマト新聞',
                 'leek'       => 'リーク新聞',
-                'strawberry' => 'ストロベリー新聞',
+                'ichigo' => 'イチゴ新聞',
             );
             if (isset($map[$paper])) {
                 return $map[$paper];

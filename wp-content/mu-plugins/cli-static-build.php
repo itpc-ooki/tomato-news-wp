@@ -30,7 +30,7 @@
  *
  * Expected (for placements):
  * - CPT: ad_item (publish items)
- * - Taxonomy: paper (slug: tomato/leek/strawberry etc)  -> to decide which /static/{paper}/ to write
+ * - Taxonomy: paper (slug: tomato/leek/ichigo etc)  -> to decide which /static/{paper}/ to write
  * - Taxonomy: ad_type (slug: ads/pr/sponsor_ad/sponsor_video/sponsors)
  * - Fields (recommended ACF):
  *   - link_url (URL)
@@ -664,7 +664,7 @@ private static function sync_uploads_assets(): void {
    *
    * Source:
    * - CPT: variety (品種マスタ)
-   * - Category (category slug) is used as "paper" filter (tomato/leek/strawberry)
+   * - Category (category slug) is used as "paper" filter (tomato/leek/ichigo)
    *
    * Output:
    * - /static/{paper}/varieties.json

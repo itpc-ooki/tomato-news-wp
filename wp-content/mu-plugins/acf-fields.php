@@ -647,7 +647,7 @@ add_action('init', function () {
     'supports' => ['title'],
     'has_archive' => false,
     'show_in_rest' => true,
-    // 紙（tomato/leek/strawberry）の区別は既存の「カテゴリー（category）」を流用する
+    // 紙（tomato/leek/ichigo）の区別は既存の「カテゴリー（category）」を流用する
     'taxonomies' => ['category'],
   ]);
 });
@@ -1149,7 +1149,7 @@ add_action('acf/init', function () {
         'label' => '新聞スラッグ',
         'name' => 'newspaper_slug',
         'type' => 'text',
-        'instructions' => '例: tomato / leek / strawberry（英小文字・ハイフン推奨）',
+        'instructions' => '例: tomato / leek / ichigo（英小文字・ハイフン推奨）',
         'required' => 1,
         'wrapper' => ['width' => '50'],
       ],
@@ -2029,7 +2029,7 @@ add_action('acf/init', function () {
         'choices' => [
           'tomato' => 'tomato',
           'leek' => 'leek',
-          'strawberry' => 'strawberry',
+          'ichigo' => 'ichigo',
         ],
         'default_value' => 'tomato',
         'ui' => 1,

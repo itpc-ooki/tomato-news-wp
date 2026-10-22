@@ -30,7 +30,7 @@ class Tomato_Market_Data {
             'mini'  => 'ミニトマト',
             'first' => 'ファーストトマト',
         ],
-        'strawberry' => [
+        'ichigo' => [
             'ichigo'      => 'イチゴ',
             'benihoppe'   => '紅ほっぺ',
             'amaou'       => 'あまおう',
@@ -40,7 +40,7 @@ class Tomato_Market_Data {
 
     const PAPER_LABELS = [
         'tomato'     => 'トマト新聞',
-        'strawberry' => 'イチゴ新聞',
+        'ichigo' => 'イチゴ新聞',
     ];
 
     public static function init(): void {

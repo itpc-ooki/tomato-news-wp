@@ -300,15 +300,15 @@ if (!class_exists('Tomato_Scheduled_Post_Actions')) {
             $map = [
                 'tomato' => 'tomato',
                 'leek' => 'leek',
-                'strawberry' => 'strawberry',
+                'ichigo' => 'ichigo',
                 'トマト' => 'tomato',
                 'トマト新聞' => 'tomato',
                 'ねぎ' => 'leek',
                 'ネギ' => 'leek',
                 'リーク' => 'leek',
-                'いちご' => 'strawberry',
-                'イチゴ' => 'strawberry',
-                '苺' => 'strawberry',
+                'いちご' => 'ichigo',
+                'イチゴ' => 'ichigo',
+                '苺' => 'ichigo',
             ];
 
             if (isset($map[$raw])) {
