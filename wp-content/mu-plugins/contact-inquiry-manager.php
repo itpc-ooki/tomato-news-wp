@@ -387,7 +387,7 @@ if (!class_exists('Tomato_Contact_Inquiry_Manager')) {
             $labels = array(
                 'tomato'     => 'トマト新聞',
                 'leek'       => 'ねぎ新聞',
-                'strawberry' => 'いちご新聞',
+                'ichigo' => 'いちご新聞',
             );
 
             return isset($labels[$paper]) ? $labels[$paper] : $paper;

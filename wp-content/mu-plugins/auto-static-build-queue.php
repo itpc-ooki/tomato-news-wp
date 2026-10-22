@@ -336,7 +336,7 @@ class Tomato_Auto_Static_Build_Queue
     $papers = [];
 
     // 品種マスタ uses the built-in category taxonomy as the paper selector
-    // (example: tomato/leek/strawberry).
+    // (example: tomato/leek/ichigo).
     $cat_slugs = wp_get_post_terms($post_id, 'category', ['fields' => 'slugs']);
     if (is_array($cat_slugs)) {
       $papers = array_merge($papers, $cat_slugs);
@@ -523,7 +523,7 @@ class Tomato_Auto_Static_Build_Queue
     $map = [
       'tomato' => 'tomato',
       'leek' => 'leek',
-      'strawberry' => 'strawberry',
+      'ichigo' => 'ichigo',
 
       // Japanese label variants -> slug
       'トマト' => 'tomato',
@@ -531,9 +531,9 @@ class Tomato_Auto_Static_Build_Queue
       'ねぎ' => 'leek',
       'ネギ' => 'leek',
       'リーク' => 'leek',
-      'いちご' => 'strawberry',
-      'イチゴ' => 'strawberry',
-      '苺' => 'strawberry',
+      'いちご' => 'ichigo',
+      'イチゴ' => 'ichigo',
+      '苺' => 'ichigo',
     ];
 
     if (isset($map[$decoded])) {

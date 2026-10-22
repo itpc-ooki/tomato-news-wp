@@ -182,7 +182,7 @@
 })();
 
 /**
- * Global app.js for all papers (tomato/leek/strawberry/...)
+ * Global app.js for all papers (tomato/leek/ichigo/...)
  *
  * Expected generated files:
  *  - /static/{paper}/posts.json         (list)
@@ -228,8 +228,7 @@
       var host = String(window.location.hostname || '').toLowerCase().replace(/:\d+$/, '');
       var m = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
       if (m && m[1] && m[1] !== 'www') {
-        var hostnamePaper = String(m[1]).toLowerCase();
-        return hostnamePaper === 'ichigo' ? 'strawberry' : hostnamePaper;
+        return String(m[1]).toLowerCase();
       }
     } catch (_e) {}
 
@@ -1864,13 +1863,13 @@ function renderGraphItems(items) {
    * ===================================================================== */
 
   function applyPaperHeaderBranding(headerContainer) {
-    if (getCurrentPaper() !== 'strawberry') return;
+    if (getCurrentPaper() !== 'ichigo') return;
 
     const brandLink = headerContainer.querySelector('.brand a');
     const brandImage = headerContainer.querySelector('.brand img');
 
     if (brandLink) {
-      brandLink.setAttribute('href', '/static/strawberry/index.html');
+      brandLink.setAttribute('href', '/static/ichigo/index.html');
     }
 
     if (brandImage) {
@@ -2166,7 +2165,7 @@ function renderGraphItems(items) {
   }
 
   function applyPaperFooterBranding(footerContainer) {
-    if (getCurrentPaper() !== 'strawberry') return;
+    if (getCurrentPaper() !== 'ichigo') return;
 
     const footerLogo = footerContainer.querySelector('.footer-logo img');
     if (footerLogo) {
@@ -3386,7 +3385,7 @@ async function renderNewsSection(posts, paper) {
   if (!grid) return;
 
   const all = Array.isArray(posts) ? posts : [];
-  const targetArticleType = String(paper || "").trim() === "strawberry"
+  const targetArticleType = String(paper || "").trim() === "ichigo"
     ? "独自ニュース"
     : "PickUp新聞記事";
   const newsPosts = all.filter((p) => {
@@ -5216,7 +5215,7 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
   }
 
   function mapVarietyKeyToCode(varietyKey, paper) {
-    if (String(paper || '').toLowerCase() === 'strawberry') {
+    if (String(paper || '').toLowerCase() === 'ichigo') {
       switch (String(varietyKey || '').toLowerCase()) {
         case 'ichigo':
           return 'ichigo';
@@ -9991,7 +9990,7 @@ Desktop header nav auto-fit (single line)
       var host = String(window.location.hostname || '').toLowerCase();
       var match = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
       if (match && match[1] && match[1] !== 'www') {
-        return String(match[1]).toLowerCase() === 'ichigo' ? 'strawberry' : String(match[1]).toLowerCase();
+        return String(match[1]).toLowerCase();
       }
     } catch(_e) {}
 

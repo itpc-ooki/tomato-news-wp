@@ -866,7 +866,7 @@
       const host = String(window.location.hostname || '').toLowerCase().replace(/:\d+$/, '');
       const m = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
       if (m && m[1] && m[1] !== 'www') {
-        const hostnamePaper = String(m[1]).toLowerCase() === 'ichigo' ? 'strawberry' : String(m[1]).toLowerCase();
+        const hostnamePaper = String(m[1]).toLowerCase();
         localStorage.setItem('tomato_active_paper_v1', hostnamePaper);
         return hostnamePaper;
       }
@@ -1257,7 +1257,7 @@
 // ===============================
 (function(){
   try{
-    const allowed = ['tomato','leek','strawberry'];
+    const allowed = ['tomato','leek','ichigo'];
     let paper = '';
 
     // 1) Query param (login/register links should pass ?paper=)
@@ -1404,7 +1404,7 @@
   const isLoginPage = /\/account\/login\.html$/i.test(path) || /\/static\/account\/login\.html$/i.test(path);
   if (!isLoginPage) return;
 
-  const allowed = ['tomato','leek','strawberry'];
+  const allowed = ['tomato','leek','ichigo'];
 
   function detectPaper(){
     try{
@@ -1525,7 +1525,7 @@
     const paper = detectPaper();
     try{ localStorage.setItem('tomato_active_paper_v1', paper); }catch(_e){}
 
-    if (paper === 'strawberry') {
+    if (paper === 'ichigo') {
       const loginSubtitle = document.querySelector('[data-login-panel="login"] .login-subtitle');
       if (loginSubtitle) loginSubtitle.textContent = 'イチゴ新聞デジタル版にログイン';
     }
@@ -1625,7 +1625,7 @@
 (function(){
   if (window.__detectPaper && window.__paperTop) return;
 
-  var allowed = ['tomato','leek','strawberry'];
+  var allowed = ['tomato','leek','ichigo'];
   window.__tomatoAllowedPapers = allowed;
 
   function staticRoot(){
@@ -1803,7 +1803,7 @@ var currentStep = 1;
               ? String(window.__detectPaper() || 'tomato').toLowerCase()
               : 'tomato';
 
-            if (activePaper === 'strawberry') {
+            if (activePaper === 'ichigo') {
                 document.title = '会員登録 | イチゴ新聞';
 
                 var registrationTitle = document.querySelector('.progress-title');
