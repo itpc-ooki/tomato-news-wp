@@ -30,7 +30,7 @@
  *
  * Expected (for placements):
  * - CPT: ad_item (publish items)
- * - Taxonomy: paper (slug: tomato/leek/strawberry etc)  -> to decide which /static/{paper}/ to write
+ * - Taxonomy: paper (slug: tomato/leek/ichigo etc)  -> to decide which /static/{paper}/ to write
  * - Taxonomy: ad_type (slug: ads/pr/sponsor_ad/sponsor_video/sponsors)
  * - Fields (recommended ACF):
  *   - link_url (URL)
@@ -140,7 +140,10 @@ class Tomato_Static_Builder_ModeB {
     file_put_contents($file, $html);
   }
 
-  private static function rewrite_static_prefix_in_html_under(string $root): void {
+  private static function rewrite_static_prefix_in_html_under(
+    string $root,
+    int $base_depth = 0
+  ): void {
     $root = rtrim($root, '/');
     if (!is_dir($root)) return;
 
@@ -157,7 +160,11 @@ class Tomato_Static_Builder_ModeB {
 
       // Depth is number of path segments from $root to the html file's directory.
       $rel_dir = ltrim(str_replace($root, '', $f->getPath()), '/');
-      $depth = $rel_dir === '' ? 0 : substr_count($rel_dir, '/') + 1;
+      $relative_depth = $rel_dir === ''
+        ? 0
+        : substr_count($rel_dir, '/') + 1;
+
+      $depth = $base_depth + $relative_depth;
 
       self::rewrite_static_prefix_in_html($file, $depth);
     }
@@ -204,8 +211,19 @@ class Tomato_Static_Builder_ModeB {
     self::rcopy($src . '/account', $dst . '/account');
 
 
-    // Make /static/... paths work on both local (/static/...) and S3 bucket root (/...)
-    self::rewrite_static_prefix_in_html_under(self::static_root());
+    // Rewrite only the shared HTML copied during this build.
+    // Do not rewrite existing paper output under /static/{paper}.
+    $root_html_files = glob($dst . '/*.html');
+
+    if (is_array($root_html_files)) {
+      foreach ($root_html_files as $file) {
+        self::rewrite_static_prefix_in_html($file, 0);
+      }
+    }
+
+    self::rewrite_static_prefix_in_html_under($dst . '/common', 1);
+    self::rewrite_static_prefix_in_html_under($dst . '/components', 1);
+    self::rewrite_static_prefix_in_html_under($dst . '/account', 1);
   }
 
 
@@ -664,7 +682,7 @@ private static function sync_uploads_assets(): void {
    *
    * Source:
    * - CPT: variety (品種マスタ)
-   * - Category (category slug) is used as "paper" filter (tomato/leek/strawberry)
+   * - Category (category slug) is used as "paper" filter (tomato/leek/ichigo)
    *
    * Output:
    * - /static/{paper}/varieties.json
@@ -877,6 +895,9 @@ private static function sync_uploads_assets(): void {
     // so new files under /static-src/{paper}/ are automatically published without code changes.
     self::rcopy($src, $dst);
 
+    // Rewrite only the paper currently being built.
+    // /static/{paper}/ is already one directory below /static.
+    self::rewrite_static_prefix_in_html_under($dst, 1);
   }
 
   /** Build list + detail json for a paper */
@@ -1546,6 +1567,10 @@ $list[] = [
     if ($newspaper_post_id <= 0) return [];
 
     $menu_settings_map = [];
+    $newspaper_paper = sanitize_title((string) self::get_acf_field_value('newspaper_slug', $newspaper_post_id));
+    if ($newspaper_paper === '') {
+      $newspaper_paper = 'tomato';
+    }
     $article_type_terms = get_terms([
       'taxonomy' => 'article_type',
       'hide_empty' => false,
@@ -1560,6 +1585,7 @@ $list[] = [
     if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
       foreach ($article_type_terms as $term) {
         if (!($term instanceof WP_Term) || !isset($term->name)) continue;
+        if (function_exists('tomato_article_type_belongs_to_paper') && !tomato_article_type_belongs_to_paper($term, $newspaper_paper)) continue;
 
         $name = trim((string) $term->name);
         $slug = isset($term->slug) ? trim((string) $term->slug) : '';
@@ -1746,6 +1772,7 @@ $list[] = [
     if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
       foreach ($article_type_terms as $term) {
         if (!($term instanceof WP_Term) || !isset($term->name)) continue;
+        if (function_exists('tomato_article_type_belongs_to_paper') && !tomato_article_type_belongs_to_paper($term, $paper)) continue;
 
         $name = trim((string) $term->name);
         $slug = isset($term->slug) ? trim((string) $term->slug) : '';
@@ -1931,7 +1958,10 @@ $list[] = [
     ]);
     if (!is_wp_error($article_type_terms) && !empty($article_type_terms)) {
       foreach ($article_type_terms as $term) {
-        if ($term instanceof WP_Term && isset($term->name) && $term->name !== '') {
+        if ($term instanceof WP_Term
+          && isset($term->name)
+          && $term->name !== ''
+          && (!function_exists('tomato_article_type_belongs_to_paper') || tomato_article_type_belongs_to_paper($term, $paper))) {
           $article_types[] = (string) $term->name;
           $article_type_details[] = [
             'name' => (string) $term->name,
@@ -1966,7 +1996,10 @@ $list[] = [
     ]);
     if (!is_wp_error($variety_terms) && !empty($variety_terms)) {
       foreach ($variety_terms as $term) {
-        if ($term instanceof WP_Term && isset($term->name) && $term->name !== '') {
+        if ($term instanceof WP_Term
+          && isset($term->name)
+          && $term->name !== ''
+          && (!function_exists('tomato_variety_category_belongs_to_paper') || tomato_variety_category_belongs_to_paper($term, $paper))) {
           $variety_categories[] = (string) $term->name;
         }
       }

@@ -122,12 +122,54 @@ class Tomato_Auto_Static_Build_Queue
 
   public static function on_terms_edited($term_id, $tt_id = null, $taxonomy = null): void
   {
+    // article_type has additional per-paper metadata. Queueing from the generic
+    // term hook can race with that metadata save and build a stale menu.json.
+    // It is queued by on_article_type_papers_saved() after the assignment is
+    // stored instead.
+    if (in_array((string) $taxonomy, ['article_type', 'variety_category'], true)) {
+      return;
+    }
+
     // Any taxonomy change may affect list/detail filtering; rebuild all papers.
     $papers = self::get_papers_from_newspaper_master();
     if (empty($papers)) {
       $papers = self::get_default_papers();
     }
     self::request_build($papers, 'term_edited:' . (string)$taxonomy);
+  }
+
+  public static function on_article_type_papers_saved($term_id, $papers, $previous_papers = []): void
+  {
+    $papers = is_array($papers) ? $papers : [];
+    $previous_papers = is_array($previous_papers) ? $previous_papers : [];
+
+    // Rebuild the new papers so the item is added, and the previous papers so
+    // the item is removed when its assignment changes.
+    $affected_papers = self::normalize_paper_list(array_merge($papers, $previous_papers));
+    if (empty($affected_papers)) {
+      return;
+    }
+
+    self::request_build(
+      $affected_papers,
+      'article_type_papers_saved:' . (int) $term_id
+    );
+  }
+
+  public static function on_variety_category_papers_saved($term_id, $papers, $previous_papers = []): void
+  {
+    $papers = is_array($papers) ? $papers : [];
+    $previous_papers = is_array($previous_papers) ? $previous_papers : [];
+
+    $affected_papers = self::normalize_paper_list(array_merge($papers, $previous_papers));
+    if (empty($affected_papers)) {
+      return;
+    }
+
+    self::request_build(
+      $affected_papers,
+      'variety_category_papers_saved:' . (int) $term_id
+    );
   }
 
   public static function on_save_post($post_id, $post, $update): void
@@ -294,7 +336,7 @@ class Tomato_Auto_Static_Build_Queue
     $papers = [];
 
     // 品種マスタ uses the built-in category taxonomy as the paper selector
-    // (example: tomato/leek/strawberry).
+    // (example: tomato/leek/ichigo).
     $cat_slugs = wp_get_post_terms($post_id, 'category', ['fields' => 'slugs']);
     if (is_array($cat_slugs)) {
       $papers = array_merge($papers, $cat_slugs);
@@ -466,7 +508,7 @@ class Tomato_Auto_Static_Build_Queue
   }
 
 
-  
+
   private static function normalize_paper_key(string $raw): ?string
   {
     $raw = trim($raw);
@@ -481,7 +523,7 @@ class Tomato_Auto_Static_Build_Queue
     $map = [
       'tomato' => 'tomato',
       'leek' => 'leek',
-      'strawberry' => 'strawberry',
+      'ichigo' => 'ichigo',
 
       // Japanese label variants -> slug
       'トマト' => 'tomato',
@@ -489,9 +531,9 @@ class Tomato_Auto_Static_Build_Queue
       'ねぎ' => 'leek',
       'ネギ' => 'leek',
       'リーク' => 'leek',
-      'いちご' => 'strawberry',
-      'イチゴ' => 'strawberry',
-      '苺' => 'strawberry',
+      'いちご' => 'ichigo',
+      'イチゴ' => 'ichigo',
+      '苺' => 'ichigo',
     ];
 
     if (isset($map[$decoded])) {
@@ -794,5 +836,7 @@ add_action('transition_post_status', [Tomato_Auto_Static_Build_Queue::class, 'on
 
 add_action('edited_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
 add_action('created_term', [Tomato_Auto_Static_Build_Queue::class, 'on_terms_edited'], 10, 3);
+add_action('tomato_article_type_papers_saved', [Tomato_Auto_Static_Build_Queue::class, 'on_article_type_papers_saved'], 10, 3);
+add_action('tomato_variety_category_papers_saved', [Tomato_Auto_Static_Build_Queue::class, 'on_variety_category_papers_saved'], 10, 3);
 
 // Queue is consumed by the static_builder container (polls the option).

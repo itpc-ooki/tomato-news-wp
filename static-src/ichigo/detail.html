@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tomato Detail</title>
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="icon" href="/static/ichigo/assets/images/favicon.ico" type="image/x-icon">
+  <link rel="shortcut icon" href="/static/ichigo/assets/images/favicon.ico" type="image/x-icon">
+</head>
+<body class="page-detail">
+  <div id="header-container"></div>
+
+  <!-- メイン -->
+  <main>
+    <div class="detail-container">
+      <!-- パンくずリスト -->
+      <nav class="breadcrumb" aria-label="パンくずリスト">
+        <a href="/static/ichigo/index.html">ホーム</a>
+        <span class="breadcrumb-separator">›</span>
+        <a href="/static/ichigo/list.html">コラム</a>
+        <span class="breadcrumb-separator">›</span>
+        <span class="breadcrumb-current">記事詳細</span>
+      </nav>
+
+      <!-- 記事ヘッダー（app.js が動的に反映） -->
+      <div class="article-header">
+        <div class="article-meta">
+          <span class="category-badge"></span>
+          <time></time>
+          <span></span>
+        </div>
+        <h1 class="article-title"></h1>
+      </div>
+
+      <div class="detail-layout">
+        <!-- メインコンテンツ（app.js が動的に反映） -->
+        <div class="main-content">
+          <div class="main-image-container">
+            <div class="main-image-full"><img alt=""></div>
+          </div>
+
+          <article class="article-content"></article>
+
+          <!-- Member gate (shown when the post requires login) -->
+          <div id="paywall-gate" class="paywall-gate" style="display:none;"></div>
+
+        </div>
+
+        <div id="reference-box" style="margin-top: 40px; padding: 20px; background: #f8fafc; border-left: 4px solid var(--accent); border-radius: 4px;">
+          <h3 style="font-size: 1rem; font-weight: 700; margin: 0 0 12px 0;">参考資料</h3>
+          <p id="reference-text" style="font-size: 0.85rem; color: #475569; margin: 0; line-height: 1.6;"></p>
+        </div>
+
+        <!-- 執筆者情報 -->
+        <div id="writer-box" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 0.875rem; color: #6b7280;">
+          <strong>執筆者:</strong><span id="writer-text"></span>
+        </div>
+
+
+<!-- タグ（app.js が動的に反映） -->
+        <div class="tags-section detail-tags">
+          <div class="tags-label">タグ:</div>
+          <div id="article-tags" class="tags-list"></div>
+        </div>
+
+        <!-- サイドバー（空のプレースホルダー：必要に応じて app.js で動的に挿入） -->
+        <aside class="sidebar">
+          <div class="sidebar-section" id="sidebar-popular">
+            <h3 class="sidebar-heading">人気記事</h3>
+            <div class="popular-list"></div>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="sidebar-ad" id="sidebar-ads"></div>
+          </div>
+
+          <div class="sidebar-section" id="sidebar-links">
+            <h3 class="sidebar-heading">関連情報</h3>
+            <div class="related-links">
+              <div>
+                <a href="./survey.html">JA部会アンケート一覧</a>
+              </div>
+              <div>
+                <a href="./variety.html">品種情報データベース</a>
+              </div>
+              <div>
+                <a href="./pest-control.html">病害虫対策ガイド</a>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <!-- 記事下セクション（グリッドレイアウト：空のプレースホルダー） -->
+  <div class="content-grid" id="detail-bottom-grid">
+
+      <!-- コラムニスト紹介セクション -->
+      <div class="columnists-section" id="columnists-section" style="display:none;">
+        <h2 class="columnists-title">コラムニスト紹介</h2>
+
+        <div class="columnists-grid" id="columnists-grid"></div>
+      </div>
+
+    <!-- CTA（会員登録促進セクション） -->
+    <div class="cta-section">
+      <h3 class="cta-title">もっと詳しい情報を今すぐチェック</h3>
+      <p class="cta-description">会員登録すると、限定記事・データベース・WEBセミナーなど<br>トマト栽培に役立つ情報を全てご利用いただけます</p>
+      <div class="hero-actions">
+        <button class="btn accent">会員登録して使い始める</button>
+        <button class="btn">まずは記事を探す</button>
+      </div>
+    </div>
+  <!-- セクションタイトル -->
+  <h2 class="section-title">関連記事</h2>
+  <div id="detail-related-list"></div>
+
+  <!-- セクションタイトル -->
+  <h2 class="section-title">おすすめ特集</h2>
+  <div id="detail-tokushu-list"></div>
+
+</div>
+
+  </div>
+
+
+  <!-- Footer will be loaded here by JavaScript -->
+  <div id="footer-container"></div>
+
+  <!-- 全paper共通 -->
+  <script src="../auth.js"></script>
+  <script src="../app.js"></script>
+</body>
+</html>

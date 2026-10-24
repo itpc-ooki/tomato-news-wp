@@ -866,8 +866,9 @@
       const host = String(window.location.hostname || '').toLowerCase().replace(/:\d+$/, '');
       const m = host.match(/^(?:stg-)?([a-z0-9-]+)\.agrinews\.jp$/i);
       if (m && m[1] && m[1] !== 'www') {
-        localStorage.setItem('tomato_active_paper_v1', m[1]);
-        return m[1];
+        const hostnamePaper = String(m[1]).toLowerCase();
+        localStorage.setItem('tomato_active_paper_v1', hostnamePaper);
+        return hostnamePaper;
       }
     }catch(_e){}
 
@@ -1256,7 +1257,7 @@
 // ===============================
 (function(){
   try{
-    const allowed = ['tomato','leek','strawberry'];
+    const allowed = ['tomato','leek','ichigo'];
     let paper = '';
 
     // 1) Query param (login/register links should pass ?paper=)
@@ -1403,7 +1404,7 @@
   const isLoginPage = /\/account\/login\.html$/i.test(path) || /\/static\/account\/login\.html$/i.test(path);
   if (!isLoginPage) return;
 
-  const allowed = ['tomato','leek','strawberry'];
+  const allowed = ['tomato','leek','ichigo'];
 
   function detectPaper(){
     try{
@@ -1524,6 +1525,11 @@
     const paper = detectPaper();
     try{ localStorage.setItem('tomato_active_paper_v1', paper); }catch(_e){}
 
+    if (paper === 'ichigo') {
+      const loginSubtitle = document.querySelector('[data-login-panel="login"] .login-subtitle');
+      if (loginSubtitle) loginSubtitle.textContent = 'イチゴ新聞デジタル版にログイン';
+    }
+
     const form = document.getElementById('loginForm');
     if (form && !form.__wired){
       form.__wired = true;
@@ -1619,7 +1625,7 @@
 (function(){
   if (window.__detectPaper && window.__paperTop) return;
 
-  var allowed = ['tomato','leek','strawberry'];
+  var allowed = ['tomato','leek','ichigo'];
   window.__tomatoAllowedPapers = allowed;
 
   function staticRoot(){
@@ -1792,6 +1798,35 @@ var currentStep = 1;
         document.addEventListener('DOMContentLoaded', function() {
             // paper-aware TOP links
             document.querySelectorAll('[data-paper-top-link="1"]').forEach(function(a){ a.href = window.__paperTop(); });
+
+            var activePaper = (typeof window.__detectPaper === 'function')
+              ? String(window.__detectPaper() || 'tomato').toLowerCase()
+              : 'tomato';
+
+            if (activePaper === 'ichigo') {
+                document.title = '会員登録 | イチゴ新聞';
+
+                var registrationTitle = document.querySelector('.progress-title');
+                if (registrationTitle) {
+                    registrationTitle.textContent = 'イチゴ新聞　視聴登録（会員登録）';
+                }
+
+                var registrationDescription = document.querySelector('.resgister-description');
+                if (registrationDescription) {
+                    registrationDescription.textContent = 'こちらは日本農業新聞が運営する、イチゴ生産者に向けた総合情報サイト「イチゴ新聞」の会員登録ページ（無料）です。登録するとイチゴ新聞の会員となり、会員限定記事など、すべてのコンテンツを視聴できます。';
+                }
+
+                var tomatoBanner = document.querySelector('.register-banner');
+                if (tomatoBanner) tomatoBanner.remove();
+
+                var nicknameInput = document.querySelector('input[name="nickname"]');
+                if (nicknameInput && nicknameInput.placeholder === 'トマト太郎') {
+                    nicknameInput.placeholder = 'イチゴ太郎';
+                }
+
+                var completionButton = document.querySelector('#completionMessage .btn-next');
+                if (completionButton) completionButton.textContent = 'イチゴ新聞を読む →';
+            }
 
 
             // --- Edit mode (when already logged in) ---

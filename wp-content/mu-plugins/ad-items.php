@@ -4,7 +4,7 @@
  *
  * Creates a CPT for placements and taxonomies:
  * - post_type: ad_item
- * - taxonomy:  paper   (tomato / leek / strawberry ...)
+ * - taxonomy:  paper   (tomato / leek / ichigo ...)
  * - taxonomy:  ad_type (ads / pr / sponsor_ad / sponsor_video / sponsors)
  *
  * Adds:
@@ -245,7 +245,7 @@ add_action('add_meta_boxes', function () {
 });
 
 function tomato_render_tax_dropdown_metabox_paper($post) {
-  tomato_render_tax_dropdown_metabox($post, 'paper', 'tax_input_paper', '紙を選択してください（例: tomato / leek / strawberry）');
+  tomato_render_tax_dropdown_metabox($post, 'paper', 'tax_input_paper', '紙を選択してください（例: tomato / leek / ichigo）');
 }
 
 function tomato_render_tax_dropdown_metabox_ad_type($post) {
