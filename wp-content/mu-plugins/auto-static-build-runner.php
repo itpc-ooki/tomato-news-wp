@@ -182,7 +182,7 @@ self::lock();
         self::run_static_build($papers);
 
         // Sync to S3 if configured
-        self::run_s3_sync();
+        self::run_s3_sync($papers);
 
 
         // Auto CloudFront invalidation (optional; keeps cache but updates immediately)
@@ -444,56 +444,106 @@ private static function run_static_build(array $papers): void {
       return $out;
     }
 
-    private static function run_s3_sync(): void {
-  if (!defined('WP_CLI') || !WP_CLI) {
-    self::append_log('Skip sync: not WP_CLI');
-    return;
+  private static function run_s3_sync(array $papers): void {
+    if (!defined('WP_CLI') || !WP_CLI) {
+      self::append_log('Skip sync: not WP_CLI');
+      return;
+    }
+
+    $enabled = getenv('ENABLE_S3_SYNC');
+    if ($enabled !== '1') {
+      self::append_log('Skip sync: ENABLE_S3_SYNC != 1');
+      return;
+    }
+
+    $s3_target = getenv('TOMATO_STATIC_S3_TARGET');
+    if (!$s3_target) {
+      \WP_CLI::warning(
+        'Missing env TOMATO_STATIC_S3_TARGET '
+        . '(e.g. s3://tomatonews-static-stg/static)'
+      );
+      return;
+    }
+
+    $src_dir = getenv('STATIC_OUTPUT_DIR') ?: '/var/www/html/static';
+    $src_dir = rtrim($src_dir, '/');
+    $s3_target = rtrim($s3_target, '/');
+
+    $normalized = [];
+
+    foreach ($papers as $paper) {
+      $paper = self::normalize_paper_key((string) $paper);
+
+      if ($paper !== null) {
+        $normalized[] = $paper;
+      }
+    }
+
+    $normalized = array_values(array_unique($normalized));
+
+    if (empty($normalized)) {
+      self::append_log('Skip sync: no valid paper keys');
+      return;
+    }
+
+    foreach ($normalized as $paper) {
+      $paper_src = $src_dir . '/' . $paper;
+
+      if (!is_dir($paper_src)) {
+        self::append_log(
+          'Skip sync: output directory missing for paper=' . $paper
+        );
+        continue;
+      }
+
+      $paper_target = $s3_target . '/' . $paper;
+
+      $cmd = sprintf(
+        'aws s3 sync %s %s --delete',
+        escapeshellarg($paper_src . '/'),
+        escapeshellarg($paper_target . '/')
+      );
+
+      \WP_CLI::log('Running: ' . $cmd);
+
+      $code = 0;
+
+      self::run_shell(
+        $cmd,
+        ['stderr' => false, 'return' => 'all', 'launch' => true],
+        $code
+      );
+
+      if ((int) $code !== 0) {
+        \WP_CLI::error(
+          'aws s3 sync failed for paper='
+          . $paper
+          . ' with code '
+          . $code
+        );
+      }
+
+      self::append_log(
+        'S3 sync OK paper='
+        . $paper
+        . ' target='
+        . $paper_target
+      );
+    }
   }
-
-  $enabled = getenv('ENABLE_S3_SYNC');
-  if ($enabled !== '1') {
-    self::append_log('Skip sync: ENABLE_S3_SYNC != 1');
-    return;
-  }
-
-  $s3_target = getenv('TOMATO_STATIC_S3_TARGET');
-  if (!$s3_target) {
-    \WP_CLI::warning('Missing env TOMATO_STATIC_S3_TARGET (e.g. s3://tomatonews-static-stg/static)');
-    return;
-  }
-
-  $src_dir = getenv('STATIC_OUTPUT_DIR') ?: '/var/www/html/static';
-  $src_dir = rtrim($src_dir, '/');
-
-  $cmd = sprintf(
-    'aws s3 sync %s %s --delete',
-    escapeshellarg($src_dir . '/'),
-    escapeshellarg(rtrim($s3_target, '/') . '/')
-  );
-
-  \WP_CLI::log('Running: ' . $cmd);
-
-  $code = 0;
-  self::run_shell($cmd, ['stderr' => false, 'return' => 'all', 'launch' => true], $code);
-  if ((int)$code !== 0) {
-    \WP_CLI::error('aws s3 sync failed with code ' . $code);
-  }
-
-  self::append_log('S3 sync OK target=' . $s3_target);
-}
 
 
 /**
- * Auto CloudFront invalidation (optional)
- *
- * Keeps CloudFront caching ON, but makes updates visible immediately.
+ * Auto CloudFront invalidation for each changed paper.
  *
  * Required env:
  * - ENABLE_CLOUDFRONT_INVALIDATION=1
+ * - CLOUDFRONT_DISTRIBUTION_ID_<PAPER>=E2XXXXXXXXXXXXX
+ *
+ * Backward-compatible fallback:
  * - CLOUDFRONT_DISTRIBUTION_ID=E2XXXXXXXXXXXXX
  *
- * Optional env:
- * - CLOUDFRONT_INVALIDATION_PATHS="/static/*"  (comma-separated)
+ * Each paper invalidates only /static/{paper}/*.
  */
 private static function run_cloudfront_invalidation(array $papers): void {
   if (!defined('WP_CLI') || !WP_CLI) {
@@ -502,64 +552,107 @@ private static function run_cloudfront_invalidation(array $papers): void {
   }
 
   $enabled = getenv('ENABLE_CLOUDFRONT_INVALIDATION');
+
   if ($enabled !== '1') {
-    self::append_log('Skip invalidation: ENABLE_CLOUDFRONT_INVALIDATION != 1');
+    self::append_log(
+      'Skip invalidation: ENABLE_CLOUDFRONT_INVALIDATION != 1'
+    );
     return;
   }
 
-  $dist_id = getenv('CLOUDFRONT_DISTRIBUTION_ID');
-  if (!$dist_id) {
-    \WP_CLI::warning('Missing env CLOUDFRONT_DISTRIBUTION_ID');
-    return;
-  }
+  $normalized = [];
 
-  // If you want custom paths, set CLOUDFRONT_INVALIDATION_PATHS as space-separated values.
-  $custom = getenv('CLOUDFRONT_INVALIDATION_PATHS');
-  $paths = [];
+  foreach ($papers as $paper) {
+    $paper = self::normalize_paper_key((string) $paper);
 
-  if ($custom) {
-    $parts = preg_split('/\s+/', trim($custom));
-    foreach ($parts as $p) {
-      if ($p !== '') $paths[] = $p;
-    }
-  } else {
-    // Default: invalidate the changed paper folders under /static
-    $normalized = [];
-    foreach ($papers as $p) {
-      $n = self::normalize_paper_key((string) $p);
-      if ($n !== null) $normalized[] = $n;
-    }
-    $normalized = array_values(array_unique($normalized));
-    if (empty($normalized)) $normalized = ['tomato'];
-
-    foreach ($normalized as $paper) {
-      // minimal but effective
-      $paths[] = "/static/{$paper}/*";
+    if ($paper !== null) {
+      $normalized[] = $paper;
     }
   }
 
-  if (empty($paths)) {
-    self::append_log('Skip invalidation: no paths');
+  $normalized = array_values(array_unique($normalized));
+
+  if (empty($normalized)) {
+    self::append_log('Skip invalidation: no valid paper keys');
     return;
   }
 
-  $cmd = 'aws cloudfront create-invalidation'
-    . ' --distribution-id ' . escapeshellarg($dist_id)
-    . ' --paths ' . implode(' ', array_map('escapeshellarg', $paths));
+  foreach ($normalized as $paper) {
+    $specific_env = 'CLOUDFRONT_DISTRIBUTION_ID_'
+      . strtoupper(str_replace('-', '_', $paper));
 
-  \WP_CLI::log('Running: ' . $cmd);
+    $dist_id = getenv($specific_env);
 
-  $code = 0;
-  self::run_shell($cmd, ['stderr' => false, 'return' => 'all', 'launch' => true], $code);
+    if (!$dist_id) {
+      // Backward compatibility for the existing Tomato configuration.
+      $dist_id = getenv('CLOUDFRONT_DISTRIBUTION_ID');
+    }
 
-  if ((int)$code !== 0) {
-    self::append_log('Invalidate ERROR code=' . $code);
-    \WP_CLI::warning('CloudFront invalidation failed (exit=' . $code . ')');
-    return;
+    if (!$dist_id) {
+      self::append_log(
+        'Skip invalidation: missing distribution for paper=' . $paper
+      );
+
+      \WP_CLI::warning(
+        'Missing env '
+        . $specific_env
+        . ' or CLOUDFRONT_DISTRIBUTION_ID'
+      );
+
+      continue;
+    }
+
+    $paths = ["/static/{$paper}/*"];
+
+    $cmd = 'aws cloudfront create-invalidation'
+      . ' --distribution-id ' . escapeshellarg($dist_id)
+      . ' --paths '
+      . implode(' ', array_map('escapeshellarg', $paths));
+
+    \WP_CLI::log('Running: ' . $cmd);
+
+    $code = 0;
+
+    self::run_shell(
+      $cmd,
+      ['stderr' => false, 'return' => 'all', 'launch' => true],
+      $code
+    );
+
+    if ((int) $code !== 0) {
+      self::append_log(
+        'Invalidate ERROR paper='
+        . $paper
+        . ' distribution='
+        . $dist_id
+        . ' code='
+        . $code
+      );
+
+      \WP_CLI::warning(
+        'CloudFront invalidation failed for paper='
+        . $paper
+        . ' (exit='
+        . $code
+        . ')'
+      );
+
+      continue;
+    }
+
+    self::append_log(
+      'Invalidate OK paper='
+      . $paper
+      . ' distribution='
+      . $dist_id
+      . ' paths='
+      . implode(',', $paths)
+    );
+
+    \WP_CLI::success(
+      'CloudFront invalidation created for paper: ' . $paper
+    );
   }
-
-  self::append_log('Invalidate OK paths=' . implode(',', $paths));
-  \WP_CLI::success('CloudFront invalidation created.');
 }
 
 
