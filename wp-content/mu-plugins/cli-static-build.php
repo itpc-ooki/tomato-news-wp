@@ -140,7 +140,10 @@ class Tomato_Static_Builder_ModeB {
     file_put_contents($file, $html);
   }
 
-  private static function rewrite_static_prefix_in_html_under(string $root): void {
+  private static function rewrite_static_prefix_in_html_under(
+    string $root,
+    int $base_depth = 0
+  ): void {
     $root = rtrim($root, '/');
     if (!is_dir($root)) return;
 
@@ -157,7 +160,11 @@ class Tomato_Static_Builder_ModeB {
 
       // Depth is number of path segments from $root to the html file's directory.
       $rel_dir = ltrim(str_replace($root, '', $f->getPath()), '/');
-      $depth = $rel_dir === '' ? 0 : substr_count($rel_dir, '/') + 1;
+      $relative_depth = $rel_dir === ''
+        ? 0
+        : substr_count($rel_dir, '/') + 1;
+
+      $depth = $base_depth + $relative_depth;
 
       self::rewrite_static_prefix_in_html($file, $depth);
     }
@@ -204,8 +211,19 @@ class Tomato_Static_Builder_ModeB {
     self::rcopy($src . '/account', $dst . '/account');
 
 
-    // Make /static/... paths work on both local (/static/...) and S3 bucket root (/...)
-    self::rewrite_static_prefix_in_html_under(self::static_root());
+    // Rewrite only the shared HTML copied during this build.
+    // Do not rewrite existing paper output under /static/{paper}.
+    $root_html_files = glob($dst . '/*.html');
+
+    if (is_array($root_html_files)) {
+      foreach ($root_html_files as $file) {
+        self::rewrite_static_prefix_in_html($file, 0);
+      }
+    }
+
+    self::rewrite_static_prefix_in_html_under($dst . '/common', 1);
+    self::rewrite_static_prefix_in_html_under($dst . '/components', 1);
+    self::rewrite_static_prefix_in_html_under($dst . '/account', 1);
   }
 
 
@@ -877,6 +895,9 @@ private static function sync_uploads_assets(): void {
     // so new files under /static-src/{paper}/ are automatically published without code changes.
     self::rcopy($src, $dst);
 
+    // Rewrite only the paper currently being built.
+    // /static/{paper}/ is already one directory below /static.
+    self::rewrite_static_prefix_in_html_under($dst, 1);
   }
 
   /** Build list + detail json for a paper */
