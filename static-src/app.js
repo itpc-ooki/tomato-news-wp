@@ -1831,13 +1831,18 @@ function renderGraphItems(items) {
         const seminarItems = Array.from(section.querySelectorAll(".seminar-item"));
         seminarItems.forEach((itemEl, i) => {
           const articleEl = itemEl.querySelector(".seminar-article");
-          if (!articleEl) return;
+          if (!articleEl) {
+            itemEl.classList.add("seminar-item--video-only");
+            return;
+          }
 
           if (i >= picks.length) {
+            itemEl.classList.add("seminar-item--video-only");
             articleEl.remove();
             return;
           }
 
+          itemEl.classList.remove("seminar-item--video-only");
           articleEl.innerHTML = "";
           articleEl.appendChild(buildRecordCard(picks[i]));
         });

@@ -7050,6 +7050,14 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
   }
 
 
+/* 採録紙面がない場合は、動画のみを中央に表示 */
+.seminar-item.seminar-item--video-only{
+    grid-template-columns:1fr;
+    width:calc(66.6667% - 8px);
+    margin-left:auto;
+    margin-right:auto;
+}
+
 .seminar-video{
     position:relative;
     background:#000;
@@ -7205,6 +7213,12 @@ html,body{ margin:0; background:var(--bg); color:var(--text);
     margin-bottom: 20px;
     box-shadow: none;
     border-bottom: 1px solid var(--border);
+  }
+
+  .seminar-item.seminar-item--video-only{
+    width:100%;
+    margin-left:0;
+    margin-right:0;
   }
 
   .seminar-video,
