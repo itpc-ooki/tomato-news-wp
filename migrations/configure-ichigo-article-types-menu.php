@@ -68,6 +68,7 @@ function ichigo_menu_ensure_term(
     string $slug
 ) {
     $term = ichigo_menu_get_term_by_name($name);
+    $created = false;
 
     if (!$term) {
         $slug_term = get_term_by('slug', $slug, 'article_type');
@@ -83,6 +84,7 @@ function ichigo_menu_ensure_term(
         }
 
         $term = ichigo_menu_create_term($name, $slug);
+        $created = true;
     } else {
         echo sprintf(
             "EXISTS: %s (term_id=%d, slug=%s)\n",
@@ -100,22 +102,42 @@ function ichigo_menu_ensure_term(
         )
     );
 
-/*
- * These requested terms belong exclusively to Ichigo.
- * The existing creation hook may initially assign a new term to Tomato,
- * so always normalize its ownership after creation.
- */
-$desired_papers = ['ichigo'];
+    /*
+     * New Ichigo terms can be assigned to Tomato by the creation hook.
+     * Replace that automatic assignment with Ichigo-only ownership.
+     *
+     * Existing terms may already be used by Tomato or another paper.
+     * Preserve those owners and add Ichigo without detaching anyone.
+     */
+    if ($created) {
+        $desired_papers = ['ichigo'];
+        $ownership_message =
+            "SET ICHIGO-ONLY OWNERSHIP: {$term->name}\n";
+    } else {
+        $desired_papers = $papers;
 
-if ($papers !== $desired_papers) {
-    update_term_meta(
-        $term->term_id,
-        'article_type_papers',
-        $desired_papers
-    );
+        if (!in_array('ichigo', $desired_papers, true)) {
+            $desired_papers[] = 'ichigo';
+        }
 
-    echo "SET ICHIGO-ONLY OWNERSHIP: {$term->name}\n";
-}
+        $desired_papers = ichigo_menu_normalize_papers(
+            $desired_papers
+        );
+
+        $ownership_message =
+            "ADDED ICHIGO OWNERSHIP; PRESERVED EXISTING PAPERS: " .
+            "{$term->name}\n";
+    }
+
+    if ($papers !== $desired_papers) {
+        update_term_meta(
+            $term->term_id,
+            'article_type_papers',
+            $desired_papers
+        );
+
+        echo $ownership_message;
+    }
 
     return get_term($term->term_id, 'article_type');
 }
