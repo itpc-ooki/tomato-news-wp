@@ -67,13 +67,18 @@ function ichigo_menu_ensure_term(
     string $name,
     string $slug
 ) {
-    $term = ichigo_menu_get_term_by_name($name);
-    $created = false;
+    /*
+     * Prefer the requested slug. Multiple environments may contain terms
+     * with the same display name but different paper-specific slugs.
+     */
+    $slug_term = get_term_by(
+        'slug',
+        $slug,
+        'article_type'
+    );
 
-    if (!$term) {
-        $slug_term = get_term_by('slug', $slug, 'article_type');
-
-        if ($slug_term && !is_wp_error($slug_term)) {
+    if ($slug_term && !is_wp_error($slug_term)) {
+        if ($slug_term->name !== $name) {
             WP_CLI::error(
                 sprintf(
                     'Slug "%s" already belongs to "%s".',
@@ -83,6 +88,14 @@ function ichigo_menu_ensure_term(
             );
         }
 
+        $term = $slug_term;
+    } else {
+        $term = ichigo_menu_get_term_by_name($name);
+    }
+
+    $created = false;
+
+    if (!$term) {
         $term = ichigo_menu_create_term($name, $slug);
         $created = true;
     } else {
@@ -350,9 +363,91 @@ foreach ($menu_items as $item) {
 }
 
 /*
- * Remove only the obsolete Ichigo-specific seminar menu metadata.
- * This does not touch Tomato's newspaper master or Tomato terms.
+ * Retire obsolete zero-content Ichigo test menu terms without deleting
+ * the terms themselves. Abort if content exists so no content can be
+ * accidentally hidden.
  */
+$obsolete_ichigo_menu_terms = [
+    'ichigo-menu',
+    'ichigo-test-menu',
+];
+
+foreach ($obsolete_ichigo_menu_terms as $obsolete_slug) {
+    $obsolete_term = get_term_by(
+        'slug',
+        $obsolete_slug,
+        'article_type'
+    );
+
+    if (!$obsolete_term || is_wp_error($obsolete_term)) {
+        continue;
+    }
+
+    $obsolete_papers = ichigo_menu_normalize_papers(
+        get_term_meta(
+            $obsolete_term->term_id,
+            'article_type_papers',
+            true
+        )
+    );
+
+    if (!in_array('ichigo', $obsolete_papers, true)) {
+        continue;
+    }
+
+    if ((int) $obsolete_term->count !== 0) {
+        WP_CLI::error(
+            sprintf(
+                'Obsolete Ichigo menu term "%s" contains %d post(s).',
+                $obsolete_term->name,
+                $obsolete_term->count
+            )
+        );
+    }
+
+    $remaining_papers = array_values(array_filter(
+        $obsolete_papers,
+        static function (string $paper): bool {
+            return $paper !== 'ichigo';
+        }
+    ));
+
+    update_term_meta(
+        $obsolete_term->term_id,
+        'article_type_papers',
+        $remaining_papers
+    );
+
+    echo sprintf(
+        "DETACHED OBSOLETE ICHIGO MENU TERM: %s (slug=%s)\n",
+        $obsolete_term->name,
+        $obsolete_term->slug
+    );
+}
+
+/*
+ * Remove obsolete metadata only from the Ichigo newspaper master.
+ * No Tomato master metadata is changed.
+ */
+$obsolete_menu_suffixes = [
+    'web_seminar_2',
+    'ichigo_menu',
+    'ichigo_test_menu',
+    'column',
+];
+
+foreach ($obsolete_menu_suffixes as $obsolete_suffix) {
+    delete_post_meta(
+        $master_id,
+        'menu_order_' . $obsolete_suffix
+    );
+
+    delete_post_meta(
+        $master_id,
+        'menu_url_' . $obsolete_suffix
+    );
+}
+
 delete_post_meta($master_id, 'menu_order_web_seminar_2');
 delete_post_meta($master_id, 'menu_url_web_seminar_2');
 
