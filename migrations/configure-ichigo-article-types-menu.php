@@ -363,77 +363,11 @@ foreach ($menu_items as $item) {
 }
 
 /*
- * Retire obsolete zero-content Ichigo test menu terms without deleting
- * the terms themselves. Abort if content exists so no content can be
- * accidentally hidden.
- */
-$obsolete_ichigo_menu_terms = [
-    'ichigo-menu',
-    'ichigo-test-menu',
-];
-
-foreach ($obsolete_ichigo_menu_terms as $obsolete_slug) {
-    $obsolete_term = get_term_by(
-        'slug',
-        $obsolete_slug,
-        'article_type'
-    );
-
-    if (!$obsolete_term || is_wp_error($obsolete_term)) {
-        continue;
-    }
-
-    $obsolete_papers = ichigo_menu_normalize_papers(
-        get_term_meta(
-            $obsolete_term->term_id,
-            'article_type_papers',
-            true
-        )
-    );
-
-    if (!in_array('ichigo', $obsolete_papers, true)) {
-        continue;
-    }
-
-    if ((int) $obsolete_term->count !== 0) {
-        WP_CLI::error(
-            sprintf(
-                'Obsolete Ichigo menu term "%s" contains %d post(s).',
-                $obsolete_term->name,
-                $obsolete_term->count
-            )
-        );
-    }
-
-    $remaining_papers = array_values(array_filter(
-        $obsolete_papers,
-        static function (string $paper): bool {
-            return $paper !== 'ichigo';
-        }
-    ));
-
-    update_term_meta(
-        $obsolete_term->term_id,
-        'article_type_papers',
-        $remaining_papers
-    );
-
-    echo sprintf(
-        "DETACHED OBSOLETE ICHIGO MENU TERM: %s (slug=%s)\n",
-        $obsolete_term->name,
-        $obsolete_term->slug
-    );
-}
-
-/*
- * Remove obsolete metadata only from the Ichigo newspaper master.
- * No Tomato master metadata is changed.
+ * Remove only the metadata for the renamed legacy Ichigo seminar item.
+ * All other existing Ichigo menus and all Tomato settings are retained.
  */
 $obsolete_menu_suffixes = [
     'web_seminar_2',
-    'ichigo_menu',
-    'ichigo_test_menu',
-    'column',
 ];
 
 foreach ($obsolete_menu_suffixes as $obsolete_suffix) {
