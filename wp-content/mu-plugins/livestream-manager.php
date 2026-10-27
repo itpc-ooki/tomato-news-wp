@@ -16,6 +16,7 @@ class Tomato_Livestream_Manager {
 
     public static function init(): void {
         add_action('admin_menu', [__CLASS__, 'add_admin_page']);
+        add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_admin_media']);
         add_action('admin_post_tomato_save_livestream_settings', [__CLASS__, 'save_settings']);
 
         if (defined('WP_CLI') && WP_CLI) {
@@ -33,12 +34,21 @@ class Tomato_Livestream_Manager {
         );
     }
 
+    public static function enqueue_admin_media(string $hook): void {
+        if ($hook !== 'settings_page_tomato-livestream-settings') {
+            return;
+        }
+
+        wp_enqueue_media();
+    }
+
     private static function defaults(): array {
         return [
             'enabled' => '1',
             'title' => '第4回トマトサミット 2026',
             'description' => '最新のトマト栽培技術と市場動向について、業界トップクラスの専門家陣が詳しく解説します。施設園芸の最前線から実践的なノウハウまで、生産者の皆様に役立つ情報を多数お届けします。',
             'youtube_id' => 'jfKfPfyJRdk',
+            'thumbnail_id' => 0,
             'start_at' => '',
             'date_text' => '2026年6月26日（金）',
             'time_text' => '14:00 開始予定',
@@ -96,6 +106,10 @@ class Tomato_Livestream_Manager {
 
         $settings = self::get_settings_for_paper($selected_paper);
         $notice = isset($_GET['updated']) ? sanitize_text_field(wp_unslash($_GET['updated'])) : '';
+        $thumbnail_id = absint($settings['thumbnail_id'] ?? 0);
+        $thumbnail_preview = $thumbnail_id > 0
+            ? wp_get_attachment_image_url($thumbnail_id, 'medium')
+            : '';
         ?>
         <div class="wrap">
             <h1>ライブ配信設定</h1>
@@ -146,6 +160,40 @@ class Tomato_Livestream_Manager {
                         </td>
                     </tr>
                     <tr>
+                        <th scope="row"><label for="livestream_thumbnail_id">サムネイル画像</label></th>
+                        <td>
+                            <input
+                                type="hidden"
+                                id="livestream_thumbnail_id"
+                                name="thumbnail_id"
+                                value="<?php echo esc_attr($thumbnail_id); ?>"
+                            >
+                            <div id="livestream_thumbnail_preview" style="margin-bottom:10px;">
+                                <?php if ($thumbnail_preview): ?>
+                                    <img
+                                        src="<?php echo esc_url($thumbnail_preview); ?>"
+                                        alt=""
+                                        style="display:block;max-width:320px;height:auto;border:1px solid #ccd0d4;"
+                                    >
+                                <?php endif; ?>
+                            </div>
+                            <button type="button" class="button" id="livestream_thumbnail_select">
+                                画像を選択
+                            </button>
+                            <button
+                                type="button"
+                                class="button"
+                                id="livestream_thumbnail_remove"
+                                <?php echo $thumbnail_id > 0 ? '' : 'hidden'; ?>
+                            >
+                                画像を削除
+                            </button>
+                            <p class="description">
+                                会員登録ページのライブ配信欄に表示する画像です。未設定の場合は現在のYouTube動画IDのサムネイルを使用します。
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th scope="row"><label for="livestream_start_at">配信開始日時</label></th>
                         <td>
                             <input type="datetime-local" id="livestream_start_at" name="start_at" value="<?php echo esc_attr(self::format_datetime_local($settings['start_at'])); ?>">
@@ -177,6 +225,58 @@ class Tomato_Livestream_Manager {
                 <?php submit_button('保存してJSONを更新'); ?>
             </form>
         </div>
+
+        <script>
+        jQuery(function($) {
+            let thumbnailFrame = null;
+            const input = $('#livestream_thumbnail_id');
+            const preview = $('#livestream_thumbnail_preview');
+            const removeButton = $('#livestream_thumbnail_remove');
+
+            $('#livestream_thumbnail_select').on('click', function(event) {
+                event.preventDefault();
+
+                if (thumbnailFrame) {
+                    thumbnailFrame.open();
+                    return;
+                }
+
+                thumbnailFrame = wp.media({
+                    title: 'ライブ配信サムネイル画像を選択',
+                    button: { text: 'この画像を使用' },
+                    library: { type: 'image' },
+                    multiple: false
+                });
+
+                thumbnailFrame.on('select', function() {
+                    const attachment = thumbnailFrame.state().get('selection').first().toJSON();
+                    const previewUrl = attachment.sizes && attachment.sizes.medium
+                        ? attachment.sizes.medium.url
+                        : attachment.url;
+
+                    input.val(attachment.id);
+                    preview.empty().append(
+                        $('<img>', { src: previewUrl, alt: '' }).css({
+                            display: 'block',
+                            maxWidth: '320px',
+                            height: 'auto',
+                            border: '1px solid #ccd0d4'
+                        })
+                    );
+                    removeButton.prop('hidden', false);
+                });
+
+                thumbnailFrame.open();
+            });
+
+            removeButton.on('click', function(event) {
+                event.preventDefault();
+                input.val('');
+                preview.empty();
+                removeButton.prop('hidden', true);
+            });
+        });
+        </script>
         <?php
     }
 
@@ -219,6 +319,7 @@ class Tomato_Livestream_Manager {
             'title' => isset($_POST['title']) ? sanitize_text_field(wp_unslash($_POST['title'])) : '',
             'description' => isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '',
             'youtube_id' => isset($_POST['youtube_id']) ? self::sanitize_youtube_id(wp_unslash($_POST['youtube_id'])) : '',
+            'thumbnail_id' => self::sanitize_thumbnail_id($_POST['thumbnail_id'] ?? 0),
             'start_at' => isset($_POST['start_at']) ? self::normalize_start_at(wp_unslash($_POST['start_at'])) : '',
             'date_text' => isset($_POST['date_text']) ? sanitize_text_field(wp_unslash($_POST['date_text'])) : '',
             'time_text' => isset($_POST['time_text']) ? sanitize_text_field(wp_unslash($_POST['time_text'])) : '',
@@ -251,6 +352,41 @@ class Tomato_Livestream_Manager {
         return preg_replace('/[^A-Za-z0-9_-]/', '', $value);
     }
 
+    private static function sanitize_thumbnail_id($value): int {
+        $attachment_id = absint($value);
+
+        if ($attachment_id <= 0 || !wp_attachment_is_image($attachment_id)) {
+            return 0;
+        }
+
+        return $attachment_id;
+    }
+
+    private static function get_static_thumbnail_url($attachment_id): string {
+        $attachment_id = self::sanitize_thumbnail_id($attachment_id);
+        if ($attachment_id <= 0) {
+            return '';
+        }
+
+        $url = wp_get_attachment_image_url($attachment_id, 'large');
+        if (!$url) {
+            $url = wp_get_attachment_url($attachment_id);
+        }
+        if (!$url) {
+            return '';
+        }
+
+        $path = wp_parse_url($url, PHP_URL_PATH);
+        if (is_string($path) && strpos($path, '/wp-content/uploads/') === 0) {
+            return '/static' . $path;
+        }
+        if (is_string($path) && strpos($path, '/static/wp-content/uploads/') === 0) {
+            return $path;
+        }
+
+        return esc_url_raw($url);
+    }
+
     public static function export_json_for_paper(string $paper): void {
         $paper = sanitize_title($paper);
         if ($paper === '') return;
@@ -261,6 +397,7 @@ class Tomato_Livestream_Manager {
             'title' => (string) $settings['title'],
             'description' => (string) $settings['description'],
             'youtube_id' => self::sanitize_youtube_id($settings['youtube_id']),
+            'thumbnail_url' => self::get_static_thumbnail_url($settings['thumbnail_id'] ?? 0),
             'start_at' => (string) $settings['start_at'],
             'date_text' => (string) $settings['date_text'],
             'time_text' => (string) $settings['time_text'],
