@@ -530,6 +530,49 @@ private static function run_static_build(array $papers): void {
         . $paper_target
       );
     }
+
+    /*
+     * Uploaded media is shared by all papers and is generated outside each
+     * paper directory. Keep paper output scoped above, then publish shared
+     * media separately without --delete so one paper can never remove files
+     * used by another paper.
+     */
+    $uploads_src = $src_dir . '/wp-content/uploads';
+
+    if (!is_dir($uploads_src)) {
+      self::append_log('Skip shared uploads sync: source directory missing');
+      return;
+    }
+
+    $uploads_target = $s3_target . '/wp-content/uploads';
+
+    $uploads_cmd = sprintf(
+      'aws s3 sync %s %s --exclude %s',
+      escapeshellarg($uploads_src . '/'),
+      escapeshellarg($uploads_target . '/'),
+      escapeshellarg('static-build-queue/*')
+    );
+
+    \WP_CLI::log('Running: ' . $uploads_cmd);
+
+    $uploads_code = 0;
+
+    self::run_shell(
+      $uploads_cmd,
+      ['stderr' => false, 'return' => 'all', 'launch' => true],
+      $uploads_code
+    );
+
+    if ((int) $uploads_code !== 0) {
+      \WP_CLI::error(
+        'aws s3 sync failed for shared uploads with code '
+        . $uploads_code
+      );
+    }
+
+    self::append_log(
+      'S3 shared uploads sync OK target=' . $uploads_target
+    );
   }
 
 
@@ -543,7 +586,8 @@ private static function run_static_build(array $papers): void {
  * Backward-compatible fallback:
  * - CLOUDFRONT_DISTRIBUTION_ID=E2XXXXXXXXXXXXX
  *
- * Each paper invalidates only /static/{paper}/*.
+ * Each paper invalidates its scoped output and the shared upload path on
+ * that paper's own distribution.
  */
 private static function run_cloudfront_invalidation(array $papers): void {
   if (!defined('WP_CLI') || !WP_CLI) {
@@ -602,7 +646,10 @@ private static function run_cloudfront_invalidation(array $papers): void {
       continue;
     }
 
-    $paths = ["/static/{$paper}/*"];
+    $paths = [
+      "/static/{$paper}/*",
+      '/static/wp-content/uploads/*',
+    ];
 
     $cmd = 'aws cloudfront create-invalidation'
       . ' --distribution-id ' . escapeshellarg($dist_id)
