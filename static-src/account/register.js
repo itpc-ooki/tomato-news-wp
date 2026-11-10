@@ -7,7 +7,7 @@
   const CROPS = ['大玉トマト','中玉トマト','ミニトマト','トマト台木','水稲','麦類','豆類','スイートコーン','ハクサイ','キャベツ','レタス','ホウレンソウ','小松菜','長ネギ（白ネギ）','青ネギ（葉ネギ）','キュウリ','ナス','タマネギ','カボチャ','サツマイモ','じゃがいも','ニンジン','イチゴ','果樹類','畜産','酪農','ブロッコリー','アスパラガス','お茶','ピーマン'];
   const INTERESTS = ['栽培技術','病害虫対策','品種情報','市況・流通','スマート農業','環境制御','有機栽培','補助金・支援制度'];
   const NO_FARMING = '農業をしていない';
-  const STEP_NAMES = ['アカウント','プロフィール','栽培・関心','確認'];
+  const STEP_NAMES = ['入力','確認・登録'];
 
   function track(eventName, params = {}) {
     try {
@@ -18,24 +18,17 @@
   let formStarted = false;
 
   const MESSAGES = {
-    email:            { valueMissing:'メールアドレスを入力してください', typeMismatch:'メールアドレスの形が正しくありません。「@」が入っているかご確認ください（例：tomato@example.jp）', customError:'このメールアドレスは既に登録されています。上の「ログイン」からお入りください' },
-    password:         { valueMissing:'パスワードを入力してください', patternMismatch:'下の4つの条件がすべて緑色になるように入力してください', tooShort:'8文字以上で入力してください' },
-    password_confirm: { valueMissing:'確認のため、もう一度同じパスワードを入力してください', customError:'1つ目のパスワードと一致していません。「表示」を押して見比べてください' },
-    nickname:         { valueMissing:'ニックネームを入力してください' },
-    gender:           { valueMissing:'性別を選んでください' },
-    prefecture:       { valueMissing:'都道府県を選んでください' },
-    city:             { valueMissing:'市町村を入力してください' },
-    occupation:       { valueMissing:'職業を選んでください' },
-    farm_scale:       { valueMissing:'営農規模を選んでください' },
-    crop1:            { valueMissing:'主な栽培品目を選んでください' },
-    mail_optin:       { valueMissing:'「希望する」「希望しない」のどちらかを選んでください' },
-    privacy_agree:    { valueMissing:'登録には、個人情報の取扱いへの同意（チェック）が必要です' },
+    email: { valueMissing:'メールアドレスを入力してください', typeMismatch:'メールアドレスの形が正しくありません。「@」が入っているかご確認ください', customError:'このメールアドレスは既に登録されています。上の「ログイン」からお入りください' },
+    password: { valueMissing:'パスワードを入力してください', patternMismatch:'下の4つの条件がすべて緑色になるように入力してください', tooShort:'8文字以上で入力してください' },
+    password_confirm: { valueMissing:'確認のため、もう一度同じパスワードを入力してください', customError:'1つ目のパスワードと一致していません' },
+    prefecture: { valueMissing:'都道府県を選んでください' },
+    occupation: { valueMissing:'職業を選んでください' },
+    mail_optin: { valueMissing:'「希望する」「希望しない」のどちらかを選んでください' },
+    privacy_agree: { valueMissing:'登録には、個人情報の取扱いへの同意（チェック）が必要です' },
   };
   const VALIDITY_KEYS = ['valueMissing','typeMismatch','patternMismatch','tooShort','tooLong','customError'];
   const SUMMARY = [
-    { step:1, title:'アカウント',   rows:[['メールアドレス','email'],['パスワード','password']] },
-    { step:2, title:'プロフィール', rows:[['ニックネーム','nickname'],['性別','gender'],['お住まい','prefecture+city'],['職業','occupation']] },
-    { step:3, title:'栽培・ご関心', rows:[['営農規模','farm_scale'],['主な栽培品目','crop1'],['2品目目','crop2'],['今後作りたい品目','crop_future'],['興味のある分野','interests'],['ご案内メール','mail_optin']] },
+    { step:1, title:'入力内容', rows:[['メールアドレス','email'],['パスワード','password'],['都道府県','prefecture'],['職業','occupation'],['情報配信の希望','mail_optin'],['JA部会名','ja_group_name'],['営農規模','farm_scale'],['栽培品目','crop1'],['興味・関心','interests']] },
   ];
 
   const $  = (s, r = document) => r.querySelector(s);
@@ -65,8 +58,6 @@
   addOptions($('#prefecture'), PREFECTURES);
   addOptions($('#farm_scale'), FARM_SCALES);
   addOptions($('#crop1'), [...CROPS, NO_FARMING, 'その他']);
-  addOptions($('#crop2'), [...CROPS, 'その他']);
-  addOptions($('#crop_future'), [...CROPS, 'その他']);
   $('#interests-list').innerHTML = INTERESTS.map(v =>
     `<label class="rg-choice rg-choice--check"><input type="checkbox" name="interests[]" value="${v}">${v}</label>`).join('');
 
@@ -141,9 +132,6 @@
     syncChoices();
     const wrap = e.target.closest('[data-field]');
     if (wrap && MESSAGES[wrap.dataset.field]) validateField(wrap.dataset.field);
-    if (e.target.name === 'farm_scale' && e.target.value === NO_FARMING && !form.elements.crop1.value) {
-      form.elements.crop1.value = NO_FARMING; validateField('crop1');
-    }
   });
   form.addEventListener('focusout', e => {
     const t = e.target;
@@ -178,8 +166,8 @@
       if (no === current) s.setAttribute('aria-current', 'step'); else s.removeAttribute('aria-current');
       s.tabIndex = (no <= maxReached && no !== current) ? 0 : -1;
     });
-    fill.style.width = `${(current - 1) / (TOTAL - 1) * 75}%`;
-    $('#rg-progress').innerHTML = `ただいま <b>4つのうち ${current} 番目</b>：${STEP_NAMES[current - 1]}`;
+    fill.style.width = `${(current - 1) / Math.max(TOTAL - 1, 1) * 50}%`;
+    $('#rg-progress').innerHTML = `ただいま <b>${TOTAL}つのうち ${current} 番目</b>：${STEP_NAMES[current - 1]}`;
     btnBack.hidden = current === 1;
     btnNext.hidden = current === TOTAL;
     btnSubmit.hidden = current !== TOTAL;
@@ -238,7 +226,7 @@
     const apiData = new FormData();
     const names = [
       'email', 'password', 'password_confirm', 'nickname', 'gender',
-      'prefecture', 'city', 'occupation', 'farm_scale'
+      'prefecture', 'city', 'occupation', 'ja_group_name', 'farm_scale'
     ];
     names.forEach(name => apiData.set(name, String(formData.get(name) || '')));
     apiData.set('crop_1', String(formData.get('crop1') || ''));
