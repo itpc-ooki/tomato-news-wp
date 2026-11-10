@@ -14888,3 +14888,11 @@ body.page-register .rg-btn.rg-btn--primary .arr {
 }
 
 /* ===== Shared registration redesign: end ===== */
+
+
+/* ===== Shared registration page V2: two-step form ===== */
+body.page-register .rg-steps--2{grid-template-columns:repeat(2,1fr)}
+body.page-register .rg-steps--2::before{left:25%;right:25%}
+body.page-register .rg-steps--2 .rg-steps__fill{left:25%}
+body.page-register .rg-optional-note{margin:8px 0 24px;padding:14px 16px;border-left:4px solid var(--rg-accent);border-radius:8px;background:var(--rg-accent-light);color:var(--rg-text-2);font-size:14px;line-height:1.75}
+body.page-register .rg-optional-note strong{color:var(--rg-text);font-size:15px}

@@ -424,6 +424,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 prefecture VARCHAR(100) NOT NULL DEFAULT '',
                 city VARCHAR(100) NOT NULL DEFAULT '',
                 occupation VARCHAR(100) NOT NULL DEFAULT '',
+                ja_group_name VARCHAR(191) NOT NULL DEFAULT '',
                 farm_scale VARCHAR(100) NOT NULL DEFAULT '',
                 crop_1 VARCHAR(191) NOT NULL DEFAULT '',
                 crop_2 VARCHAR(191) NOT NULL DEFAULT '',
@@ -457,6 +458,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 'prefecture',
                 'city',
                 'occupation',
+                'ja_group_name',
                 'farm_scale',
                 'crop_1',
                 'crop_2',
@@ -483,6 +485,7 @@ if (!class_exists('Member_Registration_Manager')) {
             $sanitized['prefecture'] = sanitize_text_field(isset($data['prefecture']) ? $data['prefecture'] : '');
             $sanitized['city'] = sanitize_text_field(isset($data['city']) ? $data['city'] : '');
             $sanitized['occupation'] = sanitize_text_field(isset($data['occupation']) ? $data['occupation'] : '');
+            $sanitized['ja_group_name'] = sanitize_text_field(isset($data['ja_group_name']) ? $data['ja_group_name'] : '');
             $sanitized['farm_scale'] = sanitize_text_field(isset($data['farm_scale']) ? $data['farm_scale'] : '');
             $sanitized['crop_1'] = sanitize_text_field(isset($data['crop_1']) ? $data['crop_1'] : '');
             $sanitized['crop_2'] = sanitize_text_field(isset($data['crop_2']) ? $data['crop_2'] : '');
@@ -656,6 +659,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 'prefecture'            => isset($member['prefecture']) ? (string) $member['prefecture'] : '',
                 'city'                  => isset($member['city']) ? (string) $member['city'] : '',
                 'occupation'            => isset($member['occupation']) ? (string) $member['occupation'] : '',
+                'ja_group_name'           => isset($member['ja_group_name']) ? (string) $member['ja_group_name'] : '',
                 'farm_scale'            => isset($member['farm_scale']) ? (string) $member['farm_scale'] : '',
                 'crop_1'                => isset($member['crop_1']) ? (string) $member['crop_1'] : '',
                 'crop_2'                => isset($member['crop_2']) ? (string) $member['crop_2'] : '',
@@ -755,6 +759,7 @@ if (!class_exists('Member_Registration_Manager')) {
                                 <th style="width:100px;">都道府県</th>
                                 <th style="width:120px;">市町村</th>
                                 <th style="width:120px;">職業</th>
+                                <th style="width:140px;">JA部会名</th>
                                 <th style="width:110px;">営農規模</th>
                                 <th style="width:120px;">栽培品目1</th>
                                 <th style="width:120px;">栽培品目2</th>
@@ -775,6 +780,7 @@ if (!class_exists('Member_Registration_Manager')) {
                                     <td><?php echo esc_html($item['prefecture']); ?></td>
                                     <td><?php echo esc_html($item['city']); ?></td>
                                     <td><?php echo esc_html($item['occupation']); ?></td>
+                                    <td><?php echo esc_html($item['ja_group_name']); ?></td>
                                     <td><?php echo esc_html($item['farm_scale']); ?></td>
                                     <td><?php echo esc_html($item['crop_1']); ?></td>
                                     <td><?php echo esc_html($item['crop_2']); ?></td>
@@ -871,6 +877,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 self::META_PREFIX . 'prefecture',
                 self::META_PREFIX . 'city',
                 self::META_PREFIX . 'occupation',
+                self::META_PREFIX . 'ja_group_name',
                 self::META_PREFIX . 'farm_scale',
                 self::META_PREFIX . 'crop_1',
                 self::META_PREFIX . 'crop_2',
@@ -914,6 +921,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 'prefecture'            => (string) get_user_meta($user_id, self::META_PREFIX . 'prefecture', true),
                 'city'                  => (string) get_user_meta($user_id, self::META_PREFIX . 'city', true),
                 'occupation'            => (string) get_user_meta($user_id, self::META_PREFIX . 'occupation', true),
+                'ja_group_name'           => (string) get_user_meta($user_id, self::META_PREFIX . 'ja_group_name', true),
                 'farm_scale'            => (string) get_user_meta($user_id, self::META_PREFIX . 'farm_scale', true),
                 'crop_1'                => (string) get_user_meta($user_id, self::META_PREFIX . 'crop_1', true),
                 'crop_2'                => (string) get_user_meta($user_id, self::META_PREFIX . 'crop_2', true),
@@ -985,6 +993,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 'prefecture'            => '都道府県',
                 'city'                  => '市町村',
                 'occupation'            => '職業',
+                'ja_group_name'           => 'JA部会名',
                 'farm_scale'            => '営農規模',
                 'crop_1'                => '栽培品目（1品目目）',
                 'crop_2'                => '栽培品目（2品目目）',
@@ -1036,6 +1045,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 'prefecture'            => isset($profile[self::META_PREFIX . 'prefecture']) ? $profile[self::META_PREFIX . 'prefecture'] : '',
                 'city'                  => isset($profile[self::META_PREFIX . 'city']) ? $profile[self::META_PREFIX . 'city'] : '',
                 'occupation'            => isset($profile[self::META_PREFIX . 'occupation']) ? $profile[self::META_PREFIX . 'occupation'] : '',
+                'ja_group_name'           => isset($profile[self::META_PREFIX . 'ja_group_name']) ? $profile[self::META_PREFIX . 'ja_group_name'] : '',
                 'farm_scale'            => isset($profile[self::META_PREFIX . 'farm_scale']) ? $profile[self::META_PREFIX . 'farm_scale'] : '',
                 'crop_1'                => isset($profile[self::META_PREFIX . 'crop_1']) ? $profile[self::META_PREFIX . 'crop_1'] : '',
                 'crop_2'                => isset($profile[self::META_PREFIX . 'crop_2']) ? $profile[self::META_PREFIX . 'crop_2'] : '',
@@ -1274,6 +1284,7 @@ if (!class_exists('Member_Registration_Manager')) {
                 'prefecture'            => isset($profile[self::META_PREFIX . 'prefecture']) ? $profile[self::META_PREFIX . 'prefecture'] : '',
                 'city'                  => isset($profile[self::META_PREFIX . 'city']) ? $profile[self::META_PREFIX . 'city'] : '',
                 'occupation'            => isset($profile[self::META_PREFIX . 'occupation']) ? $profile[self::META_PREFIX . 'occupation'] : '',
+                'ja_group_name'           => isset($profile[self::META_PREFIX . 'ja_group_name']) ? $profile[self::META_PREFIX . 'ja_group_name'] : '',
                 'farm_scale'            => isset($profile[self::META_PREFIX . 'farm_scale']) ? $profile[self::META_PREFIX . 'farm_scale'] : '',
                 'crop_1'                => isset($profile[self::META_PREFIX . 'crop_1']) ? $profile[self::META_PREFIX . 'crop_1'] : '',
                 'crop_2'                => isset($profile[self::META_PREFIX . 'crop_2']) ? $profile[self::META_PREFIX . 'crop_2'] : '',
@@ -1662,6 +1673,7 @@ HTML;
                 self::META_PREFIX . 'prefecture'            => sanitize_text_field(isset($params['prefecture']) ? $params['prefecture'] : ''),
                 self::META_PREFIX . 'city'                  => sanitize_text_field(isset($params['city']) ? $params['city'] : ''),
                 self::META_PREFIX . 'occupation'            => sanitize_text_field(isset($params['occupation']) ? $params['occupation'] : ''),
+                self::META_PREFIX . 'ja_group_name'           => sanitize_text_field(isset($params['ja_group_name']) ? $params['ja_group_name'] : ''),
                 self::META_PREFIX . 'farm_scale'            => sanitize_text_field(isset($params['farm_scale']) ? $params['farm_scale'] : ''),
                 self::META_PREFIX . 'crop_1'                => sanitize_text_field(isset($params['crop_1']) ? $params['crop_1'] : ''),
                 self::META_PREFIX . 'crop_2'                => sanitize_text_field(isset($params['crop_2']) ? $params['crop_2'] : ''),
@@ -1702,6 +1714,7 @@ HTML;
                 '都道府県'            => isset($member['prefecture']) ? $member['prefecture'] : '',
                 '市町村'              => isset($member['city']) ? $member['city'] : '',
                 '職業'                => isset($member['occupation']) ? $member['occupation'] : '',
+                'JA部会名'            => isset($member['ja_group_name']) ? $member['ja_group_name'] : '',
                 '営農規模'            => isset($member['farm_scale']) ? $member['farm_scale'] : '',
                 '栽培品目（1品目目）' => isset($member['crop_1']) ? $member['crop_1'] : '',
                 '栽培品目（2品目目）' => isset($member['crop_2']) ? $member['crop_2'] : '',

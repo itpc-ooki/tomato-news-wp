@@ -92,12 +92,10 @@
           <p>入力は約2分・途中で前の画面に戻れます</p>
         </div>
         <div class="rg-card__head">
-          <ol class="rg-steps" aria-label="登録の進み具合">
+          <ol class="rg-steps rg-steps--2" aria-label="登録の進み具合">
             <li class="rg-steps__fill" aria-hidden="true"></li>
-            <li><button type="button" class="rg-step" data-goto="1"><span class="rg-step__dot"><span>1</span></span><span class="rg-step__label">アカウント</span></button></li>
-            <li><button type="button" class="rg-step" data-goto="2"><span class="rg-step__dot"><span>2</span></span><span class="rg-step__label">プロフィール</span></button></li>
-            <li><button type="button" class="rg-step" data-goto="3"><span class="rg-step__dot"><span>3</span></span><span class="rg-step__label">栽培・関心</span></button></li>
-            <li><button type="button" class="rg-step" data-goto="4"><span class="rg-step__dot"><span>4</span></span><span class="rg-step__label">確認</span></button></li>
+            <li><button type="button" class="rg-step" data-goto="1"><span class="rg-step__dot"><span>1</span></span><span class="rg-step__label">入力</span></button></li>
+            <li><button type="button" class="rg-step" data-goto="2"><span class="rg-step__dot"><span>2</span></span><span class="rg-step__label">確認・登録</span></button></li>
           </ol>
           <p class="rg-progress" id="rg-progress" aria-live="polite"></p>
         </div>
@@ -106,10 +104,10 @@
           <input type="hidden" name="paper" value="">
           <input type="hidden" name="utm_source"><input type="hidden" name="utm_medium"><input type="hidden" name="utm_campaign"><input type="hidden" name="utm_content">
 
-          <!-- STEP 1 -->
+          <!-- STEP 1: INPUT -->
           <section class="rg-panel" data-step="1" aria-labelledby="rg-s1">
-            <h3 class="rg-panel__title" id="rg-s1" tabindex="-1">アカウント情報</h3>
-            <p class="rg-panel__lead">ログインに使うメールアドレスとパスワードを決めてください。</p>
+            <h3 class="rg-panel__title" id="rg-s1" tabindex="-1">会員情報の入力</h3>
+            <p class="rg-panel__lead">必須項目を入力し、必要に応じて任意項目もご入力ください。</p>
             <div class="rg-field" data-field="email">
               <label class="rg-label" for="email">メールアドレス<span class="rg-tag rg-tag--req">必須</span></label>
               <input class="rg-input" type="email" id="email" name="email" required autocomplete="email" inputmode="email" placeholder="例）user@example.jp" aria-describedby="email-hint email-error">
@@ -122,111 +120,40 @@
                 <input class="rg-input" type="password" id="password" name="password" required autocomplete="new-password" minlength="8" maxlength="20" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,20}" aria-describedby="password-rules password-error">
                 <button type="button" class="rg-pw__toggle" data-toggle-pw="password" aria-pressed="false" aria-label="パスワードを表示"></button>
               </div>
-              <ul class="rg-rules" id="password-rules" aria-label="パスワードの条件">
-                <li data-rule="len">8〜20文字</li>
-                <li data-rule="upper">大文字（A-Z）</li>
-                <li data-rule="lower">小文字（a-z）</li>
-                <li data-rule="num">数字（0-9）</li>
-              </ul>
+              <ul class="rg-rules" id="password-rules" aria-label="パスワードの条件"><li data-rule="len">8〜20文字</li><li data-rule="upper">大文字（A-Z）</li><li data-rule="lower">小文字（a-z）</li><li data-rule="num">数字（0-9）</li></ul>
               <p class="rg-error" id="password-error" aria-live="polite"></p>
             </div>
             <div class="rg-field" data-field="password_confirm">
               <label class="rg-label" for="password_confirm">パスワード（確認用）<span class="rg-tag rg-tag--req">必須</span></label>
-              <div class="rg-pw">
-                <input class="rg-input" type="password" id="password_confirm" name="password_confirm" required autocomplete="new-password" maxlength="20" aria-describedby="password_confirm-error">
-                <button type="button" class="rg-pw__toggle" data-toggle-pw="password_confirm" aria-pressed="false" aria-label="確認用パスワードを表示"></button>
-              </div>
+              <div class="rg-pw"><input class="rg-input" type="password" id="password_confirm" name="password_confirm" required autocomplete="new-password" maxlength="20" aria-describedby="password_confirm-error"><button type="button" class="rg-pw__toggle" data-toggle-pw="password_confirm" aria-pressed="false" aria-label="確認用パスワードを表示"></button></div>
               <p class="rg-error" id="password_confirm-error" aria-live="polite"></p>
             </div>
-          </section>
-
-          <!-- STEP 2 -->
-          <section class="rg-panel" data-step="2" aria-labelledby="rg-s2" hidden>
-            <h3 class="rg-panel__title" id="rg-s2" tabindex="-1">プロフィール</h3>
-            <p class="rg-panel__lead">あなたに合った情報をお届けするために教えてください。</p>
-            <div class="rg-field" data-field="nickname">
-              <label class="rg-label" for="nickname">ニックネーム<span class="rg-tag rg-tag--req">必須</span></label>
-              <input class="rg-input" type="text" id="nickname" name="nickname" required autocomplete="nickname" maxlength="30" placeholder="例）とまと太郎" aria-describedby="nickname-hint nickname-error">
-              <p class="rg-hint" id="nickname-hint">本名でなくてかまいません。</p>
-              <p class="rg-error" id="nickname-error" aria-live="polite"></p>
-            </div>
-            <fieldset class="rg-field" data-field="gender" aria-describedby="gender-error">
-              <legend class="rg-label">性別<span class="rg-tag rg-tag--req">必須</span></legend>
-              <div class="rg-choices rg-choices--2">
-                <label class="rg-choice"><input type="radio" name="gender" value="男" required>男性</label>
-                <label class="rg-choice"><input type="radio" name="gender" value="女">女性</label>
-              </div>
-              <p class="rg-error" id="gender-error" aria-live="polite"></p>
-            </fieldset>
-            <div class="rg-grid-2">
-              <div class="rg-field" data-field="prefecture">
-                <label class="rg-label" for="prefecture">都道府県<span class="rg-tag rg-tag--req">必須</span></label>
-                <select class="rg-select" id="prefecture" name="prefecture" required autocomplete="address-level1" aria-describedby="prefecture-error"><option value="">選んでください</option></select>
-                <p class="rg-error" id="prefecture-error" aria-live="polite"></p>
-              </div>
-              <div class="rg-field" data-field="city">
-                <label class="rg-label" for="city">市町村<span class="rg-tag rg-tag--req">必須</span></label>
-                <input class="rg-input" type="text" id="city" name="city" required autocomplete="address-level2" placeholder="例）北杜市" aria-describedby="city-error">
-                <p class="rg-error" id="city-error" aria-live="polite"></p>
-              </div>
+            <div class="rg-field" data-field="prefecture">
+              <label class="rg-label" for="prefecture">都道府県<span class="rg-tag rg-tag--req">必須</span></label>
+              <select class="rg-select" id="prefecture" name="prefecture" required autocomplete="address-level1" aria-describedby="prefecture-error"><option value="">選んでください</option></select>
+              <p class="rg-error" id="prefecture-error" aria-live="polite"></p>
             </div>
             <fieldset class="rg-field" data-field="occupation" aria-describedby="occupation-error">
               <legend class="rg-label">職業<span class="rg-tag rg-tag--req">必須</span></legend>
-              <div class="rg-choices rg-choices--2">
-                <label class="rg-choice"><input type="radio" name="occupation" value="専業農家" required>専業農家</label>
-                <label class="rg-choice"><input type="radio" name="occupation" value="兼業農家">兼業農家</label>
-                <label class="rg-choice"><input type="radio" name="occupation" value="農業法人">農業法人</label>
-                <label class="rg-choice"><input type="radio" name="occupation" value="JA営農指導員">JA営農指導員</label>
-                <label class="rg-choice"><input type="radio" name="occupation" value="農業普及指導員">農業普及指導員</label>
-                <label class="rg-choice"><input type="radio" name="occupation" value="研究職">研究職</label>
-                <label class="rg-choice rg-choice--wide"><input type="radio" name="occupation" value="その他">その他（会社員・団体職員・公務員・学生など）</label>
-              </div>
+              <div class="rg-choices rg-choices--2"><label class="rg-choice"><input type="radio" name="occupation" value="専業農家" required>専業農家</label><label class="rg-choice"><input type="radio" name="occupation" value="兼業農家">兼業農家</label><label class="rg-choice"><input type="radio" name="occupation" value="農業法人">農業法人</label><label class="rg-choice"><input type="radio" name="occupation" value="JA営農指導員">JA営農指導員</label><label class="rg-choice"><input type="radio" name="occupation" value="農業普及指導員">農業普及指導員</label><label class="rg-choice"><input type="radio" name="occupation" value="研究職">研究職</label><label class="rg-choice rg-choice--wide"><input type="radio" name="occupation" value="その他">その他（会社員・団体職員・公務員・学生など）</label></div>
               <p class="rg-error" id="occupation-error" aria-live="polite"></p>
             </fieldset>
-          </section>
-
-          <!-- STEP 3 -->
-          <section class="rg-panel" data-step="3" aria-labelledby="rg-s3" hidden>
-            <h3 class="rg-panel__title" id="rg-s3" tabindex="-1">栽培・ご関心</h3>
-            <p class="rg-panel__lead">今後の記事づくりの参考にさせていただきます。</p>
-            <div class="rg-field" data-field="farm_scale">
-              <label class="rg-label" for="farm_scale">営農規模<span class="rg-tag rg-tag--req">必須</span></label>
-              <select class="rg-select" id="farm_scale" name="farm_scale" required aria-describedby="farm_scale-error"><option value="">選んでください</option></select>
-              <p class="rg-error" id="farm_scale-error" aria-live="polite"></p>
-            </div>
-            <div class="rg-field" data-field="crop1">
-              <label class="rg-label" for="crop1">主な栽培品目<span class="rg-tag rg-tag--req">必須</span></label>
-              <select class="rg-select" id="crop1" name="crop1" required aria-describedby="crop1-error"><option value="">選んでください</option></select>
-              <p class="rg-error" id="crop1-error" aria-live="polite"></p>
-            </div>
-            <div class="rg-grid-2">
-              <div class="rg-field" data-field="crop2">
-                <label class="rg-label" for="crop2">2品目目<span class="rg-tag rg-tag--opt">任意</span></label>
-                <select class="rg-select" id="crop2" name="crop2"><option value="">―</option></select>
-              </div>
-              <div class="rg-field" data-field="crop_future">
-                <label class="rg-label" for="crop_future">今後作りたい品目<span class="rg-tag rg-tag--opt">任意</span></label>
-                <select class="rg-select" id="crop_future" name="crop_future"><option value="">―</option></select>
-              </div>
-            </div>
-            <fieldset class="rg-field" data-field="interests">
-              <legend class="rg-label">興味のある分野<span class="rg-tag rg-tag--opt">任意・いくつでも</span></legend>
-              <div class="rg-choices rg-choices--2" id="interests-list"></div>
-            </fieldset>
             <fieldset class="rg-field" data-field="mail_optin" aria-describedby="mail_optin-hint mail_optin-error">
-              <legend class="rg-label">日本農業新聞からのご案内メール<span class="rg-tag rg-tag--req">必須</span></legend>
-              <p class="rg-hint" id="mail_optin-hint" style="margin:-2px 0 10px">アンケート調査やキャンペーン、特集企画のお知らせです。配信はいつでも停止できます。</p>
-              <div class="rg-choices rg-choices--2">
-                <label class="rg-choice"><input type="radio" name="mail_optin" value="希望する" required>希望する</label>
-                <label class="rg-choice"><input type="radio" name="mail_optin" value="希望しない">希望しない</label>
-              </div>
+              <legend class="rg-label">情報配信の希望<span class="rg-tag rg-tag--req">必須</span></legend>
+              <p class="rg-hint" id="mail_optin-hint">アンケート調査やキャンペーン、特集企画のお知らせです。配信はいつでも停止できます。</p>
+              <div class="rg-choices rg-choices--2"><label class="rg-choice"><input type="radio" name="mail_optin" value="希望する" required>希望する</label><label class="rg-choice"><input type="radio" name="mail_optin" value="希望しない">希望しない</label></div>
               <p class="rg-error" id="mail_optin-error" aria-live="polite"></p>
             </fieldset>
+            <div class="rg-optional-note"><strong>以下の項目は任意です。</strong><br>入力しない方は、そのまま下の「次へ進む」から確認ページへお進みください。</div>
+            <div class="rg-field" data-field="ja_group_name"><label class="rg-label" for="ja_group_name">JA部会名<span class="rg-tag rg-tag--opt">任意</span></label><input class="rg-input" type="text" id="ja_group_name" name="ja_group_name" maxlength="191" placeholder="例）JA○○ トマト部会"></div>
+            <div class="rg-field" data-field="farm_scale"><label class="rg-label" for="farm_scale">営農規模<span class="rg-tag rg-tag--opt">任意</span></label><select class="rg-select" id="farm_scale" name="farm_scale"><option value="">選んでください</option></select></div>
+            <div class="rg-field" data-field="crop1"><label class="rg-label" for="crop1">栽培品目<span class="rg-tag rg-tag--opt">任意</span></label><select class="rg-select" id="crop1" name="crop1"><option value="">選んでください</option></select></div>
+            <fieldset class="rg-field" data-field="interests"><legend class="rg-label">興味・関心<span class="rg-tag rg-tag--opt">任意・いくつでも</span></legend><div class="rg-choices rg-choices--2" id="interests-list"></div></fieldset>
           </section>
 
-          <!-- STEP 4 -->
-          <section class="rg-panel" data-step="4" aria-labelledby="rg-s4" hidden>
-            <h3 class="rg-panel__title" id="rg-s4" tabindex="-1">入力内容の確認</h3>
+          <!-- STEP 2: CONFIRMATION -->
+          <section class="rg-panel" data-step="2" aria-labelledby="rg-s2" hidden>
+            <h3 class="rg-panel__title" id="rg-s2" tabindex="-1">入力内容の確認</h3>
             <p class="rg-panel__lead">直したいところは「修正する」を押すと戻れます。</p>
             <div id="rg-summary"></div>
             <ul class="rg-assure">
