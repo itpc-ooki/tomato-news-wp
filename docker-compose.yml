@@ -37,6 +37,7 @@ services:
       - ./wp-content:/var/www/html/wp-content
       - ./static-src:/var/www/html/static-src
       - ./static:/var/www/html/static
+      - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     networks:
       - wp-cms_default
 
@@ -90,6 +91,7 @@ services:
       - ./wp-content:/var/www/html/wp-content
       - ./static-src:/var/www/html/static-src
       - ./static:/var/www/html/static
+      - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     networks:
       - wp-cms_default
     command: >
