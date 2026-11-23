@@ -788,6 +788,143 @@ add_action('admin_menu', function () {
   remove_submenu_page('edit.php', 'edit-tags.php?taxonomy=post_tag');
 });
 
+// --------------------------------------------------
+// Ichigo article-type migration (explicit WP-CLI command)
+// --------------------------------------------------
+if (defined('WP_CLI') && WP_CLI) {
+  /**
+   * Normalize the five article types used by Ichigo.
+   *
+   * This command deliberately resolves terms by name instead of ID because
+   * term IDs differ between local, staging, and production.
+   */
+  WP_CLI::add_command('ichigo article-types migrate', function () {
+    $paper = 'ichigo';
+    $renames = [
+      'コラム' => 'お役立ちコラム',
+      '独自ニュース' => '特集・レポート',
+      'セミナー・産地動画' => '動画チャンネル',
+      'WEBセミナー' => '動画チャンネル',
+      '病害虫対策' => '病害虫情報',
+      '採録紙面' => '日本農業新聞記事',
+      '日本農業新聞紙面' => '日本農業新聞記事',
+    ];
+    $allowed_names = [
+      'お役立ちコラム',
+      '特集・レポート',
+      '動画チャンネル',
+      '病害虫情報',
+      '日本農業新聞記事',
+    ];
+
+    $get_term_by_name = static function(string $name) {
+      $term = get_term_by('name', $name, 'article_type');
+      return $term instanceof WP_Term ? $term : null;
+    };
+
+    $set_paper_enabled = static function(WP_Term $term, bool $enabled) use ($paper): void {
+      $papers = tomato_get_article_type_papers($term);
+      if ($enabled) {
+        $papers[] = $paper;
+      } else {
+        $papers = array_values(array_diff($papers, [$paper]));
+      }
+      $papers = array_values(array_unique(array_filter(array_map('sanitize_title', $papers))));
+      update_term_meta($term->term_id, 'article_type_papers', $papers);
+    };
+
+    $ichigo_post_ids_for_term = static function(WP_Term $term): array {
+      return get_posts([
+        'post_type' => 'post',
+        'post_status' => 'any',
+        'posts_per_page' => -1,
+        'fields' => 'ids',
+        'category_name' => 'ichigo',
+        'tax_query' => [[
+          'taxonomy' => 'article_type',
+          'field' => 'term_id',
+          'terms' => [(int) $term->term_id],
+        ]],
+      ]);
+    };
+
+    foreach ($renames as $old_name => $new_name) {
+      $old_term = $get_term_by_name($old_name);
+      $new_term = $get_term_by_name($new_name);
+
+      if ($old_term && !$new_term) {
+        $other_papers = array_values(array_diff(tomato_get_article_type_papers($old_term), [$paper]));
+        if (empty($other_papers)) {
+          $updated = wp_update_term($old_term->term_id, 'article_type', ['name' => $new_name]);
+          if (is_wp_error($updated)) {
+            WP_CLI::error($updated->get_error_message());
+          }
+          $new_term = get_term((int) $updated['term_id'], 'article_type');
+          WP_CLI::log("Renamed {$old_name} to {$new_name}.");
+        }
+      }
+
+      if (!$new_term) {
+        $created = wp_insert_term($new_name, 'article_type');
+        if (is_wp_error($created)) {
+          WP_CLI::error($created->get_error_message());
+        }
+        $new_term = get_term((int) $created['term_id'], 'article_type');
+        WP_CLI::log("Created {$new_name}.");
+      }
+
+      if (!($new_term instanceof WP_Term)) {
+        WP_CLI::error("Could not resolve article type: {$new_name}");
+      }
+      $set_paper_enabled($new_term, true);
+
+      // If both terms exist (for example because the old term is also used by
+      // Tomato), move only Ichigo posts and leave the other paper untouched.
+      $old_term = $get_term_by_name($old_name);
+      if ($old_term && $old_term->term_id !== $new_term->term_id) {
+        foreach ($ichigo_post_ids_for_term($old_term) as $post_id) {
+          wp_add_object_terms((int) $post_id, (int) $new_term->term_id, 'article_type');
+          wp_remove_object_terms((int) $post_id, (int) $old_term->term_id, 'article_type');
+        }
+        $set_paper_enabled($old_term, false);
+        WP_CLI::log("Moved Ichigo articles from {$old_name} to {$new_name}.");
+      }
+    }
+
+    foreach ($allowed_names as $name) {
+      $term = $get_term_by_name($name);
+      if (!$term) {
+        $created = wp_insert_term($name, 'article_type');
+        if (is_wp_error($created)) {
+          WP_CLI::error($created->get_error_message());
+        }
+        $term = get_term((int) $created['term_id'], 'article_type');
+        WP_CLI::log("Created {$name}.");
+      }
+      if ($term instanceof WP_Term) {
+        $set_paper_enabled($term, true);
+      }
+    }
+
+    $all_terms = get_terms([
+      'taxonomy' => 'article_type',
+      'hide_empty' => false,
+    ]);
+    if (!is_wp_error($all_terms)) {
+      foreach ($all_terms as $term) {
+        if (!($term instanceof WP_Term)) continue;
+        if (in_array($term->name, $allowed_names, true)) continue;
+        if (tomato_article_type_belongs_to_paper($term, $paper)) {
+          $set_paper_enabled($term, false);
+          WP_CLI::log("Hidden {$term->name} from the Ichigo menu.");
+        }
+      }
+    }
+
+    WP_CLI::success('Ichigo article types migrated. Rebuild Ichigo to update the static menu and homepage.');
+  });
+}
+
 add_action('article_type_add_form_fields', function () {
   wp_nonce_field('tomato_save_article_type_papers', 'tomato_article_type_papers_nonce');
   $papers = tomato_get_available_papers();

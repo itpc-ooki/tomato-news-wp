@@ -32,9 +32,9 @@ class Tomato_Market_Data {
         ],
         'ichigo' => [
             'ichigo'      => 'イチゴ',
-            'benihoppe'   => '紅ほっぺ',
             'amaou'       => 'あまおう',
             'tochiotome'  => 'とちおとめ',
+            'tochiaika'   => 'とちあいか',
         ],
     ];
 
@@ -64,6 +64,7 @@ class Tomato_Market_Data {
         // WP-CLIコマンド（手動生成用）
         if (defined('WP_CLI') && WP_CLI) {
             WP_CLI::add_command('tomato market export', [__CLASS__, 'cli_export']);
+            WP_CLI::add_command('ichigo market seed', [__CLASS__, 'cli_seed_ichigo']);
         }
     }
 
@@ -502,6 +503,118 @@ class Tomato_Market_Data {
 
         self::export_json_for_paper($paper);
         if (defined('WP_CLI') && WP_CLI) \WP_CLI::success("exported: static/{$paper}/market.json");
+    }
+
+    /**
+     * Create or update one dated set of the four Ichigo market records.
+     * Records are resolved by paper, variety and date, never by database ID.
+     */
+    public static function cli_seed_ichigo(array $args, array $assoc_args): void {
+        $date = isset($assoc_args['date']) ? sanitize_text_field((string)$assoc_args['date']) : '';
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            \WP_CLI::error('Pass --date in YYYY-MM-DD format.');
+        }
+
+        $raw = isset($assoc_args['data']) ? (string)$assoc_args['data'] : '';
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
+            \WP_CLI::error('Pass --data as valid JSON containing all four Ichigo varieties.');
+        }
+
+        $varieties = self::VARIETIES_BY_PAPER['ichigo'];
+        foreach ($varieties as $slug => $label) {
+            if (!isset($data[$slug]) || !is_array($data[$slug])) {
+                \WP_CLI::error("Missing data for {$slug} ({$label}).");
+            }
+            foreach (['price', 'volume'] as $field) {
+                if (!array_key_exists($field, $data[$slug]) ||
+                    filter_var($data[$slug][$field], FILTER_VALIDATE_INT) === false ||
+                    (int)$data[$slug][$field] < 0) {
+                    \WP_CLI::error("{$slug}.{$field} must be a non-negative integer.");
+                }
+            }
+        }
+
+        $term = get_term_by('slug', 'ichigo', self::TAX_PAPER);
+        if (!$term) {
+            $created = wp_insert_term('イチゴ新聞', self::TAX_PAPER, ['slug' => 'ichigo']);
+            if (is_wp_error($created)) {
+                \WP_CLI::error($created->get_error_message());
+            }
+        }
+
+        // Preserve legacy data while replacing the removed 紅ほっぺ variety.
+        // Resolve records by taxonomy/meta because IDs differ by environment.
+        $legacy = new \WP_Query([
+            'post_type' => self::CPT,
+            'post_status' => ['publish', 'draft', 'pending', 'private'],
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'meta_query' => [[
+                'key' => 'market_variety',
+                'value' => 'benihoppe',
+                'compare' => '=',
+            ]],
+            'tax_query' => [[
+                'taxonomy' => self::TAX_PAPER,
+                'field' => 'slug',
+                'terms' => ['ichigo'],
+            ]],
+        ]);
+
+        foreach ($legacy->posts as $legacy_id) {
+            $legacy_date = (string)get_post_meta($legacy_id, 'market_date', true);
+            update_post_meta($legacy_id, 'market_variety', 'tochiaika');
+            wp_update_post([
+                'ID' => (int)$legacy_id,
+                'post_title' => trim($legacy_date . ' とちあいか'),
+            ]);
+            \WP_CLI::log("Migrated legacy 紅ほっぺ record {$legacy_id} to とちあいか.");
+        }
+
+        foreach ($varieties as $slug => $label) {
+            $query = new \WP_Query([
+                'post_type' => self::CPT,
+                'post_status' => ['publish', 'draft', 'pending', 'private'],
+                'posts_per_page' => 1,
+                'fields' => 'ids',
+                'meta_query' => [
+                    'relation' => 'AND',
+                    ['key' => 'market_date', 'value' => $date, 'compare' => '='],
+                    ['key' => 'market_variety', 'value' => $slug, 'compare' => '='],
+                ],
+                'tax_query' => [[
+                    'taxonomy' => self::TAX_PAPER,
+                    'field' => 'slug',
+                    'terms' => ['ichigo'],
+                ]],
+            ]);
+
+            $post_id = !empty($query->posts) ? (int)$query->posts[0] : 0;
+            if (!$post_id) {
+                $post_id = wp_insert_post([
+                    'post_type' => self::CPT,
+                    'post_status' => 'publish',
+                    'post_title' => $date . ' ' . $label,
+                ], true);
+                if (is_wp_error($post_id)) {
+                    \WP_CLI::error($post_id->get_error_message());
+                }
+                \WP_CLI::log("Created {$label}.");
+            } else {
+                wp_update_post(['ID' => $post_id, 'post_title' => $date . ' ' . $label]);
+                \WP_CLI::log("Updated {$label}.");
+            }
+
+            update_post_meta($post_id, 'market_date', $date);
+            update_post_meta($post_id, 'market_variety', $slug);
+            update_post_meta($post_id, 'market_price', (int)$data[$slug]['price']);
+            update_post_meta($post_id, 'market_volume', (int)$data[$slug]['volume']);
+            wp_set_object_terms($post_id, 'ichigo', self::TAX_PAPER, false);
+        }
+
+        self::export_json_for_paper('ichigo');
+        \WP_CLI::success('Seeded four Ichigo market records and exported static/ichigo/market.json.');
     }
 }
 

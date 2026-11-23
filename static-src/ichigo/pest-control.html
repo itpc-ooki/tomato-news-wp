@@ -19,12 +19,12 @@
 <div class="article-container">
     <div class="article-header">
       <span class="article-category">病害虫対策</span>
-      <h1 class="article-title">病虫害対策ガイド</h1>
-      <p class="article-subtitle">トマト栽培で発生する主要な病害虫の診断から防除方法まで、実践的な情報を網羅。防除に関するポータルサイト「みんなの防除」と連携し、最新の防除技術をお届けします。</p>
+      <h1 class="article-title">病害虫情報</h1>
+      <p class="article-subtitle">イチゴ栽培で発生する主要な病害虫の診断から防除方法まで、実践的な情報を網羅。防除に関するポータルサイト「みんなの防除」と連携し、最新の防除技術をお届けします。</p>
     </div>
   </div>
 
-  <div class="search-section">
+  <div class="search-section" hidden>
     <h2 class="search-title">症状から探す</h2>
     <p class="search-subtitle">気になる症状や病害虫名から、適切な対策を検索できます</p>
     
@@ -80,7 +80,7 @@
     </div>
   </div>
 
-  <div class="results-section">
+  <div class="results-section" hidden>
     <h2 class="section-title">
       <svg class="icon-inline" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 2a3 3 0 0 0-3 3v1.5a3 3 0 0 0-3 3v1a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-1a3 3 0 0 0-3-3V5a3 3 0 0 0-3-3z"/>
@@ -198,7 +198,7 @@
     </div>
   </div>
 
-  <div class="results-section">
+  <div class="results-section" hidden>
     <h2 class="section-title">
       <svg class="icon-inline" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="3"/>
@@ -462,8 +462,16 @@
     </div>
   </div>
 
+  <section class="reference-table-section" aria-labelledby="pest-expert-title">
+    <h2 class="section-title" id="pest-expert-title">専門家による解説記事</h2>
+    <p class="section-description">イチゴの病害虫対策に役立つ、専門家による解説記事をご紹介します。</p>
+    <div class="pest-grid" id="pest-expert-articles" aria-live="polite">
+      <p class="section-description">記事を読み込んでいます。</p>
+    </div>
+  </section>
+
   <!-- 詳細察知表セクション -->
-  <div class="detailed-detection-section">
+  <div class="detailed-detection-section" hidden>
     <h2 class="section-title">
       <svg class="icon-inline" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M6 18h8"/>
