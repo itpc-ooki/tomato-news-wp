@@ -1765,6 +1765,9 @@ $list[] = [
       'survey',
     ];
     $preferred_rank = array_flip($preferred_order);
+    if ($paper === 'ichigo') {
+      $preferred_rank = array_flip(['column', 'news', 'video', 'pest', 'paper']);
+    }
 
     $newspaper_post_id = self::get_newspaper_post_id_by_paper($paper);
     $menu_settings_map = self::get_newspaper_menu_settings_map($newspaper_post_id);
@@ -1783,6 +1786,28 @@ $list[] = [
         $key = $slug !== '' ? $slug : sanitize_title($name);
 
         switch ($name) {
+          case 'お役立ちコラム':
+            $key = 'column';
+            break;
+
+          case '特集・レポート':
+            $key = 'news';
+            break;
+
+          case '動画チャンネル':
+            $key = 'video';
+            $url = './web-seminar.html';
+            break;
+
+          case '病害虫情報':
+            $key = 'pest';
+            $url = './pest-control.html';
+            break;
+
+          case '日本農業新聞記事':
+            $key = 'paper';
+            break;
+
           case 'トマトNEWS':
             $key = 'news';
             break;
@@ -1892,7 +1917,9 @@ $list[] = [
       }
     }
 
-    if (!isset($term_items['featured'])) {
+    // Ichigo uses 特集・レポート as its feature/news entry and must not receive
+    // the Tomato-only hardcoded 特集記事 menu item.
+    if ($paper !== 'ichigo' && !isset($term_items['featured'])) {
       $featured_order = isset($menu_settings_map['featured']['order']) && intval($menu_settings_map['featured']['order']) > 0
         ? intval($menu_settings_map['featured']['order'])
         : 1;

@@ -2037,7 +2037,12 @@ function renderGraphItems(items) {
       "トマトNEWS": { key: "news", url: "./list.html?article_type=" + encodeURIComponent(name) },
       "栽培技術": { key: "cultivation", url: "./list.html?article_type=" + encodeURIComponent(name) },
       "市場動向": { key: "market", url: "./list.html?article_type=" + encodeURIComponent(name) },
-      "コラム": { key: "column", url: "./list.html?article_type=" + encodeURIComponent(name) }
+      "コラム": { key: "column", url: "./list.html?article_type=" + encodeURIComponent(name) },
+      "お役立ちコラム": { key: "column", url: "./list.html?article_type=" + encodeURIComponent(name) },
+      "特集・レポート": { key: "news", url: "./list.html?article_type=" + encodeURIComponent(name) },
+      "動画チャンネル": { key: "video", url: "./web-seminar.html" },
+      "病害虫情報": { key: "pest", url: "./pest-control.html" },
+      "日本農業新聞記事": { key: "paper", url: "./list.html?article_type=" + encodeURIComponent(name) }
     };
     return map[name] || null;
   }
@@ -2126,7 +2131,9 @@ function renderGraphItems(items) {
       try {
         var filters = await fetchJson('/static/' + encodeURIComponent(paper) + '/archive-filters.json');
         var articleTypes = Array.isArray(filters && filters.article_types) ? filters.article_types : [];
-        var fallbackItems = [{ key: 'featured', label: '特集記事', url: './feature.html' }];
+        var fallbackItems = paper === 'ichigo'
+          ? []
+          : [{ key: 'featured', label: '特集記事', url: './feature.html' }];
 
         articleTypes.forEach(function (typeName) {
           var next = buildMenuItemFromArticleType(typeName);
@@ -2176,6 +2183,11 @@ function renderGraphItems(items) {
     if (footerLogo) {
       footerLogo.setAttribute('src', '/static/common/img/ichigopaper_logo.png');
       footerLogo.setAttribute('alt', 'イチゴ新聞 ロゴ');
+    }
+
+    const footerDescription = footerContainer.querySelector('.footer-brand p');
+    if (footerDescription) {
+      footerDescription.textContent = 'イチゴ産業の最新情報を専門的視点でお届けする、日本農業新聞の品目特化型デジタルメディアです。';
     }
   }
 
@@ -3391,7 +3403,7 @@ async function renderNewsSection(posts, paper) {
 
   const all = Array.isArray(posts) ? posts : [];
   const targetArticleType = String(paper || "").trim() === "ichigo"
-    ? "独自ニュース"
+    ? "特集・レポート"
     : "PickUp新聞記事";
   const newsPosts = all.filter((p) => {
     if (!p) return false;
@@ -5224,8 +5236,8 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
       switch (String(varietyKey || '').toLowerCase()) {
         case 'ichigo':
           return 'ichigo';
-        case 'benihoppe':
-          return 'benihoppe';
+        case 'tochiaika':
+          return 'tochiaika';
         case 'amaou':
           return 'amaou';
         case 'tochiotome':
@@ -5249,6 +5261,26 @@ async function renderDetailRelatedAndTokushu(paper, currentPost) {
       default:
         return null;
     }
+  }
+
+  function orderIchigoMarketCards() {
+    if (String(getCurrentPaper() || '').toLowerCase() !== 'ichigo') return;
+
+    const order = ['ichigo', 'amaou', 'tochiotome', 'tochiaika'];
+    document.querySelectorAll('.market-grid').forEach((grid) => {
+      order.forEach((key, index) => {
+        const card = grid.querySelector(`.market-card[data-variety="${key}"]`);
+        if (!card) return;
+        card.dataset.index = String(index);
+        grid.appendChild(card);
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', orderIchigoMarketCards);
+  } else {
+    orderIchigoMarketCards();
   }
 
   function normalizeTrend(trend, diff) {
@@ -8210,6 +8242,113 @@ function resetAutoSlide() {
   })();
 
 })();
+
+/* =====================================================================
+ * Ichigo pest-control: expert articles
+ * - Resolve article types by exported name/slug, never by term ID.
+ * ===================================================================== */
+(function () {
+  "use strict";
+
+  function plainText(value) {
+    const node = document.createElement("textarea");
+    node.innerHTML = String(value || "");
+    return node.value.replace(/<[^>]*>/g, "").trim();
+  }
+
+  function values(value) {
+    if (Array.isArray(value)) return value.map(String);
+    return value ? [String(value)] : [];
+  }
+
+  function isPestInformation(post) {
+    const names = values(post && post.article_types);
+    names.push(String((post && post.article_type) || ""));
+    const slugs = values(post && post.article_type_slugs);
+
+    return names.some(function (name) {
+      return name.trim() === "病害虫情報";
+    }) || slugs.some(function (slug) {
+      return slug.trim() === "ichigo-pest-information";
+    });
+  }
+
+  function timestamp(post) {
+    const value = post && (post.date || post.date_ymd || post.modified);
+    const time = Date.parse(String(value || ""));
+    return Number.isFinite(time) ? time : 0;
+  }
+
+  function createCard(post) {
+    const card = document.createElement("a");
+    card.className = "pest-card";
+    card.href = post.url || (post.id ? "./detail.html?id=" + encodeURIComponent(post.id) : "#");
+    card.style.textDecoration = "none";
+    card.style.color = "inherit";
+
+    const header = document.createElement("div");
+    header.className = "pest-card-header";
+    const title = document.createElement("h3");
+    title.textContent = plainText(post.title) || "無題";
+    header.appendChild(title);
+
+    const body = document.createElement("div");
+    body.className = "pest-card-body";
+    const meta = document.createElement("p");
+    meta.className = "section-description";
+    meta.textContent = String(post.date || post.date_ymd || "").slice(0, 10);
+    const excerpt = document.createElement("p");
+    excerpt.textContent = plainText(post.excerpt || post.content).slice(0, 140);
+    body.appendChild(meta);
+    body.appendChild(excerpt);
+
+    card.appendChild(header);
+    card.appendChild(body);
+    return card;
+  }
+
+  async function renderIchigoPestArticles() {
+    const root = document.getElementById("pest-expert-articles");
+    if (!root) return;
+
+    try {
+      const response = await fetch("/static/ichigo/posts.json", { cache: "no-store" });
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const payload = await response.json();
+      const posts = (Array.isArray(payload) ? payload : [])
+        .filter(isPestInformation)
+        .sort(function (a, b) { return timestamp(b) - timestamp(a); });
+
+      root.innerHTML = "";
+      if (!posts.length) {
+        const empty = document.createElement("p");
+        empty.className = "section-description";
+        empty.textContent = "現在、公開中の解説記事はありません。";
+        root.appendChild(empty);
+        return;
+      }
+
+      posts.forEach(function (post) {
+        root.appendChild(createCard(post));
+      });
+    } catch (error) {
+      console.error("[Ichigo pest articles] load failed:", error);
+      root.innerHTML = "";
+      const failed = document.createElement("p");
+      failed.className = "section-description";
+      failed.textContent = "記事を読み込めませんでした。";
+      root.appendChild(failed);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", renderIchigoPestArticles);
+  } else {
+    renderIchigoPestArticles();
+  }
+})();
+
+
 
 
 /* =====================================================================

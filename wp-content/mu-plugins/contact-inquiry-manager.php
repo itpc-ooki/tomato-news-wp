@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Contact Inquiry Manager
  * Description: Handles お問い合わせ form submissions from the static frontend, stores them in WordPress admin, and emails notifications.
- * Version: 1.0.2
+ * Version: 1.1.0
  */
 
 if (!defined('ABSPATH')) {
@@ -24,6 +24,99 @@ if (!class_exists('Tomato_Contact_Inquiry_Manager')) {
             add_action('manage_' . self::POST_TYPE . '_posts_custom_column', array($this, 'render_admin_columns'), 10, 2);
             add_filter('manage_edit-' . self::POST_TYPE . '_sortable_columns', array($this, 'register_sortable_columns'));
             add_action('pre_get_posts', array($this, 'apply_admin_sorting'));
+            add_action('admin_menu', array($this, 'register_settings_page'));
+            add_action('admin_init', array($this, 'register_settings'));
+        }
+
+        public function register_settings_page() {
+            add_submenu_page(
+                'edit.php?post_type=' . self::POST_TYPE,
+                'お問い合わせメール設定',
+                'メール設定',
+                'manage_options',
+                'tomato-contact-settings',
+                array($this, 'render_settings_page')
+            );
+        }
+
+        public function register_settings() {
+            register_setting(
+                'tomato_contact_settings_group',
+                self::OPTION_KEY,
+                array(
+                    'type'              => 'array',
+                    'sanitize_callback' => array($this, 'sanitize_settings'),
+                    'default'           => array(),
+                )
+            );
+        }
+
+        public function sanitize_settings($input) {
+            $input = is_array($input) ? $input : array();
+            $clean = array();
+
+            foreach (array_keys($this->get_supported_papers()) as $paper) {
+                $email = isset($input['recipient_' . $paper])
+                    ? sanitize_email((string) $input['recipient_' . $paper])
+                    : '';
+
+                $clean['recipient_' . $paper] = is_email($email) ? $email : '';
+            }
+
+            return $clean;
+        }
+
+        public function render_settings_page() {
+            if (!current_user_can('manage_options')) {
+                return;
+            }
+
+            $settings = get_option(self::OPTION_KEY, array());
+            $settings = is_array($settings) ? $settings : array();
+            $fallback = sanitize_email((string) get_option('admin_email'));
+            ?>
+            <div class="wrap">
+                <h1>お問い合わせメール設定</h1>
+                <p>お問い合わせ通知メールの送信先を紙面ごとに設定できます。</p>
+                <p>未入力の場合は、WordPressの管理者メールアドレス
+                    <code><?php echo esc_html($fallback); ?></code> が使用されます。</p>
+
+                <form method="post" action="options.php">
+                    <?php settings_fields('tomato_contact_settings_group'); ?>
+                    <table class="form-table" role="presentation">
+                        <tbody>
+                        <?php foreach ($this->get_supported_papers() as $paper => $label) : ?>
+                            <?php
+                            $key = 'recipient_' . $paper;
+                            $value = isset($settings[$key]) ? (string) $settings[$key] : '';
+                            ?>
+                            <tr>
+                                <th scope="row">
+                                    <label for="<?php echo esc_attr($key); ?>">
+                                        <?php echo esc_html($label); ?>
+                                    </label>
+                                </th>
+                                <td>
+                                    <input
+                                        type="email"
+                                        class="regular-text"
+                                        id="<?php echo esc_attr($key); ?>"
+                                        name="<?php echo esc_attr(self::OPTION_KEY . '[' . $key . ']'); ?>"
+                                        value="<?php echo esc_attr($value); ?>"
+                                        placeholder="<?php echo esc_attr($fallback); ?>"
+                                    >
+                                    <p class="description">
+                                        未入力の場合は管理者メールアドレスへ送信します。
+                                    </p>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php submit_button('設定を保存'); ?>
+                </form>
+            </div>
+            <?php
         }
 
         public function register_post_type() {
@@ -318,9 +411,9 @@ if (!class_exists('Tomato_Contact_Inquiry_Manager')) {
         }
 
         private function send_notification_mail(array $data) {
-            $to = get_option('admin_email');
+            $to = $this->get_notification_recipient($data['paper']);
             if (!$to || !is_email($to)) {
-                return array('success' => false, 'message' => 'admin_email is not configured.');
+                return array('success' => false, 'message' => 'Notification recipient is not configured.');
             }
 
             $paper_label = $this->get_paper_label($data['paper']);
@@ -355,6 +448,22 @@ if (!class_exists('Tomato_Contact_Inquiry_Manager')) {
             );
         }
 
+        private function get_notification_recipient($paper) {
+            $paper = sanitize_key((string) $paper);
+            $settings = get_option(self::OPTION_KEY, array());
+            $settings = is_array($settings) ? $settings : array();
+            $key = 'recipient_' . $paper;
+            $configured = isset($settings[$key])
+                ? sanitize_email((string) $settings[$key])
+                : '';
+
+            if ($configured && is_email($configured)) {
+                return $configured;
+            }
+
+            return sanitize_email((string) get_option('admin_email'));
+        }
+
         private function resolve_paper($paper, WP_REST_Request $request) {
             $paper = sanitize_key((string) $paper);
             if ($paper !== '') {
@@ -383,12 +492,16 @@ if (!class_exists('Tomato_Contact_Inquiry_Manager')) {
             return isset($labels[$category]) ? $labels[$category] : $category;
         }
 
-        private function get_paper_label($paper) {
-            $labels = array(
-                'tomato'     => 'トマト新聞',
-                'leek'       => 'ねぎ新聞',
+        private function get_supported_papers() {
+            return array(
+                'tomato' => 'トマト新聞',
+                'leek'   => 'ねぎ新聞',
                 'ichigo' => 'いちご新聞',
             );
+        }
+
+        private function get_paper_label($paper) {
+            $labels = $this->get_supported_papers();
 
             return isset($labels[$paper]) ? $labels[$paper] : $paper;
         }
