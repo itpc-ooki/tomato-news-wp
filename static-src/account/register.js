@@ -382,6 +382,42 @@
     if (loginLink) loginLink.href = loginUrl;
     if (doneTopLink) doneTopLink.href = topUrl;
     if (doneTopLabel) doneTopLabel.textContent = `${profile.name}トップへ`;
+
+    if (paper === 'ichigo') {
+      const occupations = [
+        '専業農家（イチゴ）',
+        '専業農家（それ以外の品目）',
+        '農業法人（イチゴ）',
+        '農業法人（それ以外の品目）',
+        '兼業農家',
+        'JA営農指導員',
+        '農業普及指導員',
+        '研究職',
+        'その他'
+      ];
+      const occupationList = document.getElementById('occupation-list');
+      if (occupationList) {
+        occupationList.innerHTML = occupations.map((value, index) => {
+          const label = value === 'その他'
+            ? 'その他（会社員・団体職員・公務員・学生など）'
+            : value;
+          const wideClass = value === 'その他' ? ' rg-choice--wide' : '';
+          const required = index === 0 ? ' required' : '';
+          return `<label class="rg-choice${wideClass}"><input type="radio" name="occupation" value="${value}"${required}>${label}</label>`;
+        }).join('');
+      }
+
+      const jaGroupName = document.getElementById('ja_group_name');
+      if (jaGroupName) jaGroupName.placeholder = '例）JA○○ イチゴ部会';
+
+      const feature = document.getElementById('rg-ja-feature');
+      if (feature) {
+        const title = feature.querySelector('b');
+        const description = feature.querySelector('span');
+        if (title) title.textContent = 'お役立ちコラム';
+        if (description) description.textContent = '注目の専門家・農家によるここだけの解説記事';
+      }
+    }
   }
 
   async function fetchJson(name) {
@@ -456,6 +492,7 @@
     const summit = document.getElementById('rg-summit');
     if (!summit) return;
     summit.hidden = true;
+    if (paper === 'ichigo') return;
     if (!config || !isEnabled(config.enabled)) return;
 
     const img = summit.querySelector('.rg-summit__img img');
@@ -491,7 +528,8 @@
       ichigo: 'イチゴ',
       benihoppe: '紅ほっぺ',
       amaou: 'あまおう',
-      tochiotome: 'とちおとめ'
+      tochiotome: 'とちおとめ',
+      tochiaika: 'とちあいか'
     };
     return labels[text(item && item.variety_key).toLowerCase()] || '市況';
   }
