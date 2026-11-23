@@ -1160,6 +1160,7 @@
     setValue(form, 'prefecture', user.prefecture);
     setValue(form, 'city', user.city);
     setRadio(form, 'occupation', user.occupation);
+    setValue(form, 'ja_group_name', user.ja_group_name);
     setValue(form, 'farm_scale', user.farm_scale);
     setValue(form, 'crop_1', user.crop_1);
     setValue(form, 'crop_2', user.crop_2);
@@ -1179,6 +1180,7 @@
     const prefecture = String(form.querySelector('[name="prefecture"]')?.value || '');
     const city = String(form.querySelector('[name="city"]')?.value || '');
     const occupation = String(form.querySelector('input[name="occupation"]:checked')?.value || '');
+    const ja_group_name = String(form.querySelector('[name="ja_group_name"]')?.value || '');
     const farm_scale = String(form.querySelector('[name="farm_scale"]')?.value || '');
     const crop_1 = String(form.querySelector('[name="crop_1"]')?.value || '');
     const crop_2 = String(form.querySelector('[name="crop_2"]')?.value || '');
@@ -1203,6 +1205,7 @@
       prefecture,
       city,
       occupation,
+      ja_group_name,
       farm_scale,
       crop_1,
       crop_2,
@@ -1681,6 +1684,65 @@
    - Saves updates via WordPress REST API
 */
 (function(){
+  function configureIchigoMypage(form, user){
+    var paper = String((user && user.paper) || (window.__detectPaper ? window.__detectPaper() : '') || 'tomato').toLowerCase();
+    if (paper !== 'ichigo') return;
+
+    document.title = 'マイページ | イチゴ新聞';
+
+    var nickname = form.querySelector('[name="nickname"]');
+    if (nickname) nickname.placeholder = 'イチゴ太郎';
+
+    ['gender', 'city', 'crop_2', 'future_crop'].forEach(function(name){
+      var field = form.querySelector('[name="' + name + '"]');
+      var group = field ? field.closest('.form-group') : null;
+      if (group) group.hidden = true;
+      form.querySelectorAll('[name="' + name + '"]').forEach(function(input){
+        input.required = false;
+      });
+    });
+
+    var occupation = form.querySelector('input[name="occupation"]');
+    var occupationGroup = occupation ? occupation.closest('.radio-group') : null;
+    if (occupationGroup) {
+      var occupations = [
+        '専業農家（イチゴ）',
+        '専業農家（それ以外の品目）',
+        '農業法人（イチゴ）',
+        '農業法人（それ以外の品目）',
+        '兼業農家',
+        'JA営農指導員',
+        '農業普及指導員',
+        '研究職',
+        'その他'
+      ];
+      occupationGroup.innerHTML = occupations.map(function(value, index){
+        var label = value === 'その他'
+          ? 'その他（会社員・団体職員・公務員・学生など）'
+          : value;
+        return '<label class="radio-item"><input type="radio" name="occupation" value="' + value + '"' + (index === 0 ? ' required' : '') + '><span>' + label + '</span></label>';
+      }).join('');
+    }
+
+    var jaGroup = document.getElementById('mypage-ja-group');
+    if (jaGroup) jaGroup.hidden = false;
+    var jaGroupName = form.querySelector('[name="ja_group_name"]');
+    if (jaGroupName) jaGroupName.placeholder = '例）JA○○ イチゴ部会';
+
+    var farmScale = form.querySelector('[name="farm_scale"]');
+    if (farmScale) {
+      farmScale.required = false;
+      var farmScaleLabel = farmScale.closest('.form-group')?.querySelector('.form-label');
+      if (farmScaleLabel) farmScaleLabel.innerHTML = '営農規模<span class="optional">（任意）</span>';
+    }
+
+    var crop1 = form.querySelector('[name="crop_1"]');
+    if (crop1) {
+      var crop1Label = crop1.closest('.form-group')?.querySelector('.form-label');
+      if (crop1Label) crop1Label.innerHTML = '栽培品目<span class="optional">（任意）</span>';
+    }
+  }
+
   function initMypage(){
     var form = document.getElementById('mypageForm');
     if (!form) return;
@@ -1696,6 +1758,8 @@
         location.replace(window.__paperTop ? window.__paperTop() : '/static/tomato/index.html');
         return;
       }
+
+      configureIchigoMypage(form, user);
 
       // Fill form with saved profile
       if (typeof window.TomatoAuth.prefillMypageForm === 'function'){
