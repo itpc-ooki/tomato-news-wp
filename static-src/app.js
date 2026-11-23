@@ -8279,31 +8279,59 @@ function resetAutoSlide() {
     return Number.isFinite(time) ? time : 0;
   }
 
-  function createCard(post) {
+  function createCard(post, index) {
     const card = document.createElement("a");
-    card.className = "pest-card";
+    const size = index === 0 ? "large" : index <= 5 ? "medium" : "small";
+    card.className = "tile " + size;
     card.href = post.url || (post.id ? "./detail.html?id=" + encodeURIComponent(post.id) : "#");
     card.style.textDecoration = "none";
     card.style.color = "inherit";
 
-    const header = document.createElement("div");
-    header.className = "pest-card-header";
-    const title = document.createElement("h3");
+    const imageWrap = document.createElement("div");
+    imageWrap.className = "tile-img";
+
+    const image = document.createElement("img");
+    const imageUrl = String(post.featured_image || "").trim();
+    image.alt = plainText(post.title) || "";
+    image.loading = "lazy";
+
+    if (imageUrl) {
+      image.src = imageUrl;
+    } else {
+      image.style.display = "none";
+    }
+    imageWrap.appendChild(image);
+
+    const content = document.createElement("div");
+    content.className = "tile-content";
+
+    const meta = document.createElement("div");
+    meta.className = "tile-meta";
+
+    const category = document.createElement("span");
+    category.className = "tile-category";
+    category.textContent = plainText(
+      post.article_type ||
+      (Array.isArray(post.article_types) ? post.article_types[0] : "") ||
+      "病害虫情報"
+    );
+
+    const date = document.createElement("time");
+    const dateValue = String(post.date || post.date_ymd || "").slice(0, 10);
+    date.textContent = dateValue;
+    if (dateValue) date.dateTime = dateValue;
+
+    meta.appendChild(category);
+    meta.appendChild(date);
+
+    const title = document.createElement(index === 0 ? "h2" : "h3");
+    title.className = "tile-title";
     title.textContent = plainText(post.title) || "無題";
-    header.appendChild(title);
 
-    const body = document.createElement("div");
-    body.className = "pest-card-body";
-    const meta = document.createElement("p");
-    meta.className = "section-description";
-    meta.textContent = String(post.date || post.date_ymd || "").slice(0, 10);
-    const excerpt = document.createElement("p");
-    excerpt.textContent = plainText(post.excerpt || post.content).slice(0, 140);
-    body.appendChild(meta);
-    body.appendChild(excerpt);
-
-    card.appendChild(header);
-    card.appendChild(body);
+    content.appendChild(meta);
+    content.appendChild(title);
+    card.appendChild(imageWrap);
+    card.appendChild(content);
     return card;
   }
 
@@ -8328,8 +8356,8 @@ function resetAutoSlide() {
         return;
       }
 
-      posts.forEach(function (post) {
-        root.appendChild(createCard(post));
+      posts.forEach(function (post, index) {
+        root.appendChild(createCard(post, index));
       });
     } catch (error) {
       console.error("[Ichigo pest articles] load failed:", error);
