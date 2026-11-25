@@ -38,6 +38,7 @@ services:
       - ./static-src:/var/www/html/static-src
       - ./static:/var/www/html/static
       - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+      - ./docker/apache/static-access-deny.conf:/etc/apache2/conf-enabled/static-access-deny.conf:ro
     networks:
       - wp-cms_default
 
