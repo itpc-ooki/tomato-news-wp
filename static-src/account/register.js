@@ -444,7 +444,7 @@
   function appendArchiveCard(list) {
     const item = document.createElement('li');
     item.className = 'rg-art';
-    item.innerHTML = '<div class="rg-art__img" style="display:grid;place-items:center;background:linear-gradient(135deg,#fff5f2,#ffe4dc)"><div style="text-align:center;color:#c2412d;font-weight:800;line-height:1.4"><span style="font-size:30px;display:block">100+</span><span style="font-size:13px">本の記事が<br>読み放題</span></div></div><div class="rg-art__body"><span class="rg-art__cat">アーカイブ検索</span><p class="rg-art__title">産地・品種・期間で過去記事を探せます</p></div>';
+    item.innerHTML = '<div class="rg-art__img" style="display:grid;place-items:center;background:linear-gradient(135deg,#fff5f2,#ffe4dc)"><div style="text-align:center;color:#c2412d;font-weight:800;line-height:1.4"><span style="font-size:30px;display:block">More</span><span style="font-size:13px">記事を<br>もっと見る</span></div></div><div class="rg-art__body"><span class="rg-art__cat">アーカイブ検索</span><p class="rg-art__title">産地・品種・期間で過去記事を探せます</p></div>';
     list.appendChild(item);
   }
 
